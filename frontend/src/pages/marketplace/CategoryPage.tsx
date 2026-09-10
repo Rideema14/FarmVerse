@@ -7,6 +7,8 @@ import { productService } from '@/services/productService'
 import type { Product } from '@/types'
 import { useLanguage } from '@/context/LanguageContext'
 
+import { formatCategoryName } from '@/utils/localize'
+
 export default function CategoryPage() {
   const { category } = useParams<{ category: string }>()
   const { t } = useLanguage()
@@ -51,7 +53,7 @@ export default function CategoryPage() {
           </span>
         )}
         <div>
-          <h1 className="text-xl">{meta?.name ?? category}</h1>
+          <h1 className="text-xl">{meta ? formatCategoryName(meta, t) : category}</h1>
           <p className="text-xs text-ink-400">{isLoading ? t('common.loading') : `${products.length} ${t('product.productsCount')}`}</p>
         </div>
       </div>

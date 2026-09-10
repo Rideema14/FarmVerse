@@ -7,6 +7,8 @@ import { useSeller } from '@/context/SellerContext'
 import { orderService } from '@/services/orderService'
 import { getApiErrorMessage } from '@/services/api'
 import { formatDateTimeLabel, formatINR } from '@/utils/format'
+import { formatOrderStatus, formatProductName } from '@/utils/localize'
+import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/utils/cn'
 import type { Carrier } from '@/types'
 
@@ -23,6 +25,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function SellerOrdersPage() {
   const { sellerOrders, isLoadingOrders, isUpdatingOrder, submitShipmentForOrder } = useSeller()
+  const { t, language } = useLanguage()
   const [carriers, setCarriers] = useState<Carrier[]>([])
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
   const [selectedCarrierCode, setSelectedCarrierCode] = useState('')
@@ -94,7 +97,7 @@ export default function SellerOrdersPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-5 text-xl font-bold text-ink-900">Orders to Fulfill</h1>
+      <h1 className="mb-5 text-xl font-bold text-ink-900">{t('sellerOrders.title')}</h1>
       <div className="space-y-3">
         {sellerOrders.map((order) => {
           const needsAwb = !order.shipment
@@ -104,14 +107,14 @@ export default function SellerOrdersPage() {
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-ink-900">#{order.id}</p>
                   <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize', STATUS_STYLES[order.status])}>
-                    {order.status.replace(/_/g, ' ')}
+                    {formatOrderStatus(order.status, t)}
                   </span>
                 </div>
                 <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-500">
                   <User className="h-3.5 w-3.5" aria-hidden="true" />
                   {order.buyerName}
                 </p>
-                <p className="mt-1 text-xs text-ink-500">{order.itemsLabel}</p>
+                <p className="mt-1 text-xs text-ink-500">{formatProductName(order.itemsLabel, language)}</p>
                 {order.shipment && (
                   <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
                     <span className="flex items-center gap-1 font-medium text-brand-700">
@@ -120,12 +123,12 @@ export default function SellerOrdersPage() {
                   </div>
                 )}
                 <div className="mt-3 grid grid-cols-[1fr,auto] gap-x-4 gap-y-1">
-                  <span className="text-[11px] text-ink-400">Placed: {formatDateTimeLabel(order.placedAt)}</span>
+                  <span className="text-[11px] text-ink-400">{t('sellerOrders.placed')} {formatDateTimeLabel(order.placedAt)}</span>
                   <span className="row-span-2 place-self-center text-sm font-bold text-ink-900">{formatINR(order.total)}</span>
-                  <span className="text-[11px] text-ink-400">Updated: {formatDateTimeLabel(order.updatedAt)}</span>
+                  <span className="text-[11px] text-ink-400">{t('sellerOrders.updated')} {formatDateTimeLabel(order.updatedAt)}</span>
                 </div>
                 <span className="mt-2 flex items-center gap-0.5 text-[11px] font-semibold text-brand-600">
-                  View order & customer details
+                  {t('sellerOrders.viewDetails')}
                   <ChevronRight className="h-3 w-3" aria-hidden="true" />
                 </span>
               </Link>
@@ -224,7 +227,7 @@ export default function SellerOrdersPage() {
                     setConfirmingOrderId(order.id)
                   }}
                 >
-                  Enter AWB & Ship Order
+                  {t('sellerOrders.enterAwb')}
                 </Button>
               ) : null}
             </div>

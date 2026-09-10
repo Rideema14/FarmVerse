@@ -282,5 +282,27 @@
     "noProductsFound": "कोणतीही उत्पादने सापडली नाहीत",
     "tryChangingFilters": "तुमचे किंमत फिल्टर किंवा शोध शब्द बदलून पहा.",
     "resetFilters": "फिल्टर रीसेट करा"
+  },
+  "categoryNames": {
+    "building-materials": "बांधकाम साहित्य",
+    "equipment": "शेतीची अवजारे",
+    "fertilizers": "खते",
+    "machinery": "शेती यंत्रसामग्री",
+    "dairy": "दूध आणि दुग्धजन्य",
+    "oil-products": "तेल उत्पादने",
+    "seeds": "बियाणे"
+  },
+  "sellerOrders": {
+    "title": "पूर्ण करायच्या ऑर्डर्स",
+    "noOrders": "अजून कोणत्याही ऑर्डर्स नाहीत.",
+    "enterAwb": "AWB टाका आणि ऑर्डर पाठवा",
+    "viewDetails": "ऑर्डर व ग्राहक तपशील पहा",
+    "placed": "ऑर्डर तारीख:",
+    "updated": "शेवटचे अपडेट:",
+    "deliveryCarrier": "डिलीव्हरी कूरियर",
+    "courierName": "कूरियर / एजंटचे नाव",
+    "awbNumber": "AWB / ट्रॅकिंग नंबर",
+    "note": "टीप (पर्यायी)",
+    "submitAwb": "AWB सबमिट करा"
   }
 }

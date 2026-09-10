@@ -457,5 +457,27 @@
     "removeFromFavorites": "पसंदीदा से हटाएं",
     "addToFavorites": "पसंदीदा में जोड़ें",
     "showingResults": "{count} परिणाम दिखा रहे हैं"
+  },
+  "categoryNames": {
+    "building-materials": "निर्माण सामग्री",
+    "equipment": "कृषि उपकरण",
+    "fertilizers": "उर्वरक एवं खाद",
+    "machinery": "कृषि मशीनरी",
+    "dairy": "दूध एवं डेयरी",
+    "oil-products": "तेल उत्पाद",
+    "seeds": "बीज"
+  },
+  "sellerOrders": {
+    "title": "पूरे करने वाले ऑर्डर",
+    "noOrders": "अभी तक कोई ऑर्डर नहीं मिला है।",
+    "enterAwb": "AWB दर्ज करें और ऑर्डर भेजें",
+    "viewDetails": "ऑर्डर और ग्राहक विवरण देखें",
+    "placed": "ऑर्डर तिथि:",
+    "updated": "अंतिम अपडेट:",
+    "deliveryCarrier": "डिलीवरी कूरियर",
+    "courierName": "कूरियर / एजेंट का नाम",
+    "awbNumber": "AWB / ट्रैकिंग नंबर",
+    "note": "टिप्पणी (वैकल्पिक)",
+    "submitAwb": "AWB सबमिट करें"
   }
 }

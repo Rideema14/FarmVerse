@@ -23,6 +23,8 @@ import type { Product } from '@/types'
 import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/utils/cn'
 
+import { formatCategoryName } from '@/utils/localize'
+
 type SortKey =
   | 'relevance'
   | 'price-low'
@@ -350,7 +352,7 @@ export default function MarketplacePage() {
           <section className="mb-10">
             <div className="mb-3.5 flex items-center justify-between">
               <h2 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#687160]">
-                Shop by category
+                {t('home.categories')}
               </h2>
             </div>
 
@@ -406,7 +408,7 @@ export default function MarketplacePage() {
                     </span>
 
                     <span className="text-[13px] font-extrabold text-[#293424]">
-                      {cat.name}
+                      {formatCategoryName(cat, t)}
                     </span>
                   </Link>
                 )

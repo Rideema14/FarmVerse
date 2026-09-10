@@ -28,6 +28,7 @@ import { weatherService } from "@/services/weatherService";
 import { mandiService } from "@/services/mandiService";
 import type { Product } from "@/types";
 import { formatINR } from "@/utils/format";
+import { formatCategoryName, formatOrderStatus, formatProductName } from "@/utils/localize";
 import { cn } from "@/utils/cn";
 import { useEffect, useState } from "react";
 
@@ -85,7 +86,7 @@ interface HomeMandiRow {
 
 export default function HomePage() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { orders: recentOrders } = useOrders();
 
   const greetingKey = useGreetingKey();
@@ -735,7 +736,7 @@ export default function HomePage() {
                     </span>
 
                     <span className="mt-3 text-[11px] font-bold leading-tight text-[#514f46]">
-                      {cat.name}
+                      {formatCategoryName(cat, t)}
                     </span>
 
                     <ArrowUpRight className="mt-3 h-3.5 w-3.5 text-[#aaa393] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
@@ -824,7 +825,7 @@ export default function HomePage() {
                     <div className="p-4">
 
                       <p className="min-h-[40px] line-clamp-2 text-[13px] font-bold leading-[1.55] tracking-[-0.01em] text-[#2b2d25]">
-                        {product.name}
+                        {formatProductName(product.name, language)}
                       </p>
 
                       <div className="mt-2.5 flex min-w-0 items-center gap-1.5">
@@ -975,7 +976,7 @@ export default function HomePage() {
                           <span className="min-w-0 flex-1">
 
                             <span className="block truncate text-[12px] font-bold text-[#383930]">
-                              {order.itemsLabel}
+                              {formatProductName(order.itemsLabel, language)}
                             </span>
 
                             <span className="mt-1.5 flex items-center gap-2">
@@ -986,7 +987,7 @@ export default function HomePage() {
                                   ORDER_STATUS_STYLES[order.status],
                                 )}
                               >
-                                {order.status}
+                                {formatOrderStatus(order.status, t)}
                               </span>
 
                               <span className="text-[10px] font-semibold text-[#777164]">

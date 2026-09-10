@@ -457,5 +457,27 @@
     "removeFromFavorites": "Remove from favorites",
     "addToFavorites": "Add to favorites",
     "showingResults": "Showing {count} results"
+  },
+  "categoryNames": {
+    "building-materials": "Building Materials",
+    "equipment": "Farming Equipment",
+    "fertilizers": "Fertilizers",
+    "machinery": "Machinery",
+    "dairy": "Milk & Dairy",
+    "oil-products": "Oil Products",
+    "seeds": "Seeds"
+  },
+  "sellerOrders": {
+    "title": "Orders to Fulfill",
+    "noOrders": "No orders to fulfill yet.",
+    "enterAwb": "Enter AWB & Ship Order",
+    "viewDetails": "View order & customer details",
+    "placed": "Placed:",
+    "updated": "Updated:",
+    "deliveryCarrier": "Delivery Carrier",
+    "courierName": "Courier / Local Agent Name",
+    "awbNumber": "AWB / Tracking Number",
+    "note": "Note (optional)",
+    "submitAwb": "Submit AWB"
   }
 }

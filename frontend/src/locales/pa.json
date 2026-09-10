@@ -282,5 +282,27 @@
     "noProductsFound": "ਕੋਈ ਉਤਪਾਦ ਨਹੀਂ ਮਿਲਿਆ",
     "tryChangingFilters": "ਆਪਣੇ ਕੀਮਤ ਫਿਲਟਰ ਜਾਂ ਖੋਜ ਸ਼ਬਦ ਬਦਲ ਕੇ ਵੇਖੋ।",
     "resetFilters": "ਫਿਲਟਰ ਰੀਸੈੱਟ ਕਰੋ"
+  },
+  "categoryNames": {
+    "building-materials": "ਉਸਾਰੀ ਦੀ ਸਮੱਗਰੀ",
+    "equipment": "ਖੇਤੀਬਾੜੀ ਦੇ ਔਜ਼ਾਰ",
+    "fertilizers": "ਖਾਦਾਂ",
+    "machinery": "ਮਸ਼ੀਨਰੀ",
+    "dairy": "ਦੁੱਧ ਅਤੇ ਡੇਅਰੀ",
+    "oil-products": "ਤੇਲ ਉਤਪਾਦ",
+    "seeds": "ਬੀਜ"
+  },
+  "sellerOrders": {
+    "title": "ਪੂਰੇ ਕਰਨ ਵਾਲੇ ਆਰਡਰ",
+    "noOrders": "ਅਜੇ ਤੱਕ ਕੋਈ ਆਰਡਰ ਨਹੀਂ ਹੈ।",
+    "enterAwb": "AWB ਦਰਜ ਕਰੋ ਅਤੇ ਆਰਡਰ ਭੇਜੋ",
+    "viewDetails": "ਆਰਡਰ ਅਤੇ ਗਾਹਕ ਵੇਰਵੇ ਦੇਖੋ",
+    "placed": "ਆਰਡਰ ਮਿਤੀ:",
+    "updated": "ਆਖਰੀ ਅੱਪਡੇਟ:",
+    "deliveryCarrier": "ਡਿਲੀਵਰੀ ਕੂਰੀਅਰ",
+    "courierName": "ਕੂਰੀਅਰ / ਏਜੰਟ ਦਾ ਨਾਮ",
+    "awbNumber": "AWB / ਟ੍ਰੈਕਿੰਗ ਨੰਬਰ",
+    "note": "ਨੋਟ (ਵਿਕਲਪਿਕ)",
+    "submitAwb": "AWB ਸਬਮਿਟ ਕਰੋ"
   }
 }

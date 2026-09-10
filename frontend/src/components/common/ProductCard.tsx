@@ -6,13 +6,16 @@ import type { Product } from '@/types'
 import { useWishlist } from '@/context/WishlistContext'
 import { useCart } from '@/context/CartContext'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 export const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   const { isWishlisted, toggleWishlist } = useWishlist()
   const { quantityOf, addToCart, setQuantity, removeFromCart } = useCart()
   const { isAuthenticated } = useAuth()
+  const { language } = useLanguage()
   const navigate = useNavigate()
 
   // Tracks only "we just fired the very first add" so a second click before
@@ -239,7 +242,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
               text-[#20291C]
             "
           >
-            {product.name}
+            {formatProductName(product.name, language)}
           </p>
         </div>
 

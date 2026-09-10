@@ -282,5 +282,27 @@
     "noProductsFound": "કોઈ ઉત્પાદનો મળ્યાં નથી",
     "tryChangingFilters": "તમારા ભાવ ફિલ્ટર અથવા શોધ શબ્દો બદલીને જુઓ.",
     "resetFilters": "ફિલ્ટર રીસેટ કરો"
+  },
+  "categoryNames": {
+    "building-materials": "મકાન નિર્માણ સામગ્રી",
+    "equipment": "ખેતીના સાધનો",
+    "fertilizers": "ખાતર",
+    "machinery": "મશીનરી",
+    "dairy": "દૂધ અને ડેરી",
+    "oil-products": "તેલ ઉત્પાદનો",
+    "seeds": "બીજ"
+  },
+  "sellerOrders": {
+    "title": "પૂર્ણ કરવાના ઓર્ડર",
+    "noOrders": "હજી સુધી કોઈ ઓર્ડર નથી.",
+    "enterAwb": "AWB દાખલ કરો અને ઓર્ડર મોકલો",
+    "viewDetails": "ઓર્ડર અને ગ્રાહક વિગતો જુઓ",
+    "placed": "ઓર્ડર તારીખ:",
+    "updated": "છેલ્લું અપડેટ:",
+    "deliveryCarrier": "ડિલિવરી કુરિયર",
+    "courierName": "કુરિયર / એજન્ટનું નામ",
+    "awbNumber": "AWB / ટ્રેકિંગ નંબર",
+    "note": "નોંધ (વૈકલ્પિક)",
+    "submitAwb": "AWB સબમિટ કરો"
   }
 }
