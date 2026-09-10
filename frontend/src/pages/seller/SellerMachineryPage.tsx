@@ -10,6 +10,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import {
   machineryService,
   type MachineryBooking,
@@ -31,20 +32,9 @@ const STATUS_STYLE: Record<MachineryBookingStatus, string> = {
   cancelled: 'bg-danger-50 text-danger-500',
 }
 
-// Which action a seller can take from a given booking status.
-// Rejecting a pending request cancels it; a seller can't touch a booking
-// once it's already completed or cancelled.
-const NEXT_ACTIONS: Partial<Record<MachineryBookingStatus, { label: string; status: MachineryBookingStatus; variant: 'primary' | 'danger' }[]>> = {
-  pending: [
-    { label: 'Confirm', status: 'confirmed', variant: 'primary' },
-    { label: 'Reject', status: 'cancelled', variant: 'danger' },
-  ],
-  confirmed: [{ label: 'Mark Active', status: 'active', variant: 'primary' }],
-  active: [{ label: 'Mark Completed', status: 'completed', variant: 'primary' }],
-}
-
 export default function SellerMachineryPage() {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [tab, setTab] = useState<Tab>('listings')
 
   const [stats, setStats] = useState<MachineryDashboardStats | null>(null)
@@ -53,6 +43,15 @@ export default function SellerMachineryPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+
+  const nextActions: Partial<Record<MachineryBookingStatus, { label: string; status: MachineryBookingStatus; variant: 'primary' | 'danger' }[]>> = {
+    pending: [
+      { label: t('sellerMachinery.confirm'), status: 'confirmed', variant: 'primary' },
+      { label: t('sellerMachinery.reject'), status: 'cancelled', variant: 'danger' },
+    ],
+    confirmed: [{ label: t('sellerMachinery.markActive'), status: 'active', variant: 'primary' }],
+    active: [{ label: t('sellerMachinery.markCompleted'), status: 'completed', variant: 'primary' }],
+  }
 
   const load = useCallback(async () => {
     if (!user) return
@@ -130,14 +129,14 @@ export default function SellerMachineryPage() {
     <div className="mx-auto max-w-3xl px-4 py-5 md:px-6 md:py-8">
       <Link to="/seller" className="mb-4 flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-        Seller Hub
+        {t('sellerMachinery.sellerHub')}
       </Link>
 
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="text-xl">My Machines for Rent</h1>
-        <Link to="/seller/add-machinery" className="flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-xs font-semibold text-white">
+        <h1 className="text-xl font-bold text-ink-900">{t('sellerMachinery.title')}</h1>
+        <Link to="/seller/add-machinery" className="flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-700">
           <PlusSquare className="h-3.5 w-3.5" aria-hidden="true" />
-          Add
+          {t('sellerMachinery.add')}
         </Link>
       </div>
 
@@ -145,10 +144,10 @@ export default function SellerMachineryPage() {
 
       {stats && (
         <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Live Listings" value={stats.activeListings} />
-          <StatCard label="Bookings to Handle" value={stats.bookingsToFulfill} />
-          <StatCard label="Out on Rent Today" value={stats.activeRentalsToday} />
-          <StatCard label="Earnings (30 days)" value={formatINR(stats.revenueLast30Days)} />
+          <StatCard label={t('sellerMachinery.liveListings')} value={stats.activeListings} />
+          <StatCard label={t('sellerMachinery.bookingsToHandle')} value={stats.bookingsToFulfill} />
+          <StatCard label={t('sellerMachinery.outOnRentToday')} value={stats.activeRentalsToday} />
+          <StatCard label={t('sellerMachinery.earnings30d')} value={formatINR(stats.revenueLast30Days)} />
         </div>
       )}
 
@@ -158,7 +157,7 @@ export default function SellerMachineryPage() {
       >
         <span className="flex items-center gap-2 font-medium text-ink-800">
           <BarChart3 className="h-4 w-4 text-brand-600" aria-hidden="true" />
-          Total earnings so far
+          {t('sellerMachinery.totalEarnings')}
         </span>
         <span className="font-semibold text-ink-900">{stats ? formatINR(stats.totalRevenue) : '—'}</span>
       </Link>
@@ -169,20 +168,22 @@ export default function SellerMachineryPage() {
           onClick={() => setTab('listings')}
           className={cn('flex-1 rounded-full py-2 text-xs font-semibold', tab === 'listings' ? 'bg-surface shadow-card text-ink-900' : 'text-ink-500')}
         >
-          My Machinery ({listings.length})
+          {t('sellerMachinery.myMachineryTab', { count: listings.length })}
         </button>
         <button
           type="button"
           onClick={() => setTab('bookings')}
           className={cn('flex-1 rounded-full py-2 text-xs font-semibold', tab === 'bookings' ? 'bg-surface shadow-card text-ink-900' : 'text-ink-500')}
         >
-          Bookings {pendingCount > 0 ? `(${pendingCount} pending)` : `(${bookings.length})`}
+          {pendingCount > 0
+            ? t('sellerMachinery.bookingsTabPending', { count: pendingCount })
+            : t('sellerMachinery.bookingsTab', { count: bookings.length })}
         </button>
       </div>
 
       {tab === 'listings' ? (
         listings.length === 0 ? (
-          <EmptyState />
+          <EmptyState t={t} />
         ) : (
           <div className="space-y-2">
             {listings.map((listing) => (
@@ -197,7 +198,7 @@ export default function SellerMachineryPage() {
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-1 text-sm font-medium text-ink-900">{listing.name}</p>
                   <p className="text-xs text-ink-400">
-                    {formatINR(listing.pricePerDay)}/day · {listing.totalUnits} machine{listing.totalUnits > 1 ? 's' : ''}
+                    {formatINR(listing.pricePerDay)}{t('sellerMachinery.perDay')} · {listing.totalUnits > 1 ? t('sellerMachinery.machinesCountPlural', { count: listing.totalUnits }) : t('sellerMachinery.machinesCount', { count: listing.totalUnits })}
                   </p>
                 </div>
                 <span
@@ -206,7 +207,7 @@ export default function SellerMachineryPage() {
                     listing.available ? 'bg-brand-50 text-brand-700' : 'bg-ink-100 text-ink-500',
                   )}
                 >
-                  {listing.available ? 'active' : 'inactive'}
+                  {listing.available ? t('sellerMachinery.active') : t('sellerMachinery.inactive')}
                 </span>
                 <button
                   type="button"
@@ -217,13 +218,13 @@ export default function SellerMachineryPage() {
                     listing.available ? 'text-ink-500' : 'text-brand-600',
                   )}
                 >
-                  {listing.available ? 'Deactivate' : 'Activate'}
+                  {listing.available ? t('sellerMachinery.deactivate') : t('sellerMachinery.activate')}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDelete(listing)}
                   disabled={busyId === listing.id}
-                  aria-label="Delete listing"
+                  aria-label={t('sellerMachinery.deleteListing')}
                   className="shrink-0 text-danger-500 disabled:opacity-50"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -235,7 +236,7 @@ export default function SellerMachineryPage() {
       ) : bookings.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-14 text-center">
           <Calendar className="mb-3 h-10 w-10 text-ink-300" aria-hidden="true" />
-          <p className="text-sm text-ink-500">No one has booked your machines yet.</p>
+          <p className="text-sm text-ink-500">{t('sellerMachinery.noBookingsYet')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -250,7 +251,7 @@ export default function SellerMachineryPage() {
                   </p>
                   <p className="mt-0.5 text-xs text-ink-500">
                     {new Date(booking.startDate).toLocaleDateString()} – {new Date(booking.endDate).toLocaleDateString()}
-                    {booking.quantity > 1 ? ` · ${booking.quantity} machines` : ''}
+                    {booking.quantity > 1 ? ` · ${t('sellerMachinery.machinesCountPlural', { count: booking.quantity })}` : ''}
                   </p>
                 </div>
                 <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize', STATUS_STYLE[booking.status])}>
@@ -263,9 +264,9 @@ export default function SellerMachineryPage() {
                 <span className="text-[11px] text-ink-400">#{booking.bookingNumber}</span>
               </div>
 
-              {NEXT_ACTIONS[booking.status] && (
+              {nextActions[booking.status] && (
                 <div className="mt-3 flex gap-2">
-                  {NEXT_ACTIONS[booking.status]!.map((action) => (
+                  {nextActions[booking.status]!.map((action) => (
                     <button
                       key={action.status}
                       type="button"
@@ -298,13 +299,13 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   )
 }
 
-function EmptyState() {
+function EmptyState({ t }: { t: (key: any) => string }) {
   return (
     <div className="flex flex-col items-center justify-center py-14 text-center">
       <Tractor className="mb-3 h-10 w-10 text-ink-300" aria-hidden="true" />
-      <p className="text-sm text-ink-500">You haven't added any machines yet.</p>
+      <p className="text-sm text-ink-500">{t('sellerMachinery.noMachinesYet')}</p>
       <Link to="/seller/add-machinery" className="mt-4 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
-        Add a Machine
+        {t('sellerMachinery.addAMachine')}
       </Link>
     </div>
   )

@@ -4,11 +4,13 @@ import { ChevronLeft, ImagePlus, Tractor } from 'lucide-react'
 import { Button } from '@/components/common/Button'
 import { SelectField, TextAreaField, TextField } from '@/components/common/FormField'
 import { machineryService, type MachineryCategory } from '@/services/machineryService'
+import { useLanguage } from '@/context/LanguageContext'
 import { getApiErrorMessage } from '@/services/api'
 import { LoadingOverlay } from '@/components/common/LoadingOverlay'
 
 export default function AddMachineryListingPage() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   const [categories, setCategories] = useState<MachineryCategory[]>([])
   const [isLoadingCategories, setIsLoadingCategories] = useState(true)
@@ -75,7 +77,6 @@ export default function AddMachineryListingPage() {
         try {
           await machineryService.uploadImages(listing.id, [imageFile])
         } catch (uploadErr) {
-          // ACID Rollback: Remove newly created machinery listing if image upload fails
           await machineryService.remove(listing.id).catch(() => {})
           throw uploadErr
         }
@@ -94,8 +95,8 @@ export default function AddMachineryListingPage() {
         <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
           <Tractor className="h-8 w-8" aria-hidden="true" />
         </span>
-        <h1 className="text-xl">Machinery listed</h1>
-        <p className="mt-1 text-sm text-ink-500">{name} is now available for rent on Aandata.</p>
+        <h1 className="text-xl font-bold text-ink-900">{t('addMachinery.publish')}</h1>
+        <p className="mt-1 text-sm text-ink-500">{name} is now available for rent on FarmVerse.</p>
         <Button className="mt-6" onClick={() => navigate('/machinery')}>
           View Machinery Rental
         </Button>
@@ -107,21 +108,21 @@ export default function AddMachineryListingPage() {
     <div className="relative mx-auto max-w-lg px-4 py-6 md:px-6 md:py-8">
       <LoadingOverlay
         isLoading={isPublishing}
-        title="Listing Machinery…"
+        title={t('addMachinery.publishing')}
         message="Uploading equipment photo and creating listing for rent."
       />
       <Link to="/seller" className="mb-4 flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-        Seller Hub
+        {t('sellerMachinery.sellerHub')}
       </Link>
-      <h1 className="mb-1 text-xl">Add a Machine for Rent</h1>
-      <p className="mb-5 text-sm text-ink-500">Add your tractor or tool here so other farmers nearby can rent it from you.</p>
+      <h1 className="mb-1 text-xl font-bold text-ink-900">{t('addMachinery.title')}</h1>
+      <p className="mb-5 text-sm text-ink-500">{t('addMachinery.subtitle')}</p>
 
       <form onSubmit={handleSubmit}>
         {isLoadingCategories ? (
           <p className="mb-4 text-sm text-ink-400">Loading categories…</p>
         ) : (
-          <SelectField id="category" label="Category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
+          <SelectField id="category" label={t('addMachinery.category')} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -130,29 +131,28 @@ export default function AddMachineryListingPage() {
           </SelectField>
         )}
 
-        <TextField id="name" label="Machinery Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mahindra 575 DI Tractor" required />
+        <TextField id="name" label={t('addMachinery.machineName')} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('addMachinery.machineNamePlaceholder')} required />
 
         <div className="grid grid-cols-2 gap-3">
-          <TextField id="brand" label="Brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g. Mahindra" />
-          <TextField id="model" label="Model" value={model} onChange={(e) => setModel(e.target.value)} placeholder="e.g. 575 DI" />
+          <TextField id="brand" label={t('addMachinery.brand')} value={brand} onChange={(e) => setBrand(e.target.value)} placeholder={t('addMachinery.brandPlaceholder')} />
+          <TextField id="model" label={t('addMachinery.model')} value={model} onChange={(e) => setModel(e.target.value)} placeholder={t('addMachinery.modelPlaceholder')} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <TextField id="price" label="Price per Day (₹)" type="number" value={pricePerDay} onChange={(e) => setPricePerDay(e.target.value)} required />
-          <TextField id="units" label="How many do you have?" type="number" min={1} value={totalUnits} onChange={(e) => setTotalUnits(e.target.value)} required />
+          <TextField id="price" label={t('addMachinery.pricePerDay')} type="number" value={pricePerDay} onChange={(e) => setPricePerDay(e.target.value)} required />
+          <TextField id="units" label={t('addMachinery.totalUnits')} type="number" min={1} value={totalUnits} onChange={(e) => setTotalUnits(e.target.value)} required />
         </div>
 
         <TextField
           id="buffer"
-          label="Rest days after each rental"
+          label={t('addMachinery.bufferDays')}
           type="number"
           min={0}
           value={bufferDays}
           onChange={(e) => setBufferDays(e.target.value)}
-          hint="Days to clean or service the machine before it goes out again. Enter 0 if it can go straight to the next renter."
         />
 
-        <TextAreaField id="description" label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Condition, attachments, operator availability…" />
+        <TextAreaField id="description" label={t('addMachinery.description')} value={description} onChange={(e) => setDescription(e.target.value)} />
 
         <label className="mb-4 flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-ink-200 py-8 text-ink-500 hover:border-brand-300">
           {imagePreviewUrl ? (
@@ -160,14 +160,14 @@ export default function AddMachineryListingPage() {
           ) : (
             <ImagePlus className="h-8 w-8" aria-hidden="true" />
           )}
-          <span className="text-sm">{imagePreviewUrl ? 'Photo added — tap to change' : 'Tap to add a photo (optional)'}</span>
+          <span className="text-sm">{imagePreviewUrl ? t('addMachinery.photoAdded') : t('addMachinery.addPhoto')}</span>
           <input type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
         </label>
 
         {error && <p className="mb-3 text-sm font-medium text-danger-500">{error}</p>}
 
         <Button type="submit" fullWidth loading={isPublishing} disabled={!categoryId}>
-          Add My Machine
+          {t('addMachinery.publish')}
         </Button>
       </form>
     </div>

@@ -5,13 +5,14 @@ import { Button } from '@/components/common/Button'
 import { SelectField, TextAreaField, TextField } from '@/components/common/FormField'
 import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import type { BackendLandDealType } from '@/services/landService'
-
 import { LoadingOverlay } from '@/components/common/LoadingOverlay'
 
 export default function AddLandListingPage() {
   const { addLandListing, isActionLoading } = useLand()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const [title, setTitle] = useState('')
@@ -81,17 +82,17 @@ export default function AddLandListingPage() {
     <div className="relative mx-auto max-w-lg px-4 py-6 md:px-6 md:py-8">
       <LoadingOverlay
         isLoading={isActionLoading}
-        title="Publishing Land Listing…"
+        title={t('addLand.publishing')}
         message="Uploading plot photos and publishing to FarmVerse marketplace."
       />
       <Link to="/seller/land" className="mb-4 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
         <ChevronLeft className="h-4 w-4" />
-        Back to Seller Land Management
+        {t('sellerLand.sellerHub')}
       </Link>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-ink-900">List Agricultural Land</h1>
-        <p className="text-xs text-ink-500">Post your plot for sale or lease on FarmVerse marketplace.</p>
+        <h1 className="text-2xl font-extrabold text-ink-900">{t('addLand.title')}</h1>
+        <p className="text-xs text-ink-500">{t('addLand.subtitle')}</p>
       </div>
 
       {errorMsg && (
@@ -103,17 +104,17 @@ export default function AddLandListingPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <TextField
           id="title"
-          label="Listing Title"
+          label={t('addLand.landTitle')}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Irrigated Black Soil Farmland near Katni"
+          placeholder={t('addLand.landTitlePlaceholder')}
           required
         />
 
         <div className="grid grid-cols-2 gap-3">
           <TextField
             id="area"
-            label="Area (acres)"
+            label={t('addLand.areaAcres')}
             type="number"
             step="0.1"
             min="0.1"
@@ -124,18 +125,18 @@ export default function AddLandListingPage() {
           />
           <SelectField
             id="deal-type"
-            label="Deal Type"
+            label={t('addLand.dealType')}
             value={dealType}
             onChange={(e) => setDealType(e.target.value as BackendLandDealType)}
           >
-            <option value="SALE">For Sale</option>
-            <option value="LEASE">For Lease</option>
+            <option value="SALE">{t('addLand.sale')}</option>
+            <option value="LEASE">{t('addLand.lease')}</option>
           </SelectField>
         </div>
 
         <TextField
           id="location"
-          label="Location Landmark / Village"
+          label={t('addLand.location')}
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="e.g. Bahoriband, Katni Highway"
@@ -145,14 +146,14 @@ export default function AddLandListingPage() {
         <div className="grid grid-cols-2 gap-3">
           <TextField
             id="city"
-            label="City / District"
+            label={t('addLand.city')}
             value={city}
             onChange={(e) => setCity(e.target.value)}
             placeholder="e.g. Katni"
           />
           <TextField
             id="state"
-            label="State"
+            label={t('addLand.state')}
             value={state}
             onChange={(e) => setState(e.target.value)}
             placeholder="e.g. Madhya Pradesh"
@@ -161,7 +162,7 @@ export default function AddLandListingPage() {
 
         <TextField
           id="price"
-          label={dealType === 'SALE' ? 'Total Selling Price (₹)' : 'Annual Lease Rent (₹)'}
+          label={dealType === 'SALE' ? t('addLand.price') : t('addLand.pricePerYear')}
           type="number"
           min="1"
           value={price}
@@ -171,14 +172,14 @@ export default function AddLandListingPage() {
         />
 
         <div className="grid grid-cols-2 gap-3">
-          <SelectField id="soil" label="Soil Type" value={soilType} onChange={(e) => setSoilType(e.target.value)}>
+          <SelectField id="soil" label={t('addLand.soilType')} value={soilType} onChange={(e) => setSoilType(e.target.value)}>
             {['Black soil', 'Alluvial soil', 'Red soil', 'Loamy soil', 'Sandy soil', 'Clay soil'].map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </SelectField>
           <TextField
             id="water"
-            label="Water Source"
+            label={t('addLand.waterSource')}
             value={waterSource}
             onChange={(e) => setWaterSource(e.target.value)}
             placeholder="e.g. Borewell + Canal"
@@ -187,15 +188,14 @@ export default function AddLandListingPage() {
 
         <TextAreaField
           id="description"
-          label="Description"
+          label={t('addLand.description')}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Detail road access, fencing, crops grown previously, electricity connection, boundary clarity..."
         />
 
         {/* Photo Upload Section */}
         <div>
-          <label className="mb-1 block text-xs font-semibold text-ink-700">Plot Photos (optional)</label>
+          <label className="mb-1 block text-xs font-semibold text-ink-700">{t('addLand.uploadPhotos')}</label>
           <div className="flex flex-wrap gap-2">
             {previewUrls.map((url, idx) => (
               <div key={idx} className="relative h-20 w-24 overflow-hidden rounded-xl border border-ink-200">
@@ -211,14 +211,14 @@ export default function AddLandListingPage() {
             ))}
             <label className="flex h-20 w-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-ink-200 bg-surface-sunk text-ink-500 hover:border-brand-500 hover:text-brand-600">
               <Upload className="h-5 w-5" />
-              <span className="mt-1 text-[10px] font-semibold">Add Photo</span>
+              <span className="mt-1 text-[10px] font-semibold">{t('addLand.tapToBrowse')}</span>
               <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
             </label>
           </div>
         </div>
 
         <Button type="submit" fullWidth disabled={isActionLoading} className="py-3 text-sm">
-          {isActionLoading ? 'Publishing Listing…' : 'Publish Land Listing'}
+          {isActionLoading ? t('addLand.publishing') : t('addLand.publish')}
         </Button>
       </form>
     </div>

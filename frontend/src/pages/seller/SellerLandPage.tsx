@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { BackendVisitStatus } from '@/services/landService'
@@ -32,6 +33,7 @@ export default function SellerLandPage() {
   } = useLand()
 
   const { user } = useAuth()
+  const { t, language } = useLanguage()
   const [activeTab, setActiveTab] = useState<Tab>('listings')
   const [visitStatusFilter, setVisitStatusFilter] = useState<BackendVisitStatus | 'ALL'>('ALL')
   
@@ -59,7 +61,7 @@ export default function SellerLandPage() {
   }
 
   const handleDeleteListing = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this land listing?')) return
+    if (!window.confirm(t('sellerLand.confirmDelete'))) return
     try {
       await deleteLand(id)
     } catch (err) {
@@ -85,17 +87,19 @@ export default function SellerLandPage() {
     visitStatusFilter === 'ALL' ? true : v.status === visitStatusFilter,
   )
 
+  const localeCode = language === 'hi' ? 'hi-IN' : 'en-IN'
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-5 md:px-6 md:py-8">
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <Link to="/seller" className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
-            <ChevronLeft className="h-4 w-4" /> Seller Hub
+            <ChevronLeft className="h-4 w-4" /> {t('sellerLand.sellerHub')}
           </Link>
-          <h1 className="text-2xl font-extrabold text-ink-900">Seller Land Management</h1>
+          <h1 className="text-2xl font-extrabold text-ink-900">{t('sellerLand.title')}</h1>
           <p className="text-xs text-ink-500">
-            Manage your land plots, activate/deactivate listings, and respond to buyer site visit requests.
+            {t('sellerLand.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -103,7 +107,7 @@ export default function SellerLandPage() {
             to="/seller/add-land"
             className="inline-flex items-center gap-1.5 rounded-2xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white shadow transition hover:bg-brand-700"
           >
-            <Plus className="h-4 w-4" /> Post Land Listing
+            <Plus className="h-4 w-4" /> {t('sellerLand.postLandListing')}
           </Link>
         </div>
       </div>
@@ -127,7 +131,7 @@ export default function SellerLandPage() {
           )}
         >
           <MapPin className="h-4 w-4" />
-          My Land Listings ({sellerListings.length})
+          {t('sellerLand.myLandListingsTab', { count: sellerListings.length })}
         </button>
         <button
           type="button"
@@ -140,10 +144,10 @@ export default function SellerLandPage() {
           )}
         >
           <CalendarCheck className="h-4 w-4" />
-          Visit Requests ({sellerVisitRequests.length})
+          {t('sellerLand.visitRequestsTab', { count: sellerVisitRequests.length })}
           {pendingVisitsCount > 0 && (
             <span className="ml-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] text-white font-extrabold">
-              {pendingVisitsCount} new
+              {t('sellerLand.newPendingVisits', { count: pendingVisitsCount })}
             </span>
           )}
         </button>
@@ -161,13 +165,13 @@ export default function SellerLandPage() {
           ) : sellerListings.length === 0 ? (
             <div className="mx-auto my-12 max-w-sm rounded-3xl border border-dashed border-ink-200 p-8 text-center">
               <MapPin className="mx-auto h-10 w-10 text-soil-400" />
-              <h3 className="mt-2 text-sm font-bold text-ink-900">No land listings created yet</h3>
-              <p className="mt-1 text-xs text-ink-500">Post your agricultural plots to connect with interested buyers.</p>
+              <h3 className="mt-2 text-sm font-bold text-ink-900">{t('sellerLand.noLandListingsYet')}</h3>
+              <p className="mt-1 text-xs text-ink-500">{t('sellerLand.noLandListingsDesc')}</p>
               <Link
                 to="/seller/add-land"
                 className="mt-4 inline-block rounded-full bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-brand-700"
               >
-                Create First Land Listing
+                {t('sellerLand.createFirstLandListing')}
               </Link>
             </div>
           ) : (
@@ -201,15 +205,15 @@ export default function SellerLandPage() {
                               land.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500',
                             )}
                           >
-                            {land.isActive ? 'Active' : 'Inactive'}
+                            {land.isActive ? t('sellerLand.active') : t('sellerLand.inactive')}
                           </span>
                         </div>
                         <p className="mt-0.5 text-xs text-ink-500">
-                          {land.location} · {areaNum} Acres · For {land.dealType === 'SALE' ? 'Sale' : 'Lease'}
+                          {land.location} · {areaNum} {t('sellerLand.acres')} · For {land.dealType === 'SALE' ? t('sellerLand.forSale') : t('sellerLand.forLease')}
                         </p>
                         <p className="mt-1 text-sm font-extrabold text-ink-900">
                           {formatINR(priceNum)}
-                          {land.dealType === 'LEASE' && <span className="text-xs font-normal text-ink-400"> / yr</span>}
+                          {land.dealType === 'LEASE' && <span className="text-xs font-normal text-ink-400">{t('sellerLand.perYear')}</span>}
                         </p>
                       </div>
                     </div>
@@ -225,19 +229,19 @@ export default function SellerLandPage() {
                             : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
                         )}
                       >
-                        {land.isActive ? 'Deactivate' : 'Activate'}
+                        {land.isActive ? t('sellerLand.deactivate') : t('sellerLand.activate')}
                       </button>
                       <Link
                         to={`/land/${land.slug || land.id}`}
                         className="rounded-xl border border-ink-200 bg-surface px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-ink-50"
                       >
-                        View
+                        {t('sellerLand.view')}
                       </Link>
                       <button
                         type="button"
                         onClick={() => handleDeleteListing(land.id)}
                         className="rounded-xl border border-danger-200 p-1.5 text-danger-600 hover:bg-danger-50"
-                        title="Delete Listing"
+                        title={t('sellerLand.deleteListing')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -279,8 +283,8 @@ export default function SellerLandPage() {
           ) : filteredVisits.length === 0 ? (
             <div className="mx-auto my-12 max-w-sm rounded-3xl border border-dashed border-ink-200 p-8 text-center">
               <CalendarCheck className="mx-auto h-10 w-10 text-ink-300" />
-              <h3 className="mt-2 text-sm font-bold text-ink-900">No visit requests found</h3>
-              <p className="mt-1 text-xs text-ink-500">When buyers request site visits for your land, they will appear here.</p>
+              <h3 className="mt-2 text-sm font-bold text-ink-900">{t('sellerLand.noVisitRequests')}</h3>
+              <p className="mt-1 text-xs text-ink-500">{t('sellerLand.noVisitRequestsDesc')}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -288,7 +292,7 @@ export default function SellerLandPage() {
                 <div key={visit.id} className="rounded-3xl border border-ink-100 bg-surface p-5 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3 border-b border-ink-100 pb-3">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-ink-400">Land Listing</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-ink-400">{t('sellerLand.landListingLabel')}</span>
                       <h3 className="text-base font-bold text-ink-900">{visit.land?.title || 'Land Plot'}</h3>
                       <p className="text-xs text-ink-500">{visit.land?.location}</p>
                     </div>
@@ -311,8 +315,8 @@ export default function SellerLandPage() {
                   {/* Buyer details */}
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs">
                     <div>
-                      <span className="font-semibold text-ink-500">Buyer Name: </span>
-                      <span className="font-bold text-ink-900">{visit.buyer?.name || 'Interested Buyer'}</span>
+                      <span className="font-semibold text-ink-500">{t('sellerLand.buyerName')} </span>
+                      <span className="font-bold text-ink-900">{visit.buyer?.name || t('sellerLand.interestedBuyer')}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       {visit.buyer?.phone && (
@@ -328,7 +332,7 @@ export default function SellerLandPage() {
                           href={`mailto:${visit.buyer.email}`}
                           className="inline-flex items-center gap-1 font-semibold text-brand-600 hover:underline"
                         >
-                          <Mail className="h-3.5 w-3.5" /> Email
+                          <Mail className="h-3.5 w-3.5" /> {t('sellerLand.email')}
                         </a>
                       )}
                     </div>
@@ -336,8 +340,8 @@ export default function SellerLandPage() {
 
                   <div className="mt-3 rounded-2xl bg-surface-sunk p-3 text-xs">
                     <p>
-                      <span className="font-bold text-ink-900">Requested Visit Date: </span>
-                      <span className="font-bold text-brand-700">{new Date(visit.visitDate).toLocaleDateString()}</span> at{' '}
+                      <span className="font-bold text-ink-900">{t('sellerLand.requestedVisitDate')} </span>
+                      <span className="font-bold text-brand-700">{new Date(visit.visitDate).toLocaleDateString(localeCode)}</span> {t('sellerLand.at')}{' '}
                       <span className="font-bold text-brand-700">{visit.visitTime}</span>
                     </p>
                     {visit.message && (
@@ -347,7 +351,7 @@ export default function SellerLandPage() {
 
                   {visit.responseNote && (
                     <div className="mt-3 text-xs text-ink-700">
-                      <span className="font-bold">Seller Note Provided:</span> {visit.responseNote}
+                      <span className="font-bold">{t('sellerLand.sellerNoteProvided')}</span> {visit.responseNote}
                     </div>
                   )}
 
@@ -358,7 +362,7 @@ export default function SellerLandPage() {
                         <div className="space-y-2">
                           <input
                             type="text"
-                            placeholder="Add response note for buyer (e.g. 'Meeting at village landmark', 'Please call before arrival')..."
+                            placeholder={t('sellerLand.responseNotePlaceholder')}
                             value={responseNote}
                             onChange={(e) => setResponseNote(e.target.value)}
                             className="w-full rounded-xl border border-ink-200 px-3 py-1.5 text-xs text-ink-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
@@ -369,7 +373,7 @@ export default function SellerLandPage() {
                               onClick={() => setSelectedVisitId(null)}
                               className="rounded-xl px-3 py-1.5 text-xs font-semibold text-ink-500 hover:bg-ink-50"
                             >
-                              Cancel
+                              {t('sellerLand.cancel')}
                             </button>
                             <button
                               type="button"
@@ -377,7 +381,7 @@ export default function SellerLandPage() {
                               disabled={updatingVisit}
                               className="rounded-xl bg-danger-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-danger-700 disabled:opacity-50"
                             >
-                              Reject Visit
+                              {t('sellerLand.rejectVisit')}
                             </button>
                             <button
                               type="button"
@@ -385,7 +389,7 @@ export default function SellerLandPage() {
                               disabled={updatingVisit}
                               className="rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
                             >
-                              Approve Visit
+                              {t('sellerLand.approveVisit')}
                             </button>
                           </div>
                         </div>
@@ -399,7 +403,7 @@ export default function SellerLandPage() {
                             }}
                             className="rounded-xl bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-brand-700"
                           >
-                            Respond to Visit Request
+                            {t('sellerLand.respondToVisitRequest')}
                           </button>
                         </div>
                       )}
@@ -414,7 +418,7 @@ export default function SellerLandPage() {
                         disabled={isActionLoading}
                         className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-700"
                       >
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Mark Visit as Completed
+                        <CheckCircle2 className="h-3.5 w-3.5" /> {t('sellerLand.markVisitCompleted')}
                       </button>
                     </div>
                   )}
