@@ -687,7 +687,13 @@
     "approveVisit": "Approve Visit",
     "respondToVisitRequest": "Respond to Visit Request",
     "markVisitCompleted": "Mark Visit as Completed",
-    "confirmDelete": "Are you sure you want to delete this land listing?"
+    "confirmDelete": "Are you sure you want to delete this land listing?",
+    "statusAll": "All",
+    "statusPending": "Pending",
+    "statusAccepted": "Accepted",
+    "statusRejected": "Rejected",
+    "statusCompleted": "Completed",
+    "statusCancelled": "Cancelled"
   },
   "addMachinery": {
     "title": "List Machinery for Rent",

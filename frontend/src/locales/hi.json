@@ -687,7 +687,13 @@
     "approveVisit": "विजिट स्वीकार करें",
     "respondToVisitRequest": "विजिट अनुरोध का उत्तर दें",
     "markVisitCompleted": "विजिट पूर्ण चिह्नित करें",
-    "confirmDelete": "क्या आप वाकई इस भूमि लिस्टिंग को हटाना चाहते हैं?"
+    "confirmDelete": "क्या आप वाकई इस भूमि लिस्टिंग को हटाना चाहते हैं?",
+    "statusAll": "सभी",
+    "statusPending": "लंबित",
+    "statusAccepted": "स्वीकृत",
+    "statusRejected": "अस्वीकृत",
+    "statusCompleted": "पूर्ण",
+    "statusCancelled": "रद्द"
   },
   "addMachinery": {
     "title": "किराए के लिए मशीनरी सूचीबद्ध करें",

@@ -89,6 +89,15 @@ export default function SellerLandPage() {
 
   const localeCode = language === 'hi' ? 'hi-IN' : 'en-IN'
 
+  const statusLabels: Record<string, string> = {
+    ALL: t('sellerLand.statusAll'),
+    PENDING: t('sellerLand.statusPending'),
+    ACCEPTED: t('sellerLand.statusAccepted'),
+    REJECTED: t('sellerLand.statusRejected'),
+    COMPLETED: t('sellerLand.statusCompleted'),
+    CANCELLED: t('sellerLand.statusCancelled'),
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-5 md:px-6 md:py-8">
       {/* Header */}
@@ -269,7 +278,7 @@ export default function SellerLandPage() {
                   visitStatusFilter === status ? 'bg-surface shadow-card text-ink-900' : 'text-ink-500 hover:text-ink-900',
                 )}
               >
-                {status}
+                {statusLabels[status] ?? status}
               </button>
             ))}
           </div>
@@ -308,7 +317,7 @@ export default function SellerLandPage() {
                           : 'bg-ink-100 text-ink-600',
                       )}
                     >
-                      {visit.status}
+                      {statusLabels[visit.status] ?? visit.status}
                     </span>
                   </div>
 
