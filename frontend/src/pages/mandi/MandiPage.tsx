@@ -6,6 +6,7 @@ import { useMandi } from '@/context/MandiContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { mandiService } from '@/services/mandiService'
 import { formatDateLabel, formatINR } from '@/utils/format'
+import { formatCropName, formatMandiMarket } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 const PAGE_SIZE = 15
@@ -29,7 +30,7 @@ function unwrapMeta(res: any): any {
 }
 
 export default function MandiPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [states, setStates] = useState<string[]>([])
   const [districts, setDistricts] = useState<string[]>([])
   const [mandis, setMandis] = useState<{ id: string; name: string }[]>([])
@@ -279,9 +280,9 @@ export default function MandiPage() {
           return (
             <div key={`${row.id}-${idx}`} className="flex items-center justify-between rounded-2xl border border-ink-100 bg-surface p-4">
               <div>
-                <p className="text-sm font-semibold text-ink-900">{row.crop?.name || t('mandi.unknownCrop')}</p>
+                <p className="text-sm font-semibold text-ink-900">{row.crop?.name ? formatCropName(row.crop.name, language) : t('mandi.unknownCrop')}</p>
                 <p className="text-xs text-ink-400">
-                  {row.mandi?.name || t('mandi.unknownMandi')} · {row.mandi?.district}, {row.mandi?.state} · {row.variety || ''} · {formatDateLabel(row.priceDate)}
+                  {row.mandi?.name ? formatMandiMarket(row.mandi.name, language) : t('mandi.unknownMandi')} · {row.mandi?.district}, {row.mandi?.state} · {row.variety || ''} · {formatDateLabel(row.priceDate)}
                 </p>
                 <p className="mt-1 text-[11px] text-ink-400">
                   {t('common.range')}: {formatINR(row.minPrice)} – {formatINR(row.maxPrice)}

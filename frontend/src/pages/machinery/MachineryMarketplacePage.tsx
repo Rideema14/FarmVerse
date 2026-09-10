@@ -4,6 +4,7 @@ import { Loader2, MapPin, PackageX, Search, Star, Tractor } from 'lucide-react'
 import { machineryService, type MachineryCategory, type MachineryListing } from '@/services/machineryService'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
+import { formatCategoryName, formatProductName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -16,7 +17,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 }
 
 export default function MachineryMarketplacePage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)
   const [categorySlug, setCategorySlug] = useState('')
@@ -79,7 +80,7 @@ export default function MachineryMarketplacePage() {
           <option value="">{t('machinery.allCategories')}</option>
           {categories.map((c) => (
             <option key={c.id} value={c.slug}>
-              {c.name}
+              {formatCategoryName(c, t)}
             </option>
           ))}
         </select>
@@ -119,7 +120,7 @@ export default function MachineryMarketplacePage() {
                 )}
               </div>
               <div className="flex items-start justify-between">
-                <h2 className="text-sm font-semibold text-ink-900">{m.name}</h2>
+                <h2 className="text-sm font-semibold text-ink-900">{formatProductName(m.name, language)}</h2>
                 <span
                   className={cn(
                     'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',
@@ -131,7 +132,7 @@ export default function MachineryMarketplacePage() {
               </div>
               <p className="mt-1 flex items-center gap-1 text-xs text-ink-500">
                 <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-                {m.categoryName}{m.ownerName ? ` · ${m.ownerName}` : ''}
+                {formatCategoryName({ slug: m.categorySlug, name: m.categoryName }, t)}{m.ownerName ? ` · ${m.ownerName}` : ''}
               </p>
               <p className="mt-1 flex items-center gap-1 text-xs text-ink-500">
                 <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" aria-hidden="true" />

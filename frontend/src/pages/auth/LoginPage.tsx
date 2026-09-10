@@ -88,40 +88,34 @@ export default function LoginPage() {
 
           <div className="max-w-[430px]">
             <p className="mb-4 text-[9px] font-bold uppercase tracking-[0.2em] text-[#AAB991]">
-              Smart agriculture
+              {t('auth.smartAgriTagline')}
             </p>
 
             <h1 className="text-[clamp(42px,5vw,64px)] font-semibold leading-[0.92] tracking-[-0.06em] text-[#F3F5EE]">
-              Farm
-              <br />
-              <span className="text-[#A7BA80]">
-                smarter.
-              </span>
+              {t('auth.farmSmarterTitle')}
             </h1>
 
             <p className="mt-6 max-w-[380px] text-[13px] leading-6 text-[#AEB7A1]">
-              One intelligent platform for agricultural
-              products, market insights and smarter
-              farming decisions.
+              {t('auth.farmSmarterDesc')}
             </p>
 
             <div className="mt-7 flex flex-wrap gap-2">
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[9px] text-[#C2CAB6]">
-                Marketplace
+                {t('auth.tagMarketplace')}
               </span>
 
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[9px] text-[#C2CAB6]">
-                AI insights
+                {t('auth.tagAiInsights')}
               </span>
 
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[9px] text-[#C2CAB6]">
-                Market data
+                {t('auth.tagMarketData')}
               </span>
             </div>
           </div>
 
           <span className="text-[9px] text-[#7F8B70]">
-            Intelligent tools for modern agriculture
+            {t('auth.intelligentToolsFooter')}
           </span>
 
         </div>

@@ -114,35 +114,33 @@ export default function RegisterPage() {
 
             <div className="max-w-[430px]">
               <p className="mb-4 text-[9px] font-bold uppercase tracking-[0.2em] text-[#AAB991]">
-                Join the community
+                {t('auth.joinCommunity')}
               </p>
 
               <h1 className="text-[clamp(38px,4.6vw,58px)] font-semibold leading-[0.95] tracking-[-0.06em] text-[#F3F5EE]">
-                Grow with
+                {t('auth.growWithConfidenceTitle')}
                 <br />
-                <span className="text-[#A7BA80]">confidence.</span>
+                <span className="text-[#A7BA80]">{t('auth.growWithConfidenceHighlight')}</span>
               </h1>
 
               <p className="mt-6 max-w-[380px] text-[13px] leading-6 text-[#AEB7A1]">
-                Create your free account to buy and sell agricultural
-                products, track market prices, and get AI-powered farming
-                guidance — all in one place.
+                {t('auth.growWithConfidenceDesc')}
               </p>
 
               <ul className="mt-7 space-y-2.5">
                 <li className="flex items-center gap-2.5 text-[11px] text-[#C2CAB6]">
                   <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#A7BA80]" />
-                  Verified sellers and secure payments
+                  {t('auth.oneAccountTagline')}
                 </li>
                 <li className="flex items-center gap-2.5 text-[11px] text-[#C2CAB6]">
                   <Leaf className="h-3.5 w-3.5 shrink-0 text-[#A7BA80]" />
-                  Real-time mandi prices and crop insights
+                  {t('auth.tagMarketData')}
                 </li>
               </ul>
             </div>
 
             <span className="text-[9px] text-[#7F8B70]">
-              Intelligent tools for modern agriculture
+              {t('auth.intelligentToolsFooter')}
             </span>
           </div>
         </section>

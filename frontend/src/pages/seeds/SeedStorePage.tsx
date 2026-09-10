@@ -7,12 +7,14 @@ import { useLanguage } from '@/context/LanguageContext'
 import { getApiErrorMessage } from '@/services/api'
 import { formatINR } from '@/utils/format'
 
+import { formatCropName, formatProductName } from '@/utils/localize'
+
 export default function SeedStorePage() {
   const [seeds, setSeeds] = useState<Seed[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const { addToCart, itemCount } = useSeedCart()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   useEffect(() => {
     let cancelled = false
@@ -91,10 +93,10 @@ export default function SeedStorePage() {
                     <Sprout className="h-8 w-8 text-brand-400" strokeWidth={1.5} aria-hidden="true" />
                   )}
                 </div>
-                <p className="line-clamp-2 text-xs font-medium leading-snug text-ink-900">{seed.name}</p>
+                <p className="line-clamp-2 text-xs font-medium leading-snug text-ink-900">{formatProductName(seed.name, language)}</p>
                 <div className="mt-1.5 flex items-center gap-1 text-[11px] text-ink-500">
                   <Star className="h-3 w-3 fill-gold-400 text-gold-400" aria-hidden="true" />
-                  {seed.rating.toFixed(1)} · {seed.categoryName}
+                  {seed.rating.toFixed(1)} · {formatCropName(seed.categoryName, language)}
                 </div>
                 <p className="mt-1 text-sm font-bold text-ink-900">{formatINR(seed.price)}</p>
               </Link>

@@ -28,7 +28,7 @@ import { weatherService } from "@/services/weatherService";
 import { mandiService } from "@/services/mandiService";
 import type { Product } from "@/types";
 import { formatINR } from "@/utils/format";
-import { formatCategoryName, formatOrderStatus, formatProductName } from "@/utils/localize";
+import { formatCategoryName, formatCropName, formatMandiMarket, formatOrderStatus, formatProductName } from "@/utils/localize";
 import { cn } from "@/utils/cn";
 import { useEffect, useState } from "react";
 
@@ -484,11 +484,11 @@ export default function HomePage() {
                 </p>
 
                 <p className="mt-3 text-[14px] font-bold text-[#454238]">
-                  {mandiRows[0]?.crop ?? "—"}
+                  {mandiRows[0]?.crop ? formatCropName(mandiRows[0].crop, language) : "—"}
                 </p>
 
                 <p className="mt-0.5 text-[10px] text-[#969082]">
-                  {mandiRows[0]?.mandi ?? t('home.loadingMandiData')}
+                  {mandiRows[0]?.mandi ? formatMandiMarket(mandiRows[0].mandi, language) : t('home.loadingMandiData')}
                 </p>
 
               </div>
@@ -1094,11 +1094,11 @@ export default function HomePage() {
                         <div className="min-w-0">
 
                           <p className="truncate text-[12px] font-bold text-[#f5efe2]">
-                            {row.crop}
+                            {formatCropName(row.crop, language)}
                           </p>
 
                           <p className="mt-1 truncate text-[10px] text-[#c1b5a4]">
-                            {row.mandi}
+                            {formatMandiMarket(row.mandi, language)}
                           </p>
 
                         </div>
