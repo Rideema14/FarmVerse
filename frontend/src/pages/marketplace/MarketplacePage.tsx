@@ -302,13 +302,12 @@ export default function MarketplacePage() {
                 "
               >
                 {query
-                  ? `Results for "${query}"`
+                  ? t('market.searchResults', { query })
                   : t('nav.market')}
               </h1>
 
               <p className="mt-3 max-w-[650px] text-[14px] font-medium leading-6 text-[#697163] sm:text-[15px]">
-                Shop quality agricultural products from trusted sellers,
-                with prices and deals made for everyday farming.
+                {t('market.subtitle')}
               </p>
             </div>
 
@@ -338,7 +337,7 @@ export default function MarketplacePage() {
                 "
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Clear search
+                {t('market.clearSearch')}
               </button>
             )}
           </div>
@@ -475,7 +474,7 @@ export default function MarketplacePage() {
                           sm:text-[24px]
                         "
                       >
-                        Limited Time Deals
+                        {t('market.limitedTimeDeals')}
                       </h2>
 
                       <span
@@ -491,12 +490,12 @@ export default function MarketplacePage() {
                           text-[#E1CA6A]
                         "
                       >
-                        Deals
+                        {t('market.dealsTag')}
                       </span>
                     </div>
 
                     <p className="mt-0.5 text-[11px] font-medium text-[#AEB7A7] sm:text-[12px]">
-                      Special prices on selected products
+                      {t('market.specialPricesDesc')}
                     </p>
                   </div>
                 </div>
@@ -506,7 +505,7 @@ export default function MarketplacePage() {
                     <Clock3 className="h-4 w-4" />
 
                     <span className="text-[11px] font-extrabold uppercase tracking-[0.1em]">
-                      Ends Midnight
+                      {t('market.endsMidnight')}
                     </span>
                   </div>
                 </div>
@@ -553,7 +552,7 @@ export default function MarketplacePage() {
                   ) : (
                     <div className="flex min-h-[220px] items-center justify-center">
                       <p className="text-sm font-medium text-[#747B70]">
-                        No deals available right now.
+                        {t('market.noDeals')}
                       </p>
                     </div>
                   )}
@@ -606,7 +605,7 @@ export default function MarketplacePage() {
                           sm:text-[20px]
                         "
                       >
-                        {nearbyLabel}
+                        {t('market.nearYou')}
                       </h2>
 
                       <span
@@ -622,12 +621,12 @@ export default function MarketplacePage() {
                           text-[#4A5A3F]
                         "
                       >
-                        Local
+                        {t('market.localTag')}
                       </span>
                     </div>
 
                     <p className="mt-0.5 text-[12px] font-medium text-[#6C7567]">
-                      Products from sellers around your region.
+                      {t('market.localDesc')}
                     </p>
                   </div>
                 </div>
@@ -700,7 +699,7 @@ export default function MarketplacePage() {
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
 
-                Filters
+                {t('market.filters')}
 
                 {hasActiveFilters && (
                   <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#D5B957] px-1 text-[8px] font-black text-[#1B2516]">
@@ -712,7 +711,7 @@ export default function MarketplacePage() {
 
             <div className="flex items-center gap-2">
               <span className="hidden text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#858B7D] sm:inline">
-                Sort by
+                {t('market.sortBy')}
               </span>
 
               <select
@@ -737,10 +736,10 @@ export default function MarketplacePage() {
                   focus:border-[#9EAA8E]
                 "
               >
-                <option value="relevance">Featured</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="rating">Highest Rated</option>
+                <option value="relevance">{t('market.sortFeatured')}</option>
+                <option value="price-low">{t('market.sortPriceLow')}</option>
+                <option value="price-high">{t('market.sortPriceHigh')}</option>
+                <option value="rating">{t('market.sortRating')}</option>
               </select>
             </div>
           </div>
@@ -769,7 +768,7 @@ export default function MarketplacePage() {
                 <Filter className="h-4 w-4 text-[#D5B957]" />
 
                 <span className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#E5E8DF]">
-                  Price range
+                  {t('market.priceRange')}
                 </span>
               </div>
 
@@ -784,7 +783,7 @@ export default function MarketplacePage() {
                   hover:text-white
                 "
               >
-                Reset
+                {t('market.resetFilters')}
               </button>
             </div>
 
@@ -792,7 +791,7 @@ export default function MarketplacePage() {
 
               <label className="flex flex-1 flex-col">
                 <span className="mb-1.5 text-[11px] font-medium text-[#A0AC96]">
-                  Minimum price
+                  {t('market.minPrice')}
                 </span>
 
                 <div className="relative">
@@ -830,7 +829,7 @@ export default function MarketplacePage() {
 
               <label className="flex flex-1 flex-col">
                 <span className="mb-1.5 text-[11px] font-medium text-[#A0AC96]">
-                  Maximum price
+                  {t('market.maxPrice')}
                 </span>
 
                 <div className="relative">
@@ -887,7 +886,7 @@ export default function MarketplacePage() {
                 "
               >
                 <Check className="h-4 w-4" />
-                Apply filters
+                {t('market.applyFilters')}
               </button>
             </div>
           </section>
@@ -931,11 +930,11 @@ export default function MarketplacePage() {
             </div>
 
             <h3 className="mt-4 text-[16px] font-extrabold text-[#212C1B]">
-              No products found
+              {t('market.noProductsFound')}
             </h3>
 
             <p className="mt-1 max-w-sm text-[13px] text-[#6E7568]">
-              Try adjusting your search query or price parameters.
+              {t('market.tryAdjusting')}
             </p>
 
             <button
@@ -960,7 +959,7 @@ export default function MarketplacePage() {
                 hover:bg-[#314129]
               "
             >
-              Reset filters
+              {t('market.resetFilters')}
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </section>
@@ -978,11 +977,11 @@ export default function MarketplacePage() {
                   sm:text-[23px]
                 "
               >
-                {query ? 'Search results' : 'All products'}
+                {query ? t('market.searchResults', { query }) : t('market.allProducts')}
               </h2>
 
               <p className="mt-1 text-[12px] font-medium text-[#737A6D]">
-                Quality products from verified sellers
+                {t('market.verifiedSellersDesc')}
               </p>
             </div>
 
