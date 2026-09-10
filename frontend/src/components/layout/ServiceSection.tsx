@@ -10,34 +10,34 @@ import {
   CheckCircle2,
  type LucideIcon,
 } from 'lucide-react'
+import { useLanguage, type TranslationKey } from '@/context/LanguageContext'
 
-interface ServiceStep {
+interface ServiceStepDef {
   id: string
   number: string
-  title: string
-  subtitle: string
-  description: string
+  titleKey: TranslationKey
+  subtitleKey: TranslationKey
+  descKey: TranslationKey
   icon: LucideIcon
-  badge: string
-  features: string[]
+  badgeKey: TranslationKey
+  featureKeys: TranslationKey[]
   image: string
   align: 'left' | 'right'
 }
 
-const services: ServiceStep[] = [
+const serviceDefs: ServiceStepDef[] = [
   {
     id: 'marketplace',
     number: '01',
-    title: 'Direct Agri Marketplace',
-    subtitle: 'Farm to Buyer • Zero Commission',
-    description:
-      'Connect directly with verified institutional buyers, retail chains, and exporters. Eliminate agent cuts and secure guaranteed escrow settlements with instant payouts.',
+    titleKey: 'landing.service1Title',
+    subtitleKey: 'landing.service1Subtitle',
+    descKey: 'landing.service1Desc',
     icon: Store,
-    badge: 'Direct Trade',
-    features: [
-      'Zero broker commission fees',
-      'Instant escrow payouts upon delivery',
-      '100% verified institutional buyers',
+    badgeKey: 'landing.service1Badge',
+    featureKeys: [
+      'landing.service1Feat1',
+      'landing.service1Feat2',
+      'landing.service1Feat3',
     ],
     image:
       'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80',
@@ -46,16 +46,15 @@ const services: ServiceStep[] = [
   {
     id: 'ai-advisory',
     number: '02',
-    title: 'AI Crop Intelligence',
-    subtitle: '7-Day Predictive Diagnostics',
-    description:
-      'Upload crop photos or sync satellite telemetry to detect fungal infections, soil stress, and irrigation needs up to a week before symptoms become visible.',
+    titleKey: 'landing.service2Title',
+    subtitleKey: 'landing.service2Subtitle',
+    descKey: 'landing.service2Desc',
     icon: Cpu,
-    badge: 'AI Telemetry',
-    features: [
-      '98.4% diagnostic accuracy',
-      'Micro-climate weather forecasting',
-      'Organic treatment scheduling',
+    badgeKey: 'landing.service2Badge',
+    featureKeys: [
+      'landing.service2Feat1',
+      'landing.service2Feat2',
+      'landing.service2Feat3',
     ],
     image:
       'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=1200&q=80',
@@ -64,16 +63,15 @@ const services: ServiceStep[] = [
   {
     id: 'mandi-rates',
     number: '03',
-    title: 'Real-Time Mandi Analytics',
-    subtitle: 'Live Spot Prices & Trend Forecasts',
-    description:
-      'Track live prices across 2,500+ APMC mandis. Predictive algorithms analyze arrival volumes to advise you on the exact day and market to sell for maximum profit.',
+    titleKey: 'landing.service3Title',
+    subtitleKey: 'landing.service3Subtitle',
+    descKey: 'landing.service3Desc',
     icon: TrendingUp,
-    badge: 'Live Data',
-    features: [
-      '2,500+ APMC live price feeds',
-      '7-Day price trajectory modeling',
-      'Historical volume & demand charts',
+    badgeKey: 'landing.service3Badge',
+    featureKeys: [
+      'landing.service3Feat1',
+      'landing.service3Feat2',
+      'landing.service3Feat3',
     ],
     image:
       'https://images.unsplash.com/photo-1595246140625-573b715d11dc?auto=format&fit=crop&w=1200&q=80',
@@ -82,16 +80,15 @@ const services: ServiceStep[] = [
   {
     id: 'machinery-rentals',
     number: '04',
-    title: 'Smart Equipment Fleet',
-    subtitle: 'On-Demand Pay-Per-Acre Automation',
-    description:
-      'Rent modern tractors, combine harvesters, and precision spraying drones on-demand with certified operators, or earn passive revenue renting out your idle machinery.',
+    titleKey: 'landing.service4Title',
+    subtitleKey: 'landing.service4Subtitle',
+    descKey: 'landing.service4Desc',
     icon: Tractor,
-    badge: 'Machinery Pool',
-    features: [
-      '15-Minute instant booking',
-      'Certified machine operators included',
-      'Real-time GPS work tracking',
+    badgeKey: 'landing.service4Badge',
+    featureKeys: [
+      'landing.service4Feat1',
+      'landing.service4Feat2',
+      'landing.service4Feat3',
     ],
     image:
       'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=1200&q=80',
@@ -100,6 +97,7 @@ const services: ServiceStep[] = [
 ]
 
 export function ServicesSection() {
+  const { t } = useLanguage()
   const containerRef = useRef<HTMLDivElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -178,15 +176,15 @@ export function ServicesSection() {
              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5 leading-none select-none">
 
             <h2 className="brand-sticker-green text-4xl sm:text-6xl md:text-7xl lg:text-[96px] leading-[1.1] sm:leading-none py-1">
-              Services
+              {t('landing.servicesTitle1')}
             </h2>
 
             <span className=" -ml-4 brand-script-yellow text-3xl sm:text-5xl md:text-6xl lg:text-8xl -rotate-6 transform">
-              that we 
+              {t('landing.servicesTitle2')}
             </span>
 
             <h2 className="brand-sticker-green text-4xl sm:text-6xl md:text-7xl lg:text-[96px] leading-[1.1] sm:leading-none">
-              Provide
+              {t('landing.servicesTitle3')}
             </h2>
 
           </div>
@@ -234,7 +232,7 @@ export function ServicesSection() {
 
           {/* ================= STEP CARDS ================= */}
           <div className="space-y-16 sm:space-y-24 relative z-10">
-            {services.map((step, index) => {
+            {serviceDefs.map((step, index) => {
               const Icon = step.icon
               const isRightAligned = step.align === 'right'
 
@@ -254,7 +252,7 @@ export function ServicesSection() {
                       <div className="relative h-60 sm:h-72 w-full rounded-xl overflow-hidden">
                         <img
                           src={step.image}
-                          alt={step.title}
+                          alt={t(step.titleKey)}
                           className="h-full w-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#1c2a13] via-[#1c2a13]/20 to-transparent" />
@@ -263,7 +261,7 @@ export function ServicesSection() {
                         <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full border border-[#394a2d] bg-[#1c2a13]/90 px-3.5 py-1">
                           <Icon className="h-3.5 w-3.5 text-[#d6b841]" />
                           <span className="text-[11px] font-black uppercase tracking-wider text-[#e7eee1]">
-                            {step.badge}
+                            {t(step.badgeKey)}
                           </span>
                         </div>
 
@@ -282,29 +280,29 @@ export function ServicesSection() {
                     <div className="inline-flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-[#d6b841]" />
                       <span className="text-xs font-black uppercase tracking-widest text-[#d6b841]">
-                        {step.subtitle}
+                        {t(step.subtitleKey)}
                       </span>
                     </div>
 
                     {/* Card Title */}
                     <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-                      {step.title}
+                      {t(step.titleKey)}
                     </h3>
 
                     {/* Description Paragraph */}
                     <p className="text-sm font-light text-[#d5d9d0] leading-relaxed max-w-lg">
-                      {step.description}
+                      {t(step.descKey)}
                     </p>
 
                     {/* Bullet Points */}
                     <ul className="space-y-2 pt-2 border-t border-[#394a2d]/80">
-                      {step.features.map((feat, fIdx) => (
+                      {step.featureKeys.map((featKey, fIdx) => (
                         <li
                           key={fIdx}
                           className="flex items-center gap-2.5 text-xs font-medium text-[#d5d9d0]"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5 text-[#d6b841] shrink-0" />
-                          <span>{feat}</span>
+                          <span>{t(featKey)}</span>
                         </li>
                       ))}
                     </ul>
@@ -315,7 +313,7 @@ export function ServicesSection() {
                         to="/login"
                         className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[#d6b841] hover:text-[#e0c64d] transition-colors"
                       >
-                        <span>Explore Capability</span>
+                        <span>{t('landing.exploreCapability')}</span>
                         <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </div>
@@ -331,10 +329,10 @@ export function ServicesSection() {
         <div className="mt-20 sm:mt-28 rounded-2xl border border-[#394a2d] bg-[#27351d]/90 p-8 sm:p-12 text-center relative overflow-hidden">
           <div className="relative z-10 max-w-2xl mx-auto space-y-5">
             <h3 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
-              Ready to elevate your harvest workflow?
+              {t('landing.readyToElevate')}
             </h3>
             <p className="text-xs sm:text-sm text-[#aebca2] leading-relaxed font-light">
-              Join 45,000+ agricultural enterprises and farmers maximizing yields on FarmVerse.
+              {t('landing.joinEnterprises')}
             </p>
             <div className="pt-1">
               <Link
@@ -342,7 +340,7 @@ export function ServicesSection() {
                 className="inline-flex items-center gap-2.5 rounded-xl bg-[#d6b841] px-8 py-3.5 text-xs font-black uppercase tracking-widest text-[#262c1d] transition-colors hover:bg-[#e0c64d]"
               >
                 <ShieldCheck className="h-4 w-4" />
-                <span>Create Free Account</span>
+                <span>{t('landing.createFreeAccount')}</span>
               </Link>
             </div>
           </div>

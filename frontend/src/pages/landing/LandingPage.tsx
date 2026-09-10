@@ -14,8 +14,10 @@ import { PlantGrowthSection } from '@/components/layout/PlantGrowthSection'
 import { ServicesSection } from '@/components/layout/ServiceSection'
 import { ContactSection } from '@/components/layout/ContactSection'
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function LandingPage() {
+  const { t } = useLanguage()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
@@ -299,7 +301,7 @@ export default function LandingPage() {
                 hover:text-white
               "
             >
-              <span>Home</span>
+              <span>{t('landing.navHome')}</span>
 
               <span
                 className="
@@ -333,7 +335,7 @@ export default function LandingPage() {
                 hover:text-white
               "
             >
-              <span>Features</span>
+              <span>{t('landing.navFeatures')}</span>
 
               <span
                 className="
@@ -364,7 +366,7 @@ export default function LandingPage() {
                 hover:text-white
               "
             >
-              <span>Services</span>
+              <span>{t('landing.navServices')}</span>
 
               <span
                 className="
@@ -395,7 +397,7 @@ export default function LandingPage() {
                 hover:text-white
               "
             >
-              <span>Contact</span>
+              <span>{t('landing.navContact')}</span>
 
               <span
                 className="
@@ -488,7 +490,7 @@ export default function LandingPage() {
                 "
               />
 
-              <span>Login / Register</span>
+              <span>{t('landing.navLoginRegister')}</span>
             </Link>
 
             {/* =================================================
@@ -575,7 +577,7 @@ export default function LandingPage() {
               onClick={() => setMobileMenuOpen(false)}
               className={mobileLinkClass}
             >
-              <span>Home</span>
+              <span>{t('landing.navHome')}</span>
 
               <ChevronRight className="h-4 w-4 text-[#7d806f]" />
             </a>
@@ -587,7 +589,7 @@ export default function LandingPage() {
               onClick={goToFeatures}
               className={`${mobileLinkClass} w-full text-left`}
             >
-              <span>Features</span>
+              <span>{t('landing.navFeatures')}</span>
 
               <ChevronRight className="h-4 w-4 text-[#7d806f]" />
             </button>
@@ -599,7 +601,7 @@ export default function LandingPage() {
               onClick={() => setMobileMenuOpen(false)}
               className={mobileLinkClass}
             >
-              <span>Services</span>
+              <span>{t('landing.navServices')}</span>
 
               <ChevronRight className="h-4 w-4 text-[#7d806f]" />
             </a>
@@ -611,7 +613,7 @@ export default function LandingPage() {
               onClick={() => setMobileMenuOpen(false)}
               className={mobileLinkClass}
             >
-              <span>Contact</span>
+              <span>{t('landing.navContact')}</span>
 
               <ChevronRight className="h-4 w-4 text-[#7d806f]" />
             </a>
@@ -647,7 +649,7 @@ export default function LandingPage() {
               <span className="flex items-center gap-2.5">
                 <User className="h-4 w-4" />
 
-                Login / Register
+                {t('landing.navLoginRegister')}
               </span>
 
               <ChevronRight className="h-4 w-4" />
@@ -743,7 +745,7 @@ export default function LandingPage() {
                 lg:text-[96px]
               "
             >
-              Rent Machines.
+              {t('landing.heroTitle1')}
             </h1>
 
             <div
@@ -772,7 +774,7 @@ export default function LandingPage() {
                   lg:text-8xl
                 "
               >
-                Lease Land.
+                {t('landing.heroTitle2')}
               </span>
 
               <h2
@@ -786,7 +788,7 @@ export default function LandingPage() {
                   lg:text-[96px]
                 "
               >
-                Sell Smart.
+                {t('landing.heroTitle3')}
               </h2>
             </div>
           </div>
@@ -805,9 +807,7 @@ export default function LandingPage() {
               md:text-lg
             "
           >
-            Book tractors and harvesters by the day, find farmland to lease
-            near you, and track live mandi prices across 2,500+ markets —
-            everything your farm needs, in one place.
+            {t('landing.heroSubtitle')}
           </p>
 
           {/* CTA BUTTONS */}
@@ -852,7 +852,7 @@ export default function LandingPage() {
             >
               <Tractor className="h-4 w-4 sm:h-5 sm:w-5" />
 
-              Browse Machinery
+              {t('landing.browseMachinery')}
             </Link>
 
             <Link
@@ -879,7 +879,7 @@ export default function LandingPage() {
                 sm:py-4
               "
             >
-              Get Started Now
+              {t('landing.getStartedNow')}
 
               <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
             </Link>

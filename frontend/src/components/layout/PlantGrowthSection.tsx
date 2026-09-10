@@ -12,6 +12,7 @@ import {
   Sun,
   TrendingUp,
 } from 'lucide-react'
+import { useLanguage, type TranslationKey } from '@/context/LanguageContext'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -29,16 +30,16 @@ interface WheatLeafDef {
 
 interface FeatureCallout {
   id: string
-  title: string
-  category: string
-  description: string
+  titleKey: TranslationKey
+  categoryKey: TranslationKey
+  descriptionKey: TranslationKey
   minProgress: number
   position:
     | 'left-top'
     | 'left-bottom'
     | 'right-top'
     | 'right-bottom'
-  metric: string
+  metricKey: TranslationKey
   icon: React.ElementType
   theme: 'green' | 'yellow'
   patchRadius: string
@@ -90,13 +91,12 @@ const WHEAT_LEAVES: WheatLeafDef[] = [
 const FEATURES: FeatureCallout[] = [
   {
     id: 'grain',
-    category: '01 / REPRODUCTIVE',
-    title: 'Direct Market Value',
-    description:
-      'Spikelet density calculation providing automated mandi market rate predictions.',
+    categoryKey: 'landing.featureGrainCategory',
+    titleKey: 'landing.featureGrainTitle',
+    descriptionKey: 'landing.featureGrainDesc',
     minProgress: 0.15,
     position: 'left-top',
-    metric: 'Grade A++ Premium',
+    metricKey: 'landing.featureGrainMetric',
     icon: TrendingUp,
     theme: 'green',
     patchRadius: '28px 10px 36px 14px',
@@ -105,13 +105,12 @@ const FEATURES: FeatureCallout[] = [
 
   {
     id: 'roots',
-    category: '02 / GERMINATION',
-    title: 'Deep Soil Intelligence',
-    description:
-      'Real-time root moisture tracking and organic soil nutrient analysis synced via AI.',
+    categoryKey: 'landing.featureRootsCategory',
+    titleKey: 'landing.featureRootsTitle',
+    descriptionKey: 'landing.featureRootsDesc',
     minProgress: 0.38,
     position: 'left-bottom',
-    metric: '99.4% Absorption',
+    metricKey: 'landing.featureRootsMetric',
     icon: Sprout,
     theme: 'yellow',
     patchRadius: '12px 32px 14px 28px',
@@ -120,16 +119,12 @@ const FEATURES: FeatureCallout[] = [
 
   {
     id: 'harvest',
-    category: '03 / MATURITY',
-    title: 'Harvest Yield Readiness',
-    description:
-      'Autonomous crop harvesting triggers activated precisely at peak golden maturity.',
+    categoryKey: 'landing.featureHarvestCategory',
+    titleKey: 'landing.featureHarvestTitle',
+    descriptionKey: 'landing.featureHarvestDesc',
     minProgress: 0.62,
     position: 'right-top',
-
-    // Removed "100%"
-    metric: 'Ready To Sell',
-
+    metricKey: 'landing.featureHarvestMetric',
     icon: ShieldCheck,
     theme: 'yellow',
     patchRadius: '32px 14px 26px 10px',
@@ -138,13 +133,12 @@ const FEATURES: FeatureCallout[] = [
 
   {
     id: 'foliage',
-    category: '04 / VEGETATIVE',
-    title: 'Solar Photosynthesis',
-    description:
-      'Optimized leaf canopy geometry engineered for maximum solar energy absorption.',
+    categoryKey: 'landing.featureFoliageCategory',
+    titleKey: 'landing.featureFoliageTitle',
+    descriptionKey: 'landing.featureFoliageDesc',
     minProgress: 0.82,
     position: 'right-bottom',
-    metric: '+34% Biomass Growth',
+    metricKey: 'landing.featureFoliageMetric',
     icon: Sun,
     theme: 'green',
     patchRadius: '14px 28px 10px 34px',
@@ -1439,6 +1433,8 @@ export function PlantGrowthSection() {
       }
     }
 
+  const { t } = useLanguage()
+
   return (
     <section
       id="growth"
@@ -1525,7 +1521,7 @@ export function PlantGrowthSection() {
                 lg:text-[96px]
               "
             >
-              Why
+              {t('landing.whyChooseUsTitle1')}
             </h2>
 
             <span
@@ -1541,7 +1537,7 @@ export function PlantGrowthSection() {
                 lg:text-8xl
               "
             >
-              choose
+              {t('landing.whyChooseUsTitle2')}
             </span>
 
             <h2
@@ -1554,7 +1550,7 @@ export function PlantGrowthSection() {
                 lg:text-[96px]
               "
             >
-              Us
+              {t('landing.whyChooseUsTitle3')}
             </h2>
           </div>
         </div>
@@ -1704,7 +1700,7 @@ export function PlantGrowthSection() {
                       `}
                     >
                       {
-                        feature.category
+                        t(feature.categoryKey)
                       }
                     </span>
 
@@ -1753,7 +1749,7 @@ export function PlantGrowthSection() {
 
                       <span className="truncate">
                         {
-                          feature.metric
+                          t(feature.metricKey)
                         }
                       </span>
                     </span>
@@ -1772,7 +1768,7 @@ export function PlantGrowthSection() {
                     "
                   >
                     {
-                      feature.title
+                      t(feature.titleKey)
                     }
                   </h3>
 
@@ -1796,7 +1792,7 @@ export function PlantGrowthSection() {
                     `}
                   >
                     {
-                      feature.description
+                      t(feature.descriptionKey)
                     }
                   </p>
                 </div>

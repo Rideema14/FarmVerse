@@ -127,9 +127,10 @@ export function ProfileMenu({ className }: { className?: string }) {
 
       <ConfirmDialog
         open={confirmingLogout}
-        title="Log out?"
-        message="You'll need to log in again to access your account."
-        confirmLabel="Log Out"
+        title={t('auth.logoutConfirmTitle')}
+        message={t('auth.logoutConfirmMessage')}
+        confirmLabel={t('nav.logout')}
+        cancelLabel={t('common.cancel')}
         variant="danger"
         onCancel={() => setConfirmingLogout(false)}
         onConfirm={() => {

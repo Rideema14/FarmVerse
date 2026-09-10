@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Mail, Phone, MapPin, Send, CheckCircle2, Loader2 } from 'lucide-react'
+import { useLanguage, type TranslationKey } from '@/context/LanguageContext'
 
 /** Fades + slides an element up into view the first time it enters the viewport. */
 function useRevealOnScroll<T extends HTMLElement>() {
@@ -26,13 +27,20 @@ function useRevealOnScroll<T extends HTMLElement>() {
   return { ref, visible }
 }
 
-const contactDetails = [
-  { icon: Mail, label: 'Email Us', value: 'hello@farmverse.in' },
-  { icon: Phone, label: 'Call Us', value: '+91 98765 43210' },
-  { icon: MapPin, label: 'Visit Us', value: 'Bhopal, Madhya Pradesh, India' },
+interface ContactDetailDef {
+  icon: typeof Mail
+  labelKey: TranslationKey
+  value: string
+}
+
+const contactDetails: ContactDetailDef[] = [
+  { icon: Mail, labelKey: 'landing.emailUs', value: 'hello@farmverse.in' },
+  { icon: Phone, labelKey: 'landing.callUs', value: '+91 98765 43210' },
+  { icon: MapPin, labelKey: 'landing.visitUs', value: 'Bhopal, Madhya Pradesh, India' },
 ]
 
 export function ContactSection() {
+  const { t } = useLanguage()
   const heading = useRevealOnScroll<HTMLDivElement>()
   const info = useRevealOnScroll<HTMLDivElement>()
   const form = useRevealOnScroll<HTMLDivElement>()
@@ -67,18 +75,17 @@ export function ContactSection() {
         >
           <div className="flex flex-wrap items-center justify-center gap-3 leading-none select-none sm:gap-5">
             <h2 className="brand-sticker-green py-1 text-4xl leading-[1.1] sm:text-6xl sm:leading-none md:text-7xl lg:text-8xl">
-              Get in
+              {t('landing.contactTitle1')}
             </h2>
             <span className="brand-script-yellow -ml-2 -rotate-6 transform text-3xl sm:text-5xl md:text-6xl lg:text-7xl">
-              touch with
+              {t('landing.contactTitle2')}
             </span>
             <h2 className="brand-sticker-green text-4xl leading-[1.1] sm:text-6xl sm:leading-none md:text-7xl lg:text-8xl">
-              Us.
+              {t('landing.contactTitle3')}
             </h2>
           </div>
           <p className="mx-auto max-w-xl text-sm font-light leading-relaxed text-[#d5d9d0] sm:text-base md:text-lg">
-            Questions about renting machinery, leasing land, or mandi prices in your area?
-            Our team replies within one business day.
+            {t('landing.contactSubtitle')}
           </p>
         </div>
 
@@ -90,9 +97,9 @@ export function ContactSection() {
               info.visible ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0'
             }`}
           >
-            {contactDetails.map(({ icon: Icon, label, value }, i) => (
+            {contactDetails.map(({ icon: Icon, labelKey, value }, i) => (
               <div
-                key={label}
+                key={labelKey}
                 className="group flex items-start gap-4 rounded-2xl border border-[#394a2d] bg-[#1c2a13]/60 p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#d6b841]/50 hover:bg-[#1c2a13] hover:shadow-xl hover:shadow-black/30"
                 style={{ transitionDelay: info.visible ? `${i * 100}ms` : '0ms' }}
               >
@@ -100,7 +107,7 @@ export function ContactSection() {
                   <Icon className="h-5 w-5" />
                 </span>
                 <div className="pt-1">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-[#7d806f]">{label}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-[#7d806f]">{t(labelKey)}</p>
                   <p className="mt-0.5 text-sm font-semibold text-[#f8f4e9] sm:text-base">{value}</p>
                 </div>
               </div>
@@ -131,20 +138,20 @@ export function ContactSection() {
                 >
                   <CheckCircle2 className="h-8 w-8 text-[#d6b841]" />
                 </span>
-                <p className="text-sm font-semibold text-[#f8f4e9]">Message sent — thank you!</p>
+                <p className="text-sm font-semibold text-[#f8f4e9]">{t('landing.messageSent')}</p>
                 <button
                   type="button"
                   onClick={() => setStatus('idle')}
                   className="text-xs font-bold uppercase tracking-wider text-[#d6b841] underline-offset-4 hover:underline"
                 >
-                  Send another message
+                  {t('landing.sendAnother')}
                 </button>
               </div>
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="group sm:col-span-1">
                   <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-[#7d806f] transition-colors group-focus-within:text-[#d6b841]">
-                    Your Name
+                    {t('landing.yourName')}
                   </span>
                   <input
                     required
@@ -156,7 +163,7 @@ export function ContactSection() {
 
                 <label className="group sm:col-span-1">
                   <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-[#7d806f] transition-colors group-focus-within:text-[#d6b841]">
-                    Phone or Email
+                    {t('landing.phoneOrEmail')}
                   </span>
                   <input
                     required
@@ -168,12 +175,12 @@ export function ContactSection() {
 
                 <label className="group sm:col-span-2">
                   <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-[#7d806f] transition-colors group-focus-within:text-[#d6b841]">
-                    Message
+                    {t('landing.message')}
                   </span>
                   <textarea
                     required
                     rows={4}
-                    placeholder="Tell us what you're looking for — machinery, land, or mandi prices..."
+                    placeholder={t('landing.messagePlaceholder')}
                     className="w-full resize-none rounded-xl border border-[#394a2d] bg-[#161f0f] px-4 py-3 text-sm text-[#f8f4e9] placeholder:text-[#5c6153] transition-all duration-300 outline-none focus:border-[#d6b841] focus:ring-2 focus:ring-[#d6b841]/20"
                   />
                 </label>
@@ -187,11 +194,11 @@ export function ContactSection() {
                 {status === 'submitting' ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Sending...
+                    {t('landing.sending')}
                   </>
                 ) : (
                   <>
-                    Send Message
+                    {t('landing.sendMessage')}
                     <Send className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                   </>
                 )}
