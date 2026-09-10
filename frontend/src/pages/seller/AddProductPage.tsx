@@ -8,15 +8,26 @@ import { SelectField, TextField } from '@/components/common/FormField'
 import { categoryService, type Category } from '@/services/categoryService'
 import { productService } from '@/services/productService'
 import { useSeller } from '@/context/SellerContext'
+import { useLanguage } from '@/context/LanguageContext'
+import { formatCategoryName } from '@/utils/localize'
 import { formatINR } from '@/utils/format'
-
-const STEPS = ['Category', 'Details', 'Images', 'Price & Stock', 'Location', 'Preview', 'Publish']
 
 export default function AddProductPage() {
   const navigate = useNavigate()
   const { refreshListings } = useSeller()
+  const { t } = useLanguage()
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoadingCategories, setIsLoadingCategories] = useState(true)
+
+  const steps = [
+    t('addProduct.stepCategory'),
+    t('addProduct.stepDetails'),
+    t('addProduct.stepImages'),
+    t('addProduct.stepPriceStock'),
+    t('addProduct.stepLocation'),
+    t('addProduct.stepPreview'),
+    t('addProduct.stepPublish'),
+  ]
 
   const [step, setStep] = useState(0)
   const [categoryId, setCategoryId] = useState('')
@@ -38,8 +49,6 @@ export default function AddProductPage() {
       .list()
       .then((cats) => {
         if (cancelled) return
-        // Machinery is rental-only — sellers list it via "List Machinery"
-        // (/seller/add-machinery), never as a sellable product here.
         const sellable = cats.filter((c) => c.slug !== 'machinery')
         setCategories(sellable)
         if (sellable.length > 0) setCategoryId((prev) => prev || sellable[0].id)
@@ -53,7 +62,7 @@ export default function AddProductPage() {
   }, [])
 
   function next() {
-    setStep((s) => Math.min(s + 1, STEPS.length - 1))
+    setStep((s) => Math.min(s + 1, steps.length - 1))
   }
   function back() {
     setStep((s) => Math.max(s - 1, 0))
@@ -83,7 +92,6 @@ export default function AddProductPage() {
         try {
           await productService.uploadImages(product.id, [imageFile])
         } catch (uploadErr) {
-          // ACID Rollback: Remove newly created product if image upload fails
           await productService.remove(product.id).catch(() => {})
           throw uploadErr
         }
@@ -91,7 +99,7 @@ export default function AddProductPage() {
       await refreshListings().catch(() => {})
       setPublished(true)
     } catch (err) {
-      setPublishError(err instanceof Error ? err.message : 'Could not publish this listing. Please try again.')
+      setPublishError(err instanceof Error ? err.message : t('addProduct.couldNotPublish'))
     } finally {
       setIsPublishing(false)
     }
@@ -103,51 +111,54 @@ export default function AddProductPage() {
         <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
           <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
         </span>
-        <h1 className="text-xl">Listing published</h1>
-        <p className="mt-1 text-sm text-ink-500">{name} is now live and will appear in My Listings.</p>
+        <h1 className="text-xl font-bold text-ink-900">{t('addProduct.listingPublished')}</h1>
+        <p className="mt-1 text-sm text-ink-500">{t('addProduct.listingPublishedDesc', { name })}</p>
         <Button className="mt-6" onClick={() => navigate('/seller/listings')}>
-          View My Listings
+          {t('addProduct.viewMyListings')}
         </Button>
       </div>
     )
   }
 
+  const selectedCategoryObj = categories.find((c) => c.id === categoryId)
+  const categoryDisplayName = selectedCategoryObj ? formatCategoryName(selectedCategoryObj, t) : ''
+
   return (
     <div className="relative mx-auto max-w-lg px-4 py-6 md:px-6 md:py-8">
       <LoadingOverlay
         isLoading={isPublishing}
-        title="Publishing Listing…"
-        message="Uploading product photo and publishing to FarmVerse marketplace."
+        title={t('addProduct.publishingTitle')}
+        message={t('addProduct.publishingMessage')}
       />
-      <h1 className="mb-1 text-xl">Add Product</h1>
-      <p className="mb-5 text-sm text-ink-500">List a product for sale on FarmVerse.</p>
+      <h1 className="mb-1 text-xl font-bold text-ink-900">{t('addProduct.title')}</h1>
+      <p className="mb-5 text-sm text-ink-500">{t('addProduct.subtitle')}</p>
 
-      <StepperHeader steps={STEPS} currentIndex={step} />
+      <StepperHeader steps={steps} currentIndex={step} />
 
       {step === 0 && (
         <div>
           {isLoadingCategories ? (
-            <p className="mb-4 text-sm text-ink-400">Loading categories…</p>
+            <p className="mb-4 text-sm text-ink-400">{t('addProduct.loadingCategories')}</p>
           ) : (
-            <SelectField id="category" label="Category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <SelectField id="category" label={t('addProduct.selectCategory')} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {formatCategoryName(c, t)}
                 </option>
               ))}
             </SelectField>
           )}
           <Button fullWidth onClick={next} disabled={!categoryId}>
-            Continue
+            {t('addProduct.continue')}
           </Button>
         </div>
       )}
 
       {step === 1 && (
         <div>
-          <TextField id="name" label="Product Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Soybean Seeds — JS-9560" required />
+          <TextField id="name" label={t('addProduct.productName')} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('addProduct.productNamePlaceholder')} required />
           <Button fullWidth onClick={next} disabled={!name.trim()}>
-            Continue
+            {t('addProduct.continue')}
           </Button>
         </div>
       )}
@@ -160,11 +171,11 @@ export default function AddProductPage() {
             ) : (
               <ImagePlus className="h-8 w-8" aria-hidden="true" />
             )}
-            <span className="text-sm">{imagePreviewUrl ? 'Photo added — tap to change' : 'Tap to add a product photo'}</span>
+            <span className="text-sm">{imagePreviewUrl ? t('addProduct.photoAdded') : t('addProduct.addPhoto')}</span>
             <input type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
           </label>
           <Button fullWidth onClick={next}>
-            Continue
+            {t('addProduct.continue')}
           </Button>
         </div>
       )}
@@ -172,21 +183,21 @@ export default function AddProductPage() {
       {step === 3 && (
         <div>
           <div className="grid grid-cols-2 gap-3">
-            <TextField id="price" label="Price (₹)" type="number" value={price} onChange={(e) => setPrice(e.target.value)} required />
-            <TextField id="unit" label="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. 30 kg bag" required />
+            <TextField id="price" label={t('addProduct.price')} type="number" value={price} onChange={(e) => setPrice(e.target.value)} required />
+            <TextField id="unit" label={t('addProduct.unit')} value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={t('addProduct.unitPlaceholder')} required />
           </div>
-          <TextField id="stock" label="Stock Quantity" type="number" value={stock} onChange={(e) => setStock(e.target.value)} required />
+          <TextField id="stock" label={t('addProduct.stockQuantity')} type="number" value={stock} onChange={(e) => setStock(e.target.value)} required />
           <Button fullWidth onClick={next} disabled={!price || !stock}>
-            Continue
+            {t('addProduct.continue')}
           </Button>
         </div>
       )}
 
       {step === 4 && (
         <div>
-          <TextField id="location" label="Pickup / Seller Location" value={location} onChange={(e) => setLocation(e.target.value)} required />
+          <TextField id="location" label={t('addProduct.pickupLocation')} value={location} onChange={(e) => setLocation(e.target.value)} required />
           <Button fullWidth onClick={next}>
-            Continue
+            {t('addProduct.continue')}
           </Button>
         </div>
       )}
@@ -201,29 +212,29 @@ export default function AddProductPage() {
                 <Sprout className="h-8 w-8 text-brand-400" aria-hidden="true" />
               )}
             </div>
-            <p className="text-sm font-semibold text-ink-900">{name || 'Untitled product'}</p>
-            <p className="text-xs text-ink-400">{categories.find((c) => c.id === categoryId)?.name} · {location}</p>
+            <p className="text-sm font-semibold text-ink-900">{name || t('addProduct.untitledProduct')}</p>
+            <p className="text-xs text-ink-400">{categoryDisplayName} · {location}</p>
             <p className="mt-1 text-sm font-bold text-ink-900">
               {formatINR(Number(price) || 0)} <span className="text-xs font-normal text-ink-400">/ {unit}</span>
             </p>
-            <p className="text-xs text-ink-400">Stock: {stock || 0}</p>
+            <p className="text-xs text-ink-400">{t('sellerListings.stock')} {stock || 0}</p>
           </div>
           <Button fullWidth onClick={next}>
-            Looks Good
+            {t('addProduct.looksGood')}
           </Button>
         </div>
       )}
 
       {step === 6 && (
         <form onSubmit={handlePublish}>
-          <p className="mb-3 text-sm text-ink-600">Your listing goes live on the marketplace as soon as you publish it.</p>
+          <p className="mb-3 text-sm text-ink-600">{t('addProduct.goesLiveNotice')}</p>
           {publishError && <p className="mb-3 text-sm text-danger-500">{publishError}</p>}
           <div className="flex gap-2">
             <Button type="button" variant="secondary" onClick={back} disabled={isPublishing}>
-              Back
+              {t('addProduct.back')}
             </Button>
             <Button type="submit" fullWidth loading={isPublishing}>
-              Publish Listing
+              {t('addProduct.publishListing')}
             </Button>
           </div>
         </form>

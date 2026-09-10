@@ -137,7 +137,6 @@ export default function MarketplacePage() {
   ======================================================= */
 
   const [nearbyProducts, setNearbyProducts] = useState<Product[]>([])
-  const [nearbyLabel, setNearbyLabel] = useState('Near You')
 
   useEffect(() => {
     let cancelled = false
@@ -168,8 +167,6 @@ export default function MarketplacePage() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         if (cancelled) return
-
-        setNearbyLabel('Near You')
 
         productService
           .nearby(

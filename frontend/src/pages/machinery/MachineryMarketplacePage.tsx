@@ -132,7 +132,7 @@ export default function MachineryMarketplacePage() {
               </div>
               <p className="mt-1 flex items-center gap-1 text-xs text-ink-500">
                 <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-                {formatCategoryName({ slug: m.categorySlug, name: m.categoryName }, t)}{m.ownerName ? ` · ${m.ownerName}` : ''}
+                {formatCategoryName({ slug: (m as unknown as Record<string, unknown>).categorySlug as string ?? '', name: (m as unknown as Record<string, unknown>).categoryName as string ?? '' }, t)}{m.ownerName ? ` · ${m.ownerName}` : ''}
               </p>
               <p className="mt-1 flex items-center gap-1 text-xs text-ink-500">
                 <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" aria-hidden="true" />

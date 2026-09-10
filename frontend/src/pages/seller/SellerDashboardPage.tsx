@@ -5,8 +5,10 @@ import { IndianRupee, List, PackageCheck, TrendingUp } from 'lucide-react'
 import { StatCard } from '@/components/common/StatCard'
 import { sellerService, type SellerAnalytics, type SellerDashboard } from '@/services/sellerService'
 import { formatINR, formatNumberIN } from '@/utils/format'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function SellerDashboardPage() {
+  const { t, language } = useLanguage()
   const [dashboard, setDashboard] = useState<SellerDashboard | null>(null)
   const [analytics, setAnalytics] = useState<SellerAnalytics | null>(null)
 
@@ -22,29 +24,31 @@ export default function SellerDashboardPage() {
     }
   }, [])
 
+  const localeCode = language === 'hi' ? 'hi-IN' : 'en-IN'
+
   const chartData = analytics?.salesTrend.map((point) => ({
     ...point,
-    dayLabel: new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(new Date(point.date)),
+    dayLabel: new Intl.DateTimeFormat(localeCode, { day: 'numeric', month: 'short' }).format(new Date(point.date)),
   }))
   const totalUnitsSold = analytics?.topProducts.reduce((sum, p) => sum + p.unitsSold, 0) ?? 0
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-5 text-xl">Seller Dashboard</h1>
+      <h1 className="mb-5 text-xl font-bold text-ink-900">{t('sellerDashboard.title')}</h1>
 
       {!dashboard || !analytics ? (
-        <p className="py-10 text-center text-sm text-ink-400">Loading…</p>
+        <p className="py-10 text-center text-sm text-ink-400">{t('sellerDashboard.loading')}</p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard label="Active Listings" value={String(dashboard.activeListings)} icon={List} accent="bg-brand-50 text-brand-700" />
-            <StatCard label="Orders to Fulfill" value={String(dashboard.ordersToFulfill)} icon={PackageCheck} accent="bg-gold-50 text-gold-700" />
-            <StatCard label="Revenue (30d)" value={formatINR(dashboard.revenueLast30Days)} icon={IndianRupee} accent="bg-sky-50 text-sky-700" />
-            <StatCard label="Units Sold (90d)" value={formatNumberIN(totalUnitsSold)} icon={TrendingUp} accent="bg-soil-50 text-soil-700" />
+            <StatCard label={t('sellerDashboard.activeListings')} value={String(dashboard.activeListings)} icon={List} accent="bg-brand-50 text-brand-700" />
+            <StatCard label={t('sellerDashboard.ordersToFulfill')} value={String(dashboard.ordersToFulfill)} icon={PackageCheck} accent="bg-gold-50 text-gold-700" />
+            <StatCard label={t('sellerDashboard.revenue30d')} value={formatINR(dashboard.revenueLast30Days)} icon={IndianRupee} accent="bg-sky-50 text-sky-700" />
+            <StatCard label={t('sellerDashboard.unitsSold90d')} value={formatNumberIN(totalUnitsSold)} icon={TrendingUp} accent="bg-soil-50 text-soil-700" />
           </div>
 
           <div className="mt-5 rounded-2xl border border-ink-100 bg-surface p-4">
-            <h2 className="mb-3 text-sm font-semibold text-ink-800">Sales Trend (90 days)</h2>
+            <h2 className="mb-3 text-sm font-semibold text-ink-800">{t('sellerDashboard.salesTrend')}</h2>
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -60,7 +64,7 @@ export default function SellerDashboardPage() {
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-ink-100 bg-surface p-4">
-              <h2 className="mb-3 text-sm font-semibold text-ink-800">Revenue Trend</h2>
+              <h2 className="mb-3 text-sm font-semibold text-ink-800">{t('sellerDashboard.revenueTrend')}</h2>
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -75,9 +79,9 @@ export default function SellerDashboardPage() {
             </div>
 
             <div className="rounded-2xl border border-ink-100 bg-surface p-4">
-              <h2 className="mb-3 text-sm font-semibold text-ink-800">Top Products</h2>
+              <h2 className="mb-3 text-sm font-semibold text-ink-800">{t('sellerDashboard.topProducts')}</h2>
               {analytics.topProducts.length === 0 ? (
-                <p className="text-xs text-ink-400">No sales yet.</p>
+                <p className="text-xs text-ink-400">{t('sellerDashboard.noSalesYet')}</p>
               ) : (
                 <ul className="space-y-2">
                   {analytics.topProducts.map((p, index) => (
@@ -88,7 +92,7 @@ export default function SellerDashboardPage() {
                         </span>
                         {p.name}
                       </span>
-                      <span className="text-xs text-ink-400">{p.unitsSold} sold</span>
+                      <span className="text-xs text-ink-400">{t('sellerDashboard.unitsSold', { count: p.unitsSold })}</span>
                     </li>
                   ))}
                 </ul>
@@ -97,7 +101,7 @@ export default function SellerDashboardPage() {
           </div>
 
           <Link to="/seller/analytics" className="mt-5 block text-center text-xs font-semibold text-brand-600 hover:underline">
-            View full analytics →
+            {t('sellerDashboard.viewFullAnalytics')}
           </Link>
         </>
       )}
