@@ -88,7 +88,8 @@ export default function MandiHistoryPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-5 text-xl">Price History</h1>
+      <h1 className="mb-1 text-xl">Price History</h1>
+      <p className="mb-4 text-sm text-ink-500">See how a crop's price changed over time. Pick a crop and a mandi, then choose 7 Days, 30 Days, or 3 Months.</p>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
         <SelectField id="crop" label="Crop" value={cropId} onChange={(e) => setCropId(e.target.value)}>

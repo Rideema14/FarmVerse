@@ -58,7 +58,8 @@ export default function MandiAlertsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-5 text-xl">Price Alerts</h1>
+      <h1 className="mb-1 text-xl">Price Alerts</h1>
+      <p className="mb-5 text-sm text-ink-500">Get a message when a crop's price goes above or below the price you choose. Pick a crop and set your price below.</p>
 
       <form onSubmit={handleSubmit} className="mb-6 rounded-2xl border border-ink-100 bg-surface p-4">
         <h2 className="mb-3 text-sm font-semibold text-ink-800">Create Price Alert</h2>

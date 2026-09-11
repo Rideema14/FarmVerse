@@ -37,7 +37,8 @@ export default function MandiFavoritesPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-5 text-xl">My Favorite Mandis</h1>
+      <h1 className="mb-1 text-xl">My Favorite Mandis</h1>
+      <p className="mb-5 text-sm text-ink-500">These are the mandis you saved. Tap "View Prices" to check today's rate.</p>
       <div className="space-y-2">
         {favorites.map((fav) => {
           return (
