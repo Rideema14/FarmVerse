@@ -28,7 +28,7 @@ import { weatherService } from "@/services/weatherService";
 import { mandiService } from "@/services/mandiService";
 import type { Product } from "@/types";
 import { formatINR } from "@/utils/format";
-import { formatCategoryName, formatCropName, formatMandiMarket, formatOrderStatus, formatProductName } from "@/utils/localize";
+import { formatCategoryName, formatCropName, formatMandiMarket, formatOrderStatus, formatProductName, formatWeatherCondition } from "@/utils/localize";
 import { cn } from "@/utils/cn";
 import { useEffect, useState } from "react";
 
@@ -182,14 +182,14 @@ export default function HomePage() {
           fetchWeather(
             pos.coords.latitude,
             pos.coords.longitude,
-            "Your area",
+            t('home.yourArea'),
           );
         },
         () => {
           fetchWeather(
             28.6139,
             77.209,
-            "New Delhi",
+            t('weather.fallbackLocation'),
           );
         },
       );
@@ -197,7 +197,7 @@ export default function HomePage() {
       fetchWeather(
         28.6139,
         77.209,
-        "New Delhi",
+        t('weather.fallbackLocation'),
       );
     }
 
@@ -432,7 +432,7 @@ export default function HomePage() {
                   </p>
 
                   <span className="mb-1 text-[14px] font-semibold text-[#665f45]">
-                    {weather?.condition ?? "Loading…"}
+                    {weather?.condition ? formatWeatherCondition(weather.condition, language) : t('common.loading')}
                   </span>
 
                 </div>

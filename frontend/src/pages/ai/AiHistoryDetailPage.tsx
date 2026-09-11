@@ -78,6 +78,7 @@ export default function AiHistoryDetailPage() {
       })
 
     return () => {
+      
       cancelled = true
     }
   }, [kind, id, t])
