@@ -3,11 +3,13 @@ import { Bell, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/common/Button'
 import { SelectField, TextField } from '@/components/common/FormField'
 import { useMandi } from '@/context/MandiContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { mandiService } from '@/services/mandiService'
 import { formatINR } from '@/utils/format'
 
 export default function MandiAlertsPage() {
   const { alerts, addAlert, removeAlert, isLoading } = useMandi()
+  const { t } = useLanguage()
   
   const [crops, setCrops] = useState<{ id: string; name: string }[]>([])
   const [mandis, setMandis] = useState<{ id: string; name: string }[]>([])
@@ -18,13 +20,10 @@ export default function MandiAlertsPage() {
   const [targetPrice, setTargetPrice] = useState('')
 
   useEffect(() => {
-    // We need lists of crops and mandis to populate the form
     async function fetchFormOptions() {
       try {
         const [cropsRes, mandisRes] = await Promise.all([
           mandiService.getCrops(),
-          // Passing empty params fetches a sample/all of mandis (or we could fetch states->districts->mandis here too)
-          // For simplicity, let's fetch all markets or just let them select crop and then maybe specific mandi
           mandiService.getMarkets()
         ])
         const c = cropsRes.data || cropsRes || []
@@ -58,30 +57,30 @@ export default function MandiAlertsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-1 text-xl">Price Alerts</h1>
-      <p className="mb-5 text-sm text-ink-500">Get a message when a crop's price goes above or below the price you choose. Pick a crop and set your price below.</p>
+      <h1 className="mb-1 text-xl">{t('mandiAlerts.title')}</h1>
+      <p className="mb-5 text-sm text-ink-500">{t('mandiAlerts.subtitle')}</p>
 
       <form onSubmit={handleSubmit} className="mb-6 rounded-2xl border border-ink-100 bg-surface p-4">
-        <h2 className="mb-3 text-sm font-semibold text-ink-800">Create Price Alert</h2>
+        <h2 className="mb-3 text-sm font-semibold text-ink-800">{t('mandiAlerts.createAlert')}</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <SelectField id="alert-crop" label="Crop" value={cropId} onChange={(e) => setCropId(e.target.value)} required>
+          <SelectField id="alert-crop" label={t('mandiAlerts.crop')} value={cropId} onChange={(e) => setCropId(e.target.value)} required>
             {crops.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </SelectField>
-          <SelectField id="alert-mandi" label="Mandi (Optional)" value={mandiId} onChange={(e) => setMandiId(e.target.value)}>
-            <option value="">Any Mandi</option>
+          <SelectField id="alert-mandi" label={t('mandiAlerts.mandiOptional')} value={mandiId} onChange={(e) => setMandiId(e.target.value)}>
+            <option value="">{t('mandiAlerts.anyMandi')}</option>
             {mandis.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </SelectField>
-          <SelectField id="alert-condition" label="Condition" value={condition} onChange={(e) => setCondition(e.target.value as any)} required>
-            <option value="BELOW">Falls Below</option>
-            <option value="ABOVE">Rises Above</option>
+          <SelectField id="alert-condition" label={t('mandiAlerts.condition')} value={condition} onChange={(e) => setCondition(e.target.value as any)} required>
+            <option value="BELOW">{t('mandiAlerts.fallsBelow')}</option>
+            <option value="ABOVE">{t('mandiAlerts.risesAbove')}</option>
           </SelectField>
           <TextField
             id="target-price"
-            label="Target Price (₹)"
+            label={t('mandiAlerts.targetPrice')}
             type="number"
             value={targetPrice}
             onChange={(e) => setTargetPrice(e.target.value)}
@@ -90,15 +89,15 @@ export default function MandiAlertsPage() {
           />
         </div>
         <Button type="submit" className="mt-4">
-          Create Alert
+          {t('mandiAlerts.createButton')}
         </Button>
       </form>
 
-      <h2 className="mb-3 text-sm font-semibold text-ink-800">Active Alerts</h2>
+      <h2 className="mb-3 text-sm font-semibold text-ink-800">{t('mandiAlerts.activeAlerts')}</h2>
       {isLoading ? (
         <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-ink-400" /></div>
       ) : alerts.length === 0 ? (
-        <p className="text-sm text-ink-500">No active alerts.</p>
+        <p className="text-sm text-ink-500">{t('mandiAlerts.noAlerts')}</p>
       ) : (
         <div className="space-y-2">
           {alerts.map((alert) => (
@@ -109,9 +108,14 @@ export default function MandiAlertsPage() {
                 </span>
                 <div>
                   <p className="text-sm font-medium text-ink-900">
-                    {alert.crop?.name || 'Unknown Crop'} {alert.mandi ? `at ${alert.mandi.name}` : '(Any Mandi)'}
+                    {alert.crop?.name || 'Unknown Crop'} {alert.mandi ? `at ${alert.mandi.name}` : `(${t('mandiAlerts.anyMandi')})`}
                   </p>
-                  <p className="text-xs text-ink-400">Alert when price {alert.condition === 'ABOVE' ? 'rises above' : 'falls below'} {formatINR(alert.thresholdPrice)}</p>
+                  <p className="text-xs text-ink-400">
+                    {t('mandiAlerts.alertSummary', {
+                      condition: alert.condition === 'ABOVE' ? t('mandiAlerts.conditionRisesAbove') : t('mandiAlerts.conditionFallsBelow'),
+                      price: formatINR(alert.thresholdPrice),
+                    })}
+                  </p>
                 </div>
               </div>
               <button

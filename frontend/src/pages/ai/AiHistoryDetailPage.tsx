@@ -5,15 +5,7 @@ import { AdvisoryResultView } from '@/components/common/AdvisoryResultView'
 import { cropAnalysisService, soilService, type AdvisoryResult, type CropAnalysisType } from '@/services/aiService'
 import { getApiErrorMessage } from '@/services/api'
 import { formatDateLabel } from '@/utils/format'
-
-const TYPE_LABEL: Record<CropAnalysisType, string> = {
-  CROP_ADVISOR: 'Crop Advisor',
-  DISEASE_DETECTION: 'Disease Detection',
-  FERTILIZER_ADVICE: 'Fertilizer Advice',
-  IRRIGATION_ADVICE: 'Irrigation Advice',
-  CROP_ROTATION: 'Crop Rotation',
-  WEATHER_ADVICE: 'Weather Advice',
-}
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Loaded {
   title: string
@@ -24,10 +16,20 @@ interface Loaded {
 }
 
 export default function AiHistoryDetailPage() {
+  const { t } = useLanguage()
   const { kind, id } = useParams<{ kind: 'crop' | 'soil'; id: string }>()
   const [data, setData] = useState<Loaded | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const TYPE_LABEL: Record<CropAnalysisType, string> = {
+    CROP_ADVISOR: t('aiHistory.filterCropAdvisor'),
+    DISEASE_DETECTION: t('aiHistory.filterDisease'),
+    FERTILIZER_ADVICE: t('aiHistory.filterFertilizer'),
+    IRRIGATION_ADVICE: t('aiHistory.filterIrrigation'),
+    CROP_ROTATION: t('aiHistory.filterCropRotation'),
+    WEATHER_ADVICE: t('aiHistory.filterWeather'),
+  }
 
   useEffect(() => {
     if (!kind || !id) return
@@ -39,7 +41,7 @@ export default function AiHistoryDetailPage() {
       if (kind === 'crop') {
         const analysis = await cropAnalysisService.getOne(id)
         return {
-          title: TYPE_LABEL[analysis.type] ?? 'Crop Analysis',
+          title: TYPE_LABEL[analysis.type] ?? t('aiHistory.title'),
           createdAt: analysis.createdAt,
           result: analysis.resultData,
           imageUrl: analysis.imageUrl,
@@ -47,17 +49,17 @@ export default function AiHistoryDetailPage() {
       }
       const report = await soilService.getOne(id)
       const soilMeta = [
-        report.soilPh != null && { label: 'Soil pH', value: String(report.soilPh) },
-        report.nitrogenLevel && { label: 'Nitrogen', value: report.nitrogenLevel },
-        report.phosphorusLevel && { label: 'Phosphorus', value: report.phosphorusLevel },
-        report.potassiumLevel && { label: 'Potassium', value: report.potassiumLevel },
-        report.organicCarbonPercent != null && { label: 'Organic Carbon', value: `${report.organicCarbonPercent}%` },
-        report.soilType && { label: 'Soil Type', value: report.soilType },
-        report.location && { label: 'Location', value: report.location },
+        report.soilPh != null && { label: t('aiHistory.soilPh'), value: String(report.soilPh) },
+        report.nitrogenLevel && { label: t('aiHistory.nitrogen'), value: report.nitrogenLevel },
+        report.phosphorusLevel && { label: t('aiHistory.phosphorus'), value: report.phosphorusLevel },
+        report.potassiumLevel && { label: t('aiHistory.potassium'), value: report.potassiumLevel },
+        report.organicCarbonPercent != null && { label: t('aiHistory.organicCarbon'), value: `${report.organicCarbonPercent}%` },
+        report.soilType && { label: t('aiHistory.soilType'), value: report.soilType },
+        report.location && { label: t('aiHistory.location'), value: report.location },
       ].filter(Boolean) as { label: string; value: string }[]
 
       return {
-        title: 'Soil Analysis',
+        title: t('aiHistory.filterSoil'),
         createdAt: report.createdAt,
         result: report.recommendationData,
         soilMeta,
@@ -69,7 +71,7 @@ export default function AiHistoryDetailPage() {
         if (!cancelled) setData(loaded)
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, "Couldn't load this analysis."))
+        if (!cancelled) setError(getApiErrorMessage(err, t('common.errorGeneric')))
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)
@@ -78,16 +80,16 @@ export default function AiHistoryDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [kind, id])
+  }, [kind, id, t])
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
       <Link to="/ai/history" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-800">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back to AI History
+        {t('aiHistory.backToHistory')}
       </Link>
 
-      {isLoading && <div className="flex min-h-[40vh] items-center justify-center text-sm text-ink-400">Loading…</div>}
+      {isLoading && <div className="flex min-h-[40vh] items-center justify-center text-sm text-ink-400">{t('common.loading')}</div>}
 
       {!isLoading && error && (
         <div className="rounded-2xl bg-danger-50 p-4 text-sm text-danger-700">{error}</div>

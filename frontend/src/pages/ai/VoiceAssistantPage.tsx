@@ -5,18 +5,11 @@ import { chatService } from '@/services/aiService'
 import { getApiErrorMessage } from '@/services/api'
 import { useAi } from '@/context/AiContext'
 import { cn } from '@/utils/cn'
+import { useLanguage } from '@/context/LanguageContext'
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking' | 'error'
 type VoiceLang = 'hi' | 'en'
 type Turn = { role: 'user' | 'assistant'; text: string }
-
-const STATE_LABEL: Record<VoiceState, string> = {
-  idle: 'Tap the mic to start talking',
-  listening: 'Listening…',
-  processing: 'Thinking…',
-  speaking: 'Speaking…',
-  error: 'Something went wrong',
-}
 
 // Kept to just these two — the app supports five languages elsewhere, but
 // the voice assistant is scoped to Hindi/English only, both for the browser
@@ -52,6 +45,7 @@ function stripMarkdownForSpeech(text: string): string {
 }
 
 export default function VoiceAssistantPage() {
+  const { t } = useLanguage()
   const [state, setState] = useState<VoiceState>('idle')
   const [voiceLang, setVoiceLang] = useState<VoiceLang>('hi')
   const [interimTranscript, setInterimTranscript] = useState('')
@@ -68,6 +62,14 @@ export default function VoiceAssistantPage() {
   const transcriptEndRef = useRef<HTMLDivElement | null>(null)
 
   const { refreshHistory } = useAi()
+
+  const stateLabels: Record<VoiceState, string> = {
+    idle: t('voiceAssistant.tapToTalk'),
+    listening: t('voiceAssistant.listening'),
+    processing: t('voiceAssistant.thinking'),
+    speaking: t('voiceAssistant.speaking'),
+    error: t('voiceAssistant.somethingWrong'),
+  }
 
   // Keep the transcript panel scrolled to the latest line, ChatGPT-voice-style.
   useEffect(() => {
@@ -144,13 +146,13 @@ export default function VoiceAssistantPage() {
         refreshHistory()
         speakReply(assistantMessage.content)
       } catch (err) {
-        setErrorMessage(getApiErrorMessage(err, "Couldn't get a reply. Please try again."))
+        setErrorMessage(getApiErrorMessage(err, t('common.errorGeneric')))
         setState('error')
         conversationActiveRef.current = false
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [refreshHistory, speakReply]
+    [refreshHistory, speakReply, t]
   )
 
   function startListening() {
@@ -192,8 +194,8 @@ export default function VoiceAssistantPage() {
       }
       const message =
         event.error === 'not-allowed' || event.error === 'audio-capture'
-          ? 'Microphone access is required for the voice assistant.'
-          : "Couldn't hear that clearly. Please try again."
+          ? t('voiceAssistant.somethingWrong')
+          : t('common.errorGeneric')
       setErrorMessage(message)
       setState('error')
       conversationActiveRef.current = false
@@ -216,7 +218,7 @@ export default function VoiceAssistantPage() {
       recognition.start()
       setState('listening')
     } catch {
-      setErrorMessage('Microphone access is required for the voice assistant.')
+      setErrorMessage(t('voiceAssistant.somethingWrong'))
       setState('error')
       conversationActiveRef.current = false
     }
@@ -256,8 +258,7 @@ export default function VoiceAssistantPage() {
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 text-center">
         <div className="flex items-start gap-2 rounded-2xl bg-danger-50 p-4 text-left text-sm text-danger-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          Voice assistant needs your browser's built-in speech support, which isn't available here. Please try
-          Chrome, Edge, or Safari instead.
+          {t('voiceAssistant.unsupportedError')}
         </div>
       </div>
     )
@@ -285,15 +286,13 @@ export default function VoiceAssistantPage() {
         ))}
       </div>
 
-      {/* Live transcript panel — always visible, ChatGPT-voice-style: every
-          turn (what you said, what the AI said) stays on screen as the
-          conversation goes, instead of being hidden behind a toggle. */}
+      {/* Live transcript panel — always visible, ChatGPT-voice-style */}
       <div className="mb-3 flex-1 overflow-y-auto rounded-2xl border border-ink-100 bg-surface p-3.5 text-left" style={{ maxHeight: '48vh' }}>
         {!hasTranscript ? (
           <p className="mt-6 text-center text-sm text-ink-400">
             {voiceLang === 'hi'
-              ? 'बातचीत यहाँ दिखेगी — माइक दबाकर बोलना शुरू करें'
-              : 'Your conversation will appear here — tap the mic to start'}
+              ? t('voiceAssistant.placeholderTranscriptHi')
+              : t('voiceAssistant.placeholderTranscript')}
           </p>
         ) : (
           <div className="space-y-2.5">
@@ -306,7 +305,7 @@ export default function VoiceAssistantPage() {
                 )}
               >
                 <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">
-                  {turn.role === 'user' ? 'You' : 'AI'}
+                  {turn.role === 'user' ? t('voiceAssistant.you') : t('voiceAssistant.ai')}
                 </p>
                 {turn.role === 'assistant' ? (
                   <AiMarkdown content={turn.text} className="mt-0.5" tone="light" />
@@ -317,7 +316,7 @@ export default function VoiceAssistantPage() {
             ))}
             {state === 'listening' && interimTranscript && (
               <div className="ml-auto max-w-[90%] rounded-2xl bg-brand-600/60 p-3 text-white">
-                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">You</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{t('voiceAssistant.you')}</p>
                 <p className="mt-0.5 whitespace-pre-wrap text-sm italic">{interimTranscript}</p>
               </div>
             )}
@@ -347,9 +346,9 @@ export default function VoiceAssistantPage() {
           )}
         </button>
 
-        <p className="mt-4 text-sm font-medium text-ink-700">{STATE_LABEL[state]}</p>
+        <p className="mt-4 text-sm font-medium text-ink-700">{stateLabels[state]}</p>
         <p className="mt-1 text-xs text-ink-400">
-          {voiceLang === 'hi' ? 'हिंदी में बोलें — जवाब भी हिंदी में मिलेगा' : 'Speak in English — reply comes back in English'}
+          {voiceLang === 'hi' ? t('voiceAssistant.micHelpHi') : t('voiceAssistant.micHelpEn')}
         </p>
 
         {inConversation && (
@@ -359,7 +358,7 @@ export default function VoiceAssistantPage() {
             className="mt-4 flex items-center gap-1.5 rounded-full border border-ink-200 px-4 py-1.5 text-xs font-semibold text-ink-500 hover:bg-surface-sunk"
           >
             <PhoneOff className="h-3.5 w-3.5" aria-hidden="true" />
-            End conversation
+            {t('voiceAssistant.endConversation')}
           </button>
         )}
 

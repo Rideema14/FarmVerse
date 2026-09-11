@@ -9,8 +9,10 @@ import { paymentService } from '@/services/paymentService'
 import { getApiErrorMessage } from '@/services/api'
 import { formatINR } from '@/utils/format'
 import { cn } from '@/utils/cn'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function SeedCartPage() {
+  const { t } = useLanguage()
   const { lines, removeFromCart, setQuantity, subtotal, clearCart, refreshSeedOrders } = useSeedCart()
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -38,7 +40,7 @@ export default function SeedCartPage() {
             verifyEndpoint: '/seeds/payments/verify',
           })
         } catch (payErr) {
-          setError(getApiErrorMessage(payErr, 'Order placed, but payment did not complete. You can retry from your seed orders.'))
+          setError(getApiErrorMessage(payErr, t('common.errorGeneric')))
         }
       }
 
@@ -46,7 +48,7 @@ export default function SeedCartPage() {
       await refreshSeedOrders()
       setPlacedId(order.id)
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not place the order.'))
+      setError(getApiErrorMessage(err, t('common.errorGeneric')))
     } finally {
       setPlacing(false)
     }
@@ -58,13 +60,13 @@ export default function SeedCartPage() {
         <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
           <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
         </span>
-        <h1 className="text-xl">Seed order placed!</h1>
-        <p className="mt-1 text-sm text-ink-500">Order #{placedId}</p>
+        <h1 className="text-xl">{t('seedCart.orderPlacedTitle')}</h1>
+        <p className="mt-1 text-sm text-ink-500">{t('seedCart.orderNumber', { id: placedId })}</p>
         <div className="mt-6 flex gap-2">
           <Button variant="secondary" onClick={() => navigate('/seeds')}>
-            Continue Shopping
+            {t('seedCart.continueShopping')}
           </Button>
-          <Button onClick={() => navigate('/seeds/orders')}>View Seed Orders</Button>
+          <Button onClick={() => navigate('/seeds/orders')}>{t('seedCart.viewSeedOrders')}</Button>
         </div>
       </div>
     )
@@ -74,9 +76,9 @@ export default function SeedCartPage() {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 text-center">
         <ShoppingCart className="mb-3 h-12 w-12 text-ink-300" aria-hidden="true" />
-        <h1 className="text-lg">Seed cart is empty</h1>
+        <h1 className="text-lg">{t('seedCart.emptyCart')}</h1>
         <Link to="/seeds" className="mt-5 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
-          Browse Seed Store
+          {t('seedCart.browseStore')}
         </Link>
       </div>
     )
@@ -84,8 +86,8 @@ export default function SeedCartPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-1 text-xl">Seed Cart</h1>
-      <p className="mb-5 text-sm text-ink-500">Check your seeds below. Pick an address, then tap Place Seed Order to buy.</p>
+      <h1 className="mb-1 text-xl">{t('seedCart.title')}</h1>
+      <p className="mb-5 text-sm text-ink-500">{t('seedCart.subtitle')}</p>
       <div className="space-y-3">
         {lines.map((line) => (
           <div key={line.itemId} className="flex gap-3 rounded-2xl border border-ink-100 bg-surface p-3">
@@ -126,7 +128,7 @@ export default function SeedCartPage() {
                   className="flex items-center gap-1 text-xs font-medium text-danger-500"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  Remove
+                  {t('seedCart.remove')}
                 </button>
               </div>
             </div>
@@ -135,14 +137,14 @@ export default function SeedCartPage() {
       </div>
 
       <div className="mt-5">
-        <h2 className="mb-2 text-sm font-semibold text-ink-800">Deliver to</h2>
+        <h2 className="mb-2 text-sm font-semibold text-ink-800">{t('seedCart.deliverTo')}</h2>
         {user?.addresses.length === 0 ? (
           <p className="text-xs text-ink-500">
-            No saved address.{' '}
+            {t('seedCart.noSavedAddress')}{' '}
             <Link to="/profile" className="font-semibold text-brand-600 hover:underline">
-              Add one
+              {t('seedCart.addOne')}
             </Link>{' '}
-            before checking out.
+            {t('seedCart.beforeCheckout')}
           </p>
         ) : (
           <div className="space-y-2">
@@ -171,12 +173,12 @@ export default function SeedCartPage() {
 
       <div className="mt-5 rounded-2xl border border-ink-100 bg-surface p-4">
         <div className="flex justify-between text-sm font-bold text-ink-900">
-          <span>Total</span>
+          <span>{t('seedCart.total')}</span>
           <span>{formatINR(subtotal)}</span>
         </div>
         {error && <p className="mt-2 text-xs font-medium text-danger-500">{error}</p>}
         <Button fullWidth className="mt-3" onClick={handlePlaceOrder} loading={placing} disabled={!addressId}>
-          Place Seed Order — {formatINR(subtotal)}
+          {t('seedCart.placeOrderButton', { amount: formatINR(subtotal) })}
         </Button>
       </div>
     </div>

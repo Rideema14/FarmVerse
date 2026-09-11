@@ -27,7 +27,7 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 text-center">
-        <p className="text-sm text-ink-500">You're not signed in yet.</p>
+        <p className="text-sm text-ink-500">{t('profile.notSignedIn')}</p>
         <Link to="/login" className="mt-4 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white">
           {t('auth.login')}
         </Link>
@@ -38,7 +38,7 @@ export default function ProfilePage() {
   const links = [
     { to: '/orders', label: t('nav.orders'), icon: ClipboardList },
     { to: '/wishlist', label: t('nav.wishlist'), icon: Heart },
-    { to: '/ai/history', label: 'AI History', icon: Sparkles },
+    { to: '/ai/history', label: t('aiHistory.title'), icon: Sparkles },
     { to: '/notifications', label: t('nav.notifications'), icon: Bell },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
   ]
@@ -73,7 +73,7 @@ export default function ProfilePage() {
             drives the sidebar/nav for this account, so this never implies
             access the account doesn't have surfaced in its own UI. */}
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-4">
-          <span className="text-xs font-medium text-ink-400">Account type:</span>
+          <span className="text-xs font-medium text-ink-400">{t('profile.accountType')}:</span>
           {isAdmin ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white">
               {t('roles.admin')} ✓
@@ -142,7 +142,7 @@ export default function ProfilePage() {
       {/* Addresses */}
       <div className="mt-5 rounded-2xl border border-ink-100 bg-surface p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base">Addresses</h2>
+          <h2 className="text-base">{t('profile.addresses')}</h2>
           {!addingAddress && (
             <button
               type="button"
@@ -153,7 +153,7 @@ export default function ProfilePage() {
               className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
             >
               <PlusCircle className="h-3.5 w-3.5" aria-hidden="true" />
-              Add Address
+              {t('profile.addAddress')}
             </button>
           )}
         </div>
@@ -179,7 +179,7 @@ export default function ProfilePage() {
                     {addr.isDefault && (
                       <span className={cn('inline-flex items-center gap-0.5 rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold text-brand-800')}>
                         <Star className="h-2.5 w-2.5 fill-brand-800" aria-hidden="true" />
-                        Default
+                        {t('profile.defaultBadge')}
                       </span>
                     )}
                   </p>
@@ -189,7 +189,7 @@ export default function ProfilePage() {
                   <div className="mt-1.5 flex items-center gap-3 text-xs">
                     {!addr.isDefault && (
                       <button type="button" onClick={() => setDefaultAddress(addr.id)} className="font-semibold text-brand-600 hover:underline">
-                        Set as default
+                        {t('profile.setAsDefault')}
                       </button>
                     )}
                     <button
@@ -200,7 +200,7 @@ export default function ProfilePage() {
                       }}
                       className="font-semibold text-ink-500 hover:underline"
                     >
-                      Edit
+                      {t('profile.edit')}
                     </button>
                     <button
                       type="button"
@@ -208,7 +208,7 @@ export default function ProfilePage() {
                       className="flex items-center gap-1 font-semibold text-danger-500 hover:underline"
                     >
                       <Trash2 className="h-3 w-3" aria-hidden="true" />
-                      Remove
+                      {t('profile.remove')}
                     </button>
                   </div>
                 </div>
@@ -227,7 +227,7 @@ export default function ProfilePage() {
           )}
 
           {user.addresses.length === 0 && !addingAddress && (
-            <p className="py-4 text-center text-xs text-ink-400">No addresses saved yet.</p>
+            <p className="py-4 text-center text-xs text-ink-400">{t('profile.noAddressesSaved')}</p>
           )}
         </div>
       </div>

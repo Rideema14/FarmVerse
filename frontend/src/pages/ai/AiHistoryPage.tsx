@@ -4,20 +4,9 @@ import { ChevronRight, Droplets, FlaskConical, History, Leaf, MessageCircle, Ref
 import { useAi } from '@/context/AiContext'
 import { formatDateLabel } from '@/utils/format'
 import type { HistoryItem } from '@/services/aiService'
+import { useLanguage } from '@/context/LanguageContext'
 
 type FilterKey = 'ALL' | 'CHAT' | 'SOIL_REPORT' | 'CROP_ADVISOR' | 'DISEASE_DETECTION' | 'FERTILIZER_ADVICE' | 'IRRIGATION_ADVICE' | 'CROP_ROTATION' | 'WEATHER_ADVICE'
-
-const FILTERS: { key: FilterKey; label: string; icon: typeof History }[] = [
-  { key: 'ALL', label: 'All', icon: History },
-  { key: 'CHAT', label: 'Ask AI Chat', icon: MessageCircle },
-  { key: 'CROP_ADVISOR', label: 'Crop Advisor', icon: Sprout },
-  { key: 'DISEASE_DETECTION', label: 'Disease Detection', icon: ScanEye },
-  { key: 'SOIL_REPORT', label: 'Soil Analysis', icon: FlaskConical },
-  { key: 'FERTILIZER_ADVICE', label: 'Fertilizer Advice', icon: Leaf },
-  { key: 'IRRIGATION_ADVICE', label: 'Irrigation Advice', icon: Droplets },
-  { key: 'CROP_ROTATION', label: 'Crop Rotation', icon: RefreshCw },
-  { key: 'WEATHER_ADVICE', label: 'Weather Advice', icon: FlaskConical },
-]
 
 const SUBTYPE_ICON: Record<string, typeof History> = {
   CROP_ADVISOR: Sprout,
@@ -27,25 +16,13 @@ const SUBTYPE_ICON: Record<string, typeof History> = {
   CROP_ROTATION: RefreshCw,
   WEATHER_ADVICE: FlaskConical,
 }
-const SUBTYPE_LABEL: Record<string, string> = {
-  CROP_ADVISOR: 'Crop Advisor',
-  DISEASE_DETECTION: 'Disease Detection',
-  FERTILIZER_ADVICE: 'Fertilizer Advice',
-  IRRIGATION_ADVICE: 'Irrigation Advice',
-  CROP_ROTATION: 'Crop Rotation',
-  WEATHER_ADVICE: 'Weather Advice',
-}
 
 function iconFor(item: HistoryItem) {
   if (item.kind === 'SOIL_REPORT') return FlaskConical
   if (item.kind === 'CHAT') return MessageCircle
   return SUBTYPE_ICON[item.subtype ?? ''] ?? History
 }
-function labelFor(item: HistoryItem) {
-  if (item.kind === 'SOIL_REPORT') return 'Soil Analysis'
-  if (item.kind === 'CHAT') return 'AI Chat'
-  return SUBTYPE_LABEL[item.subtype ?? ''] ?? 'Analysis'
-}
+
 /** Which filter key a given history item belongs to. */
 function filterKeyFor(item: HistoryItem): FilterKey {
   if (item.kind === 'CHAT') return 'CHAT'
@@ -60,13 +37,45 @@ function linkFor(item: HistoryItem): string {
 }
 
 export default function AiHistoryPage() {
+  const { t } = useLanguage()
   const { history, isLoadingHistory } = useAi()
   const [filter, setFilter] = useState<FilterKey>('ALL')
+
+  const filterLabels: Record<FilterKey, string> = {
+    ALL: t('aiHistory.filterAll'),
+    CHAT: t('aiHistory.filterChat'),
+    CROP_ADVISOR: t('aiHistory.filterCropAdvisor'),
+    DISEASE_DETECTION: t('aiHistory.filterDisease'),
+    SOIL_REPORT: t('aiHistory.filterSoil'),
+    FERTILIZER_ADVICE: t('aiHistory.filterFertilizer'),
+    IRRIGATION_ADVICE: t('aiHistory.filterIrrigation'),
+    CROP_ROTATION: t('aiHistory.filterCropRotation'),
+    WEATHER_ADVICE: t('aiHistory.filterWeather'),
+  }
+
+  const FILTERS: { key: FilterKey; label: string; icon: typeof History }[] = [
+    { key: 'ALL', label: filterLabels.ALL, icon: History },
+    { key: 'CHAT', label: filterLabels.CHAT, icon: MessageCircle },
+    { key: 'CROP_ADVISOR', label: filterLabels.CROP_ADVISOR, icon: Sprout },
+    { key: 'DISEASE_DETECTION', label: filterLabels.DISEASE_DETECTION, icon: ScanEye },
+    { key: 'SOIL_REPORT', label: filterLabels.SOIL_REPORT, icon: FlaskConical },
+    { key: 'FERTILIZER_ADVICE', label: filterLabels.FERTILIZER_ADVICE, icon: Leaf },
+    { key: 'IRRIGATION_ADVICE', label: filterLabels.IRRIGATION_ADVICE, icon: Droplets },
+    { key: 'CROP_ROTATION', label: filterLabels.CROP_ROTATION, icon: RefreshCw },
+    { key: 'WEATHER_ADVICE', label: filterLabels.WEATHER_ADVICE, icon: FlaskConical },
+  ]
+
+  function labelFor(item: HistoryItem) {
+    if (item.kind === 'SOIL_REPORT') return t('aiHistory.filterSoil')
+    if (item.kind === 'CHAT') return t('aiHistory.filterChat')
+    const subtype = item.subtype as FilterKey | undefined
+    return (subtype && filterLabels[subtype]) || t('aiHistory.title')
+  }
 
   const availableFilters = useMemo(() => {
     const present = new Set(history.map(filterKeyFor))
     return FILTERS.filter((f) => f.key === 'ALL' || present.has(f.key))
-  }, [history])
+  }, [history, FILTERS])
 
   const filtered = useMemo(
     () => (filter === 'ALL' ? history : history.filter((item) => filterKeyFor(item) === filter)),
@@ -74,21 +83,21 @@ export default function AiHistoryPage() {
   )
 
   if (isLoadingHistory && history.length === 0) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-sm text-ink-400">Loading…</div>
+    return <div className="flex min-h-[60vh] items-center justify-center text-sm text-ink-400">{t('common.loading')}</div>
   }
 
   if (history.length === 0) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 text-center">
         <History className="mb-3 h-12 w-12 text-ink-300" aria-hidden="true" />
-        <p className="text-sm text-ink-500">No AI analyses yet. Try Crop Advisor or Disease Detection.</p>
+        <p className="text-sm text-ink-500">{t('aiHistory.emptyTitle')}</p>
       </div>
     )
   }
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-4 text-xl">AI History</h1>
+      <h1 className="mb-4 text-xl">{t('aiHistory.title')}</h1>
 
       {/* Filter by AI tool — only shows tools that actually appear in this person's history */}
       {availableFilters.length > 2 && (
@@ -110,7 +119,7 @@ export default function AiHistoryPage() {
       )}
 
       {filtered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-ink-400">No entries for this filter yet.</p>
+        <p className="py-8 text-center text-sm text-ink-400">{t('aiHistory.noEntries')}</p>
       ) : (
         <div className="space-y-2">
           {filtered.map((entry) => {

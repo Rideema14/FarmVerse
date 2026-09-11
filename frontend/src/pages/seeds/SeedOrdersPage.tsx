@@ -3,6 +3,7 @@ import { ClipboardList, Sprout } from 'lucide-react'
 import { useSeedCart } from '@/context/SeedCartContext'
 import { formatDateLabel, formatINR } from '@/utils/format'
 import { cn } from '@/utils/cn'
+import { useLanguage } from '@/context/LanguageContext'
 
 const STATUS_STYLES: Record<string, string> = {
   placed: 'bg-ink-100 text-ink-600',
@@ -16,19 +17,20 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export default function SeedOrdersPage() {
+  const { t } = useLanguage()
   const { seedOrders, isLoadingOrders } = useSeedCart()
 
   if (isLoadingOrders && seedOrders.length === 0) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-sm text-ink-400">Loading…</div>
+    return <div className="flex min-h-[60vh] items-center justify-center text-sm text-ink-400">{t('common.loading')}</div>
   }
 
   if (seedOrders.length === 0) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 text-center">
         <ClipboardList className="mb-3 h-12 w-12 text-ink-300" aria-hidden="true" />
-        <h1 className="text-lg">No seed orders yet</h1>
+        <h1 className="text-lg">{t('seedOrders.emptyTitle')}</h1>
         <Link to="/seeds" className="mt-5 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
-          Browse Seed Store
+          {t('seedOrders.browseStore')}
         </Link>
       </div>
     )
@@ -36,7 +38,7 @@ export default function SeedOrdersPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-5 text-xl">Seed Orders</h1>
+      <h1 className="mb-5 text-xl">{t('seedOrders.title')}</h1>
       <div className="space-y-3">
         {seedOrders.map((order) => (
           <div key={order.id} className="flex items-start gap-3 rounded-2xl border border-ink-100 bg-surface p-4">
