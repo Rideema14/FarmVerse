@@ -9,6 +9,7 @@ interface AdminContextValue {
   refreshApplications: () => Promise<void>
   approveApplication: (id: string) => Promise<void>
   rejectApplication: (id: string, note: string) => Promise<void>
+  revokeSeller: (id: string, note: string) => Promise<void>
 }
 
 const AdminContext = createContext<AdminContextValue | null>(null)
@@ -54,9 +55,22 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setPendingSellerCount((prev) => Math.max(0, prev - 1))
   }, [])
 
+  const revokeSeller = useCallback(async (id: string, note: string) => {
+    const status = await sellerService.revoke(id, note)
+    setSellerApplications((prev) => prev.map((a) => (a.id === id ? { ...a, status, verificationNote: note } : a)))
+  }, [])
+
   const value = useMemo(
-    () => ({ sellerApplications, pendingSellerCount, isLoadingApplications, refreshApplications, approveApplication, rejectApplication }),
-    [sellerApplications, pendingSellerCount, isLoadingApplications, refreshApplications, approveApplication, rejectApplication],
+    () => ({
+      sellerApplications,
+      pendingSellerCount,
+      isLoadingApplications,
+      refreshApplications,
+      approveApplication,
+      rejectApplication,
+      revokeSeller,
+    }),
+    [sellerApplications, pendingSellerCount, isLoadingApplications, refreshApplications, approveApplication, rejectApplication, revokeSeller],
   )
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>

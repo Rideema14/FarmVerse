@@ -44,6 +44,11 @@ export const reviewApplicationSchema = z
   });
 export type ReviewApplicationInput = z.infer<typeof reviewApplicationSchema>;
 
+export const revokeSellerSchema = z.object({
+  note: z.string().trim().min(3, 'Enter a reason for removing this seller.').max(1000),
+});
+export type RevokeSellerInput = z.infer<typeof revokeSellerSchema>;
+
 export const listApplicationsQuerySchema = z.object({
   page: z.string().optional(),
   limit: z.string().optional(),

@@ -72,28 +72,65 @@ export interface SellerReview {
 interface BackendSellerApplication {
   id: string
   businessName: string
+  businessDescription?: string | null
+  gstNumber?: string | null
+  farmSizeAcres?: number | null
+  primaryCrop?: string | null
+  village?: string | null
+  bankAccountHolder?: string | null
+  bankAccountNumber?: string | null
+  bankIfscCode?: string | null
+  bankName?: string | null
   verificationStatus: SellerVerificationStatus
+  verificationNote?: string | null
+  reviewedAt?: string | null
   createdAt: string
   user: { id: string; name: string; email: string; phone?: string | null }
 }
 
+// Full detail the admin sees when reviewing a single seller — everything
+// they submitted, not just the summary shown in the list row.
 export interface SellerApplication {
   id: string
+  userId: string
   businessName: string
   status: SellerVerificationStatus
   createdAt: string
+  reviewedAt?: string | null
+  verificationNote?: string | null
   applicantName: string
   applicantEmail: string
+  applicantPhone?: string | null
+  gstNumber?: string | null
+  farmSizeAcres?: number | null
+  primaryCrop?: string | null
+  village?: string | null
+  bankAccountHolder?: string | null
+  bankAccountNumber?: string | null
+  bankIfscCode?: string | null
+  bankName?: string | null
 }
 
 function mapApplication(a: BackendSellerApplication): SellerApplication {
   return {
     id: a.id,
+    userId: a.user.id,
     businessName: a.businessName,
     status: a.verificationStatus,
     createdAt: a.createdAt,
+    reviewedAt: a.reviewedAt,
+    verificationNote: a.verificationNote,
     applicantName: a.user.name,
     applicantEmail: a.user.email,
+    applicantPhone: a.user.phone,
+    gstNumber: a.gstNumber,
+    farmSizeAcres: a.farmSizeAcres,
+    primaryCrop: a.primaryCrop,
+    village: a.village,
+    bankAccountHolder: a.bankAccountHolder,
+    bankAccountNumber: a.bankAccountNumber,
+    bankIfscCode: a.bankIfscCode,
+    bankName: a.bankName,
   }
 }
 
@@ -136,6 +173,15 @@ export const sellerService = {
     const res = await api.patch<{ data: { verificationStatus: SellerVerificationStatus } }>(
       `/sellers/applications/${id}/review`,
       { decision, note },
+    )
+    return res.data.data.verificationStatus
+  },
+
+  /** Removes an already-approved seller: demotes them to a buyer and deactivates their listings. */
+  async revoke(id: string, note: string): Promise<SellerVerificationStatus> {
+    const res = await api.post<{ data: { verificationStatus: SellerVerificationStatus } }>(
+      `/sellers/applications/${id}/revoke`,
+      { note },
     )
     return res.data.data.verificationStatus
   },

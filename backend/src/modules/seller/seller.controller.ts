@@ -32,6 +32,12 @@ export const reviewApplication = asyncHandler(async (req, res) => {
   ApiResponse.ok(res, profile, 'Application reviewed.');
 });
 
+export const revokeSeller = asyncHandler(async (req, res) => {
+  if (!req.user) throw ApiError.unauthorized('Authentication required.');
+  const profile = await sellerService.revokeSeller(req.params.id, req.user, req.body.note);
+  ApiResponse.ok(res, profile, 'Seller removed.');
+});
+
 export const getDashboard = asyncHandler(async (req, res) => {
   if (!req.user) throw ApiError.unauthorized('Authentication required.');
   const dashboard = await sellerService.getDashboard(req.user.id);

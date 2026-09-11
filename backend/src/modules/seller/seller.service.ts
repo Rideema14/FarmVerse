@@ -104,7 +104,7 @@ export async function listApplications(query: ListApplicationsQuery) {
     prisma.sellerProfile.count({ where }),
   ]);
 
-  return { items, meta: buildPaginationMeta(page, limit, totalItems) };
+  return { items: items.map(withFarmingDetails), meta: buildPaginationMeta(page, limit, totalItems) };
 }
 
 export async function reviewApplication(profileId: string, admin: User, { decision, note }: ReviewApplicationInput) {
@@ -153,6 +153,51 @@ export async function reviewApplication(profileId: string, admin: User, { decisi
   });
 
   return updated;
+}
+
+/**
+ * Removes an already-approved seller: demotes their account back to BUYER,
+ * deactivates every product they had listed (so nothing they sold keeps
+ * showing up in the marketplace), and records the profile as REJECTED with
+ * the admin's reason. They can re-apply from scratch afterwards, which
+ * re-queues a fresh PENDING application.
+ */
+export async function revokeSeller(profileId: string, admin: User, note: string) {
+  const profile = await prisma.sellerProfile.findUnique({ where: { id: profileId } });
+  if (!profile) throw ApiError.notFound('Seller application not found.');
+  if (profile.verificationStatus !== 'APPROVED') {
+    throw ApiError.badRequest('Only an approved seller can be removed.');
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.sellerProfile.update({
+      where: { id: profileId },
+      data: {
+        verificationStatus: 'REJECTED',
+        verificationNote: note,
+        reviewedById: admin.id,
+        reviewedAt: new Date(),
+      },
+    });
+    await tx.user.update({ where: { id: profile.userId }, data: { role: 'BUYER' } });
+    await tx.product.updateMany({ where: { sellerId: profile.userId }, data: { isActive: false } });
+    return result;
+  });
+
+  await notifyUser({
+    userId: profile.userId,
+    type: 'SELLER_VERIFICATION',
+    title: 'Your seller account was removed',
+    message: `Your seller access has been removed by an administrator. Reason: ${note}`,
+    relatedEntityType: 'SELLER_PROFILE',
+    relatedEntityId: profile.id,
+    email: {
+      subject: 'Seller access removed',
+      html: `<p>Your seller account has been removed by an administrator. Reason: ${note}</p><p>Your product listings have been deactivated. You can re-apply to become a seller at any time.</p>`,
+    },
+  });
+
+  return withFarmingDetails(updated);
 }
 
 interface CountRow {

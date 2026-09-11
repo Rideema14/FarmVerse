@@ -8,6 +8,11 @@ export function RequireAuth() {
     return <Navigate to={`/login?next=${next}`} replace />
   }
   if (location.pathname.startsWith('/admin') && !isAdmin) return <Navigate to="/home" replace />
-  if (location.pathname.startsWith('/seller') && !isSeller) return <Navigate to="/home" replace />
+  // Onboarding is how a buyer BECOMES a seller, so it must stay reachable
+  // for non-sellers. Every other /seller/* route still requires isSeller.
+  const isOnboardingRoute = location.pathname.startsWith('/seller/onboarding')
+  if (location.pathname.startsWith('/seller') && !isOnboardingRoute && !isSeller) {
+    return <Navigate to="/home" replace />
+  }
   return <Outlet />
 }

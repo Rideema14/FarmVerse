@@ -8,6 +8,7 @@ import {
   applySchema,
   updateProfileSchema,
   reviewApplicationSchema,
+  revokeSellerSchema,
   listApplicationsQuerySchema,
   analyticsQuerySchema,
   sellerReviewsQuerySchema,
@@ -80,6 +81,20 @@ router.patch(
   authorize('ADMIN'),
   validate({ params: idParamSchema, body: reviewApplicationSchema }),
   controller.reviewApplication
+);
+
+/**
+ * @openapi
+ * /sellers/applications/{id}/revoke:
+ *   post:
+ *     tags: [Sellers]
+ *     summary: Remove an already-approved seller (demotes them back to a buyer and deactivates their listings)
+ */
+router.post(
+  '/applications/:id/revoke',
+  authorize('ADMIN'),
+  validate({ params: idParamSchema, body: revokeSellerSchema }),
+  controller.revokeSeller
 );
 
 export default router;
