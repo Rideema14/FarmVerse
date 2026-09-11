@@ -306,6 +306,9 @@ export default function MarketplacePage() {
               <p className="mt-3 max-w-[650px] text-[14px] font-medium leading-6 text-[#697163] sm:text-[15px]">
                 {t('market.subtitle')}
               </p>
+              <p className="mt-2 text-[13px] font-medium text-[#8A9280]">
+                Tap any crop to see it. Tap Add to Cart or Buy Now to buy it.
+              </p>
             </div>
 
             {query && (

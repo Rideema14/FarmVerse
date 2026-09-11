@@ -231,9 +231,10 @@ export default function ProductDetailsPage() {
         </div>
       )}
 
+      <p className="mt-4 text-xs text-ink-500">Pick how many you want. Then tap Add to Cart, or Buy Now to order right away.</p>
+
       <div className="mt-4 flex items-center gap-3">
-        <p className="text-xs font-semibold text-ink-700">{t('product.quantity')}</p>
-        <div className="flex items-center gap-3 rounded-full border border-ink-200 px-3 py-1.5">
+        <p className="text-xs font-semibold text-ink-700">{t('product.quantity')}</p>        <div className="flex items-center gap-3 rounded-full border border-ink-200 px-3 py-1.5">
           <button
             type="button"
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}

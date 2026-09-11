@@ -45,6 +45,7 @@ export default function SeedStorePage() {
           <div>
             <h1 className="text-xl">{t('seeds.title')}</h1>
             <p className="text-xs text-ink-500">{t('seeds.subtitle')}</p>
+            <p className="mt-1 text-xs text-ink-500">Tap a seed to see it. Tap "Add" to put it in your cart.</p>
           </div>
         </div>
         <Link

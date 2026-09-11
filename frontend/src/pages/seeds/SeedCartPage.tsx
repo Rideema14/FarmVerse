@@ -84,7 +84,8 @@ export default function SeedCartPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-5 text-xl">Seed Cart</h1>
+      <h1 className="mb-1 text-xl">Seed Cart</h1>
+      <p className="mb-5 text-sm text-ink-500">Check your seeds below. Pick an address, then tap Place Seed Order to buy.</p>
       <div className="space-y-3">
         {lines.map((line) => (
           <div key={line.itemId} className="flex gap-3 rounded-2xl border border-ink-100 bg-surface p-3">

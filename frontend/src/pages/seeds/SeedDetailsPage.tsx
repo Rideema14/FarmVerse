@@ -121,9 +121,10 @@ export default function SeedDetailsPage() {
 
       {seed.description && <p className="mt-5 text-sm leading-relaxed text-ink-600">{seed.description}</p>}
 
+      <p className="mt-5 text-xs text-ink-500">Tap the button below to add this seed to your cart.</p>
       <Button
         fullWidth
-        className="mt-6"
+        className="mt-2"
         disabled={seed.stock <= 0}
         onClick={() => {
           addToCart(seed.id)

@@ -138,6 +138,7 @@ export default function SellerOnboardingPage() {
 
       {step === 0 && (
         <div>
+          <p className="mb-3 text-sm text-ink-500">Enter the name buyers will see.</p>
           <TextField id="business-name" label="Seller / Business Name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} required />
           <TextField id="phone" label="Contact Phone" value={user?.phone ?? ''} disabled />
           <Button fullWidth onClick={next}>Continue</Button>
@@ -145,6 +146,7 @@ export default function SellerOnboardingPage() {
       )}
       {step === 1 && (
         <div>
+          <p className="mb-3 text-sm text-ink-500">Tell us about your farm and what you grow.</p>
           <TextField id="farm-size" label="Farm Size (acres)" type="number" value={farmSize} onChange={(e) => setFarmSize(e.target.value)} required />
           <TextField id="primary-crop" label="Primary Crop" value={primaryCrop} onChange={(e) => setPrimaryCrop(e.target.value)} required />
           <Button fullWidth onClick={next}>Continue</Button>
@@ -152,6 +154,7 @@ export default function SellerOnboardingPage() {
       )}
       {step === 2 && (
         <div>
+          <p className="mb-3 text-sm text-ink-500">Enter your village or town.</p>
           <TextField id="village" label="Village / Town" value={village} onChange={(e) => setVillage(e.target.value)} required />
           <p className="mb-4 flex items-center gap-1.5 text-xs text-ink-400"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />This location is shown to buyers on your listings.</p>
           <Button fullWidth onClick={next}>Continue</Button>
@@ -159,6 +162,7 @@ export default function SellerOnboardingPage() {
       )}
       {step === 3 && (
         <div>
+          <p className="mb-3 text-sm text-ink-500">Add your bank details to get paid.</p>
           <TextField id="account-holder" label="Account Holder Name" value={accountHolder} onChange={(e) => setAccountHolder(e.target.value)} required />
           <TextField id="bank-name" label="Bank Name" value={bankName} onChange={(e) => setBankName(e.target.value)} required />
           <TextField id="account-number" label="Bank Account Number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} required />
@@ -169,6 +173,7 @@ export default function SellerOnboardingPage() {
       )}
       {step === 4 && (
         <form onSubmit={handleSubmit}>
+          <p className="mb-3 text-sm text-ink-500">Check your details, then send.</p>
           <div className="mb-5 space-y-2 rounded-2xl border border-ink-100 bg-surface p-4 text-sm">
             <p className="flex items-center gap-2 text-ink-700"><User className="h-4 w-4 text-brand-600" aria-hidden="true" />{businessName}</p>
             <p className="flex items-center gap-2 text-ink-700"><Sprout className="h-4 w-4 text-brand-600" aria-hidden="true" />{farmSize} acres · {primaryCrop}</p>

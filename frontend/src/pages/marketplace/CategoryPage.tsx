@@ -57,6 +57,7 @@ export default function CategoryPage() {
           <p className="text-xs text-ink-400">{isLoading ? t('common.loading') : `${products.length} ${t('product.productsCount')}`}</p>
         </div>
       </div>
+      <p className="mb-5 text-sm text-ink-500">Tap any item below to see it. Tap Add to Cart to buy it.</p>
 
       {!isLoading && products.length === 0 ? (
         <div className="flex flex-col items-center py-16 text-center">
