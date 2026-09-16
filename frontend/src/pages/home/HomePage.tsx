@@ -212,7 +212,7 @@ export default function HomePage() {
     }
 
     return () => {
-      cancelled = true;
+      const cancelled = true;
     };
   }, []);
 
