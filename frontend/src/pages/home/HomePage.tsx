@@ -212,7 +212,6 @@ export default function HomePage() {
     }
 
     return () => {
-      const cancelled = true;
     };
   }, []);
 

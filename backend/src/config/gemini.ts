@@ -5,9 +5,12 @@
 // separate transcription/TTS calls for. See config/env.ts for the free-tier
 // notes and how to get a key. The `@google/genai` package ships its own
 // TypeScript types, so no local .d.ts is needed here (unlike razorpay).
-import { GoogleGenAI } from '@google/genai';
 import { env } from './env';
 
-const genai = new GoogleGenAI({ apiKey: env.gemini.apiKey });
+// `@google/genai` is ESM-only, so load it dynamically when this project is
+// compiled as CommonJS instead of emitting an incompatible `require()` call.
+const genai = import('@google/genai').then(
+	({ GoogleGenAI }) => new GoogleGenAI({ apiKey: env.gemini.apiKey }),
+);
 
 export default genai;
