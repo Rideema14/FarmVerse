@@ -261,8 +261,10 @@ export function Header() {
             sm:gap-1
           "
         >
-          {/* Language */}
+          {/* Language — full pill on desktop */}
           <LanguageSwitcher className="hidden md:block" />
+          {/* Language — icon-only on mobile, was missing entirely before */}
+          <LanguageSwitcher compact className="flex md:hidden" />
           {/* Divider */}
           <span
             className="

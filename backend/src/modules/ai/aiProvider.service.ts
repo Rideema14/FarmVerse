@@ -1,4 +1,4 @@
-import type { Content, Part } from '@google/genai' with { 'resolution-mode': 'import' };
+import type { Content, Part } from '@google/genai';
 import { toFile } from 'groq-sdk';
 import genai from '../../config/gemini';
 import groq, { isGroqConfigured } from '../../config/groq';
@@ -105,7 +105,7 @@ async function geminiGenerateContent(messages: AiMessage[], jsonMode: boolean): 
   try {
     const { systemInstruction, contents } = await toGeminiRequest(messages);
 
-    const response = await (await genai).models.generateContent({
+    const response = await genai.models.generateContent({
       model: env.gemini.model,
       contents,
       config: {
@@ -163,7 +163,7 @@ async function geminiTranscribeAudio(buffer: Buffer, filename: string, mimetype:
   try {
     const bareMimeType = mimetype.split(';')[0].trim() || 'audio/webm';
 
-    const response = await (await genai).models.generateContent({
+    const response = await genai.models.generateContent({
       model: env.gemini.transcribeModel,
       contents: [
         {
@@ -211,7 +211,7 @@ async function geminiSynthesizeSpeech(text: string): Promise<Buffer> {
     throw ApiError.internal('Speech synthesis is temporarily rate-limited. Please try again shortly.');
   }
   try {
-    const response = await (await genai).models.generateContent({
+    const response = await genai.models.generateContent({
       model: env.gemini.ttsModel,
       contents: [{ role: 'user', parts: [{ text }] }],
       config: {

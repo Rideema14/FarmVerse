@@ -185,35 +185,8 @@ export default function HomePage() {
     if (geo.status === 'success' && geo.coords) {
       fetchWeather(geo.coords.latitude, geo.coords.longitude, t('home.yourArea'));
     }
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          fetchWeather(
-            pos.coords.latitude,
-            pos.coords.longitude,
-            t('home.yourArea'),
-          );
-        },
-        () => {
-          fetchWeather(
-            28.6139,
-            77.209,
-            t('weather.fallbackLocation'),
-          );
-        },
-      );
-    } else {
-      fetchWeather(
-        28.6139,
-        77.209,
-        t('weather.fallbackLocation'),
-      );
-    }
-
-    return () => {
-    };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.status, geo.coords]);
 
   /* =======================================================
      MANDI
