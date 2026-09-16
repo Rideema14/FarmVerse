@@ -272,7 +272,7 @@ export function Sidebar() {
           "
         >
           <ul className="space-y-1">
-            {items.map(({ path, labelKey, icon: Icon }) => (
+            {items.map(({ path, labelKey, icon: Icon, color }) => (
               <li key={path}>
                 <NavLink
                   to={path}
@@ -325,34 +325,23 @@ export function Sidebar() {
                       )}
 
                       <span
-                        className={cn(
-                          `
-                            flex
-                            h-8
-                            w-8
-                            shrink-0
-                            items-center
-                            justify-center
-                            rounded-lg
-                            transition-all
-                            duration-200
-                          `,
-                          isActive
-                            ? `
-                              bg-[#2B3024]
-                              text-[#E4B957]
-                            `
-                            : `
-                              text-[#77736A]
-                              group-hover:text-[#252A20]
-                            `,
-                        )}
+                        className="
+                          flex
+                          h-11
+                          w-11
+                          shrink-0
+                          items-center
+                          justify-center
+                          rounded-2xl
+                          transition-all
+                          duration-200
+                        "
+                        style={{
+                          backgroundColor: `${color}1C`,
+                          boxShadow: isActive ? `inset 0 0 0 2px ${color}` : undefined,
+                        }}
                       >
-                        <Icon
-                          className="h-[17px] w-[17px]"
-                          strokeWidth={isActive ? 2.2 : 1.8}
-                          aria-hidden="true"
-                        />
+                        <Icon className="h-6 w-6" />
                       </span>
 
                       <span className="truncate">{t(labelKey)}</span>
@@ -467,7 +456,7 @@ export function Sidebar() {
                 overflow-y-auto
               "
             >
-              {uniqueDesktopMoreItems.map(({ path, labelKey, icon: Icon }) => (
+              {uniqueDesktopMoreItems.map(({ path, labelKey, icon: Icon, color }) => (
                 <NavLink
                   key={path}
                   to={path}
@@ -503,10 +492,15 @@ export function Sidebar() {
                 >
                   {({ isActive }) => (
                     <>
-                      <Icon
-                        className="h-4 w-4 shrink-0"
-                        strokeWidth={isActive ? 2.2 : 1.8}
-                      />
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                        style={{
+                          backgroundColor: `${color}3D`,
+                          boxShadow: isActive ? `inset 0 0 0 2px ${color}` : undefined,
+                        }}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </span>
 
                       <span className="truncate">{t(labelKey)}</span>
                     </>
@@ -553,7 +547,7 @@ export function Sidebar() {
         >
           {/* MOBILE PRIMARY */}
 
-          {mobilePrimaryItems.map(({ path, labelKey, icon: Icon }) => (
+          {mobilePrimaryItems.map(({ path, labelKey, icon: Icon, color }) => (
             <NavLink
               key={path}
               to={path}
@@ -590,10 +584,15 @@ export function Sidebar() {
             >
               {({ isActive }) => (
                 <>
-                  <Icon
-                    className="h-[18px] w-[18px]"
-                    strokeWidth={isActive ? 2.2 : 1.7}
-                  />
+                  <span
+                    className="flex h-9 w-9 items-center justify-center rounded-2xl transition-all duration-200"
+                    style={{
+                      backgroundColor: `${color}22`,
+                      boxShadow: isActive ? `inset 0 0 0 2px ${color}` : undefined,
+                    }}
+                  >
+                    <Icon className="h-[22px] w-[22px]" />
+                  </span>
 
                   <span className="max-w-full truncate">{t(labelKey)}</span>
                 </>
@@ -694,7 +693,7 @@ export function Sidebar() {
               "
             >
               <div className="grid grid-cols-2 gap-1.5">
-                {uniqueMobileMoreItems.map(({ path, labelKey, icon: Icon }) => (
+                {uniqueMobileMoreItems.map(({ path, labelKey, icon: Icon, color }) => (
                   <NavLink
                     key={path}
                     to={path}
@@ -729,23 +728,21 @@ export function Sidebar() {
                     {({ isActive }) => (
                       <>
                         <span
-                          className={cn(
-                            `
+                          className="
                                 flex
-                                h-8
-                                w-8
+                                h-10
+                                w-10
                                 shrink-0
                                 items-center
                                 justify-center
-                                rounded-[10px]
-                              `,
-                            isActive ? `bg-[#D5E1CF]` : `bg-[#F1F2ED]`,
-                          )}
+                                rounded-[14px]
+                              "
+                          style={{
+                            backgroundColor: `${color}1C`,
+                            boxShadow: isActive ? `inset 0 0 0 2px ${color}` : undefined,
+                          }}
                         >
-                          <Icon
-                            className="h-[16px] w-[16px]"
-                            strokeWidth={isActive ? 2.1 : 1.7}
-                          />
+                          <Icon className="h-[22px] w-[22px]" />
                         </span>
 
                         <span className="truncate">{t(labelKey)}</span>

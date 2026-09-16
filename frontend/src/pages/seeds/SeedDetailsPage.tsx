@@ -6,8 +6,10 @@ import { seedService, type Seed } from '@/services/seedService'
 import { useSeedCart } from '@/context/SeedCartContext'
 import { getApiErrorMessage } from '@/services/api'
 import { formatINR } from '@/utils/format'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function SeedDetailsPage() {
+  const { t } = useLanguage()
   const { id: slug } = useParams<{ id: string }>()
   const [seed, setSeed] = useState<Seed | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -26,7 +28,7 @@ export default function SeedDetailsPage() {
         if (!cancelled) setSeed(s)
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'Seed not found.'))
+        if (!cancelled) setError(getApiErrorMessage(err, t('seedDetails.seedNotFound')))
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)
@@ -34,7 +36,7 @@ export default function SeedDetailsPage() {
     return () => {
       cancelled = true
     }
-  }, [slug])
+  }, [slug, t])
 
   if (isLoading) {
     return (
@@ -47,9 +49,9 @@ export default function SeedDetailsPage() {
   if (!seed || error) {
     return (
       <div className="mx-auto max-w-md px-6 py-16 text-center">
-        <p className="text-sm text-ink-500">{error || 'Seed not found.'}</p>
+        <p className="text-sm text-ink-500">{error || t('seedDetails.seedNotFound')}</p>
         <Link to="/seeds" className="mt-3 inline-block text-sm font-semibold text-brand-600 hover:underline">
-          Back to Seed Store
+          {t('seedDetails.backToSeeds')}
         </Link>
       </div>
     )
@@ -59,7 +61,7 @@ export default function SeedDetailsPage() {
     <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
       <Link to="/seeds" className="mb-4 flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-        Seed Store
+        {t('seedDetails.backToSeeds')}
       </Link>
 
       <div className="mb-4 flex h-56 items-center justify-center overflow-hidden rounded-2xl bg-surface-sunk">
@@ -73,13 +75,13 @@ export default function SeedDetailsPage() {
       <h1 className="text-xl">{seed.name}</h1>
       <p className="mt-1 flex items-center gap-1 text-xs text-ink-500">
         <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" aria-hidden="true" />
-        {seed.rating.toFixed(1)} ({seed.reviewCount} reviews) · {seed.categoryName}
-        {seed.sellerName && <> · Sold by {seed.sellerName}</>}
+        {seed.rating.toFixed(1)} {t('seedDetails.reviewsCount', { count: seed.reviewCount })} · {seed.categoryName}
+        {seed.sellerName && <> · {t('seedDetails.soldBy', { name: seed.sellerName })}</>}
       </p>
       <p className="mt-3 text-2xl font-bold text-ink-900">
         {formatINR(seed.price)} <span className="text-xs font-normal text-ink-400">/ {seed.unit}</span>
       </p>
-      {seed.stock <= 0 && <p className="mt-1 text-xs font-semibold text-danger-500">Out of stock</p>}
+      {seed.stock <= 0 && <p className="mt-1 text-xs font-semibold text-danger-500">{t('seedDetails.outOfStock')}</p>}
 
       {seed.specifications.length > 0 && (
         <div className="mt-5 divide-y divide-ink-100 rounded-2xl border border-ink-100">
@@ -95,25 +97,25 @@ export default function SeedDetailsPage() {
       <div className="mt-5 grid grid-cols-2 gap-2 text-sm">
         {seed.brand && (
           <div className="rounded-xl bg-surface-sunk px-3 py-2">
-            <p className="text-[11px] text-ink-400">Brand</p>
+            <p className="text-[11px] text-ink-400">{t('seedDetails.brand')}</p>
             <p className="font-medium text-ink-900">{seed.brand}</p>
           </div>
         )}
         {seed.variety && (
           <div className="rounded-xl bg-surface-sunk px-3 py-2">
-            <p className="text-[11px] text-ink-400">Variety</p>
+            <p className="text-[11px] text-ink-400">{t('seedDetails.variety')}</p>
             <p className="font-medium text-ink-900">{seed.variety}</p>
           </div>
         )}
         {seed.sowingSeason && (
           <div className="rounded-xl bg-surface-sunk px-3 py-2">
-            <p className="text-[11px] text-ink-400">Sowing Season</p>
+            <p className="text-[11px] text-ink-400">{t('seedDetails.sowingSeason')}</p>
             <p className="font-medium text-ink-900">{seed.sowingSeason}</p>
           </div>
         )}
         {typeof seed.germinationRatePercent === 'number' && (
           <div className="rounded-xl bg-surface-sunk px-3 py-2">
-            <p className="text-[11px] text-ink-400">Germination Rate</p>
+            <p className="text-[11px] text-ink-400">{t('seedDetails.germinationRate')}</p>
             <p className="font-medium text-ink-900">{seed.germinationRatePercent}%</p>
           </div>
         )}
@@ -121,7 +123,7 @@ export default function SeedDetailsPage() {
 
       {seed.description && <p className="mt-5 text-sm leading-relaxed text-ink-600">{seed.description}</p>}
 
-      <p className="mt-5 text-xs text-ink-500">Tap the button below to add this seed to your cart.</p>
+      <p className="mt-5 text-xs text-ink-500">{t('seedDetails.addToCartNotice')}</p>
       <Button
         fullWidth
         className="mt-2"
@@ -134,12 +136,12 @@ export default function SeedDetailsPage() {
       >
         {added ? (
           <>
-            <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Added to Seed Cart
+            <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> {t('seedDetails.addedToCart')}
           </>
         ) : seed.stock <= 0 ? (
-          'Out of stock'
+          t('seedDetails.outOfStock')
         ) : (
-          'Add to Seed Cart'
+          t('seedDetails.addToCart')
         )}
       </Button>
     </div>

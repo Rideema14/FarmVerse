@@ -69,27 +69,27 @@ export default function SettingsPage() {
       <section className="mb-5 rounded-2xl border border-ink-100 bg-surface p-4">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink-800">
           <Bell className="h-4 w-4" aria-hidden="true" />
-          Notifications
+          {t('settings.notifications')}
         </h2>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-ink-700">Mandi price alerts</span>
-            <Toggle checked={notifs.mandi} onChange={() => setNotifs((p) => ({ ...p, mandi: !p.mandi }))} label="Mandi price alerts" />
+            <span className="text-sm text-ink-700">{t('settings.mandiAlerts')}</span>
+            <Toggle checked={notifs.mandi} onChange={() => setNotifs((p) => ({ ...p, mandi: !p.mandi }))} label={t('settings.mandiAlerts')} />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-ink-700">Order updates</span>
-            <Toggle checked={notifs.orders} onChange={() => setNotifs((p) => ({ ...p, orders: !p.orders }))} label="Order updates" />
+            <span className="text-sm text-ink-700">{t('settings.orderUpdates')}</span>
+            <Toggle checked={notifs.orders} onChange={() => setNotifs((p) => ({ ...p, orders: !p.orders }))} label={t('settings.orderUpdates')} />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-ink-700">AI recommendations</span>
-            <Toggle checked={notifs.ai} onChange={() => setNotifs((p) => ({ ...p, ai: !p.ai }))} label="AI recommendations" />
+            <span className="text-sm text-ink-700">{t('settings.aiRecommendations')}</span>
+            <Toggle checked={notifs.ai} onChange={() => setNotifs((p) => ({ ...p, ai: !p.ai }))} label={t('settings.aiRecommendations')} />
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-sm text-ink-700">
               <MessageSquareText className="h-3.5 w-3.5" aria-hidden="true" />
-              SMS alerts
+              {t('settings.smsAlerts')}
             </span>
-            <Toggle checked={notifs.sms} onChange={() => setNotifs((p) => ({ ...p, sms: !p.sms }))} label="SMS alerts" />
+            <Toggle checked={notifs.sms} onChange={() => setNotifs((p) => ({ ...p, sms: !p.sms }))} label={t('settings.smsAlerts')} />
           </div>
         </div>
       </section>
@@ -97,7 +97,7 @@ export default function SettingsPage() {
       <section className="mb-5 rounded-2xl border border-ink-100 bg-surface p-4">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink-800">
           <Smartphone className="h-4 w-4" aria-hidden="true" />
-          Account
+          {t('settings.account')}
         </h2>
         <p className="text-sm text-ink-700">{user?.name}</p>
         <p className="text-xs text-ink-400">{user?.phone}</p>

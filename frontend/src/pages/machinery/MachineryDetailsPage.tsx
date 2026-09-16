@@ -8,22 +8,16 @@ import { paymentService } from '@/services/paymentService'
 import { getApiErrorMessage } from '@/services/api'
 import { useAuth } from '@/context/AuthContext'
 import { useMachinery } from '@/context/MachineryContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
 
 function addDaysToDateString(dateStr: string, days: number): string {
-  // Do the math in UTC only. Parsing "YYYY-MM-DDT00:00:00" (no Z) reads the
-  // date in the browser's LOCAL timezone, but .toISOString() always writes
-  // it back out in UTC — so in any timezone ahead of UTC (like India,
-  // UTC+5:30) the result silently rolls back to the previous day. That was
-  // producing an end date before the start date and tripping the "start
-  // date must be before end date" booking error.
   const [year, month, day] = dateStr.split('-').map(Number)
   const d = new Date(Date.UTC(year, month - 1, day))
   d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
 }
 
-/** Turns a technical backend error into plain, everyday language for the booking form. */
 function friendlyBookingError(message: string): string {
   const m = message.toLowerCase()
   if (m.includes('past')) return "That start date has already passed. Please pick today or a later date."
@@ -37,6 +31,7 @@ export default function MachineryDetailsPage() {
   const { slug } = useParams<{ slug: string }>()
   const { user, isAuthenticated } = useAuth()
   const { refresh: refreshBookings } = useMachinery()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const [machine, setMachine] = useState<MachineryListing | null>(null)
@@ -82,9 +77,9 @@ export default function MachineryDetailsPage() {
   if (notFound || !machine) {
     return (
       <div className="mx-auto max-w-md px-6 py-16 text-center">
-        <p className="text-sm text-ink-500">We couldn't find this machine.</p>
+        <p className="text-sm text-ink-500">{t('machineryDetails.machineNotFound')}</p>
         <Link to="/machinery" className="mt-3 inline-block text-sm font-semibold text-brand-600 hover:underline">
-          Back to Machinery Rental
+          {t('machineryDetails.backToMachinery')}
         </Link>
       </div>
     )
@@ -139,16 +134,16 @@ export default function MachineryDetailsPage() {
         <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
           <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
         </span>
-        <h1 className="text-xl">Booking confirmed!</h1>
+        <h1 className="text-xl">{t('machineryDetails.bookingConfirmed')}</h1>
         <p className="mt-1 text-sm text-ink-500">
           {machine.name} — {formatINR(confirmed.total)}
         </p>
-        <p className="mt-0.5 text-xs text-ink-400">Booking #{confirmed.bookingNumber}</p>
+        <p className="mt-0.5 text-xs text-ink-400">{t('machineryDetails.bookingNumber', { number: confirmed.bookingNumber })}</p>
         <div className="mt-6 flex gap-2">
           <Button variant="secondary" onClick={() => navigate('/machinery')}>
-            Browse More
+            {t('machineryDetails.browseMore')}
           </Button>
-          <Button onClick={() => navigate('/machinery/bookings')}>View My Bookings</Button>
+          <Button onClick={() => navigate('/machinery/bookings')}>{t('machineryDetails.viewMyBookings')}</Button>
         </div>
       </div>
     )
@@ -160,7 +155,7 @@ export default function MachineryDetailsPage() {
     <div className="mx-auto max-w-lg px-4 py-5 md:px-6 md:py-8">
       <Link to="/machinery" className="mb-4 flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-        Machinery Rental
+        {t('machineryDetails.backToMachinery')}
       </Link>
 
       <div className="mb-4 flex h-48 items-center justify-center overflow-hidden rounded-2xl bg-soil-50">
@@ -185,22 +180,22 @@ export default function MachineryDetailsPage() {
         )}
         <span className="flex items-center gap-1">
           <Star className="h-4 w-4 fill-gold-400 text-gold-400" aria-hidden="true" />
-          {machine.rating.toFixed(1)} ({machine.reviewCount})
+          {machine.rating.toFixed(1)} {t('machineryDetails.reviewsCount', { count: machine.reviewCount })}
         </span>
       </div>
       <p className="mt-3 text-2xl font-bold text-ink-900">
-        {formatINR(machine.pricePerDay)} <span className="text-sm font-normal text-ink-400">/ day</span>
+        {formatINR(machine.pricePerDay)} <span className="text-sm font-normal text-ink-400">{t('machineryDetails.perDay')}</span>
       </p>
       {machine.description && <p className="mt-3 text-sm leading-relaxed text-ink-600">{machine.description}</p>}
 
       {machine.available ? (
         <form onSubmit={handleSubmit} className="mt-6 rounded-2xl border border-ink-100 bg-surface p-4">
-          <h2 className="mb-3 text-sm font-semibold text-ink-800">Rent This Machine</h2>
+          <h2 className="mb-3 text-sm font-semibold text-ink-800">{t('machineryDetails.rentThisMachine')}</h2>
           <div className="grid grid-cols-2 gap-3">
-            <TextField id="start-date" label="When do you need it?" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+            <TextField id="start-date" label={t('machineryDetails.whenNeeded')} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
             <TextField
               id="days"
-              label="How many days?"
+              label={t('machineryDetails.howManyDays')}
               type="number"
               min={1}
               value={days}
@@ -211,7 +206,7 @@ export default function MachineryDetailsPage() {
           {machine.totalUnits > 1 && (
             <TextField
               id="quantity"
-              label={`How many machines? (up to ${machine.totalUnits})`}
+              label={t('machineryDetails.howManyMachines', { count: machine.totalUnits })}
               type="number"
               min={1}
               max={machine.totalUnits}
@@ -220,16 +215,16 @@ export default function MachineryDetailsPage() {
             />
           )}
           <p className="mb-3 text-sm text-ink-500">
-            You will pay: <span className="font-bold text-ink-900">{formatINR(total)}</span>
+            {t('machineryDetails.youWillPay')} <span className="font-bold text-ink-900">{formatINR(total)}</span>
           </p>
           {error && <p className="mb-3 text-xs font-medium text-danger-500">{error}</p>}
           <Button type="submit" fullWidth loading={isBooking}>
-            {isAuthenticated ? 'Book Now' : 'Log In to Book'}
+            {isAuthenticated ? t('machineryDetails.bookNow') : t('machineryDetails.loginToBook')}
           </Button>
         </form>
       ) : (
         <p className="mt-6 rounded-2xl bg-danger-50 p-4 text-center text-sm font-medium text-danger-600">
-          This machine isn't available for rent right now.
+          {t('machineryDetails.notAvailable')}
         </p>
       )}
     </div>

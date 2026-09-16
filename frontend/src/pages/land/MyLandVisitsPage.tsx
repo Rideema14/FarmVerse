@@ -13,23 +13,25 @@ import {
 } from 'lucide-react'
 import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/utils/cn'
 import type { BackendVisitStatus } from '@/services/landService'
-
-const STATUS_CONFIG: Record<
-  BackendVisitStatus,
-  { label: string; icon: typeof Clock; className: string }
-> = {
-  PENDING: { label: 'Pending', icon: Clock, className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  ACCEPTED: { label: 'Approved', icon: CheckCircle2, className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  REJECTED: { label: 'Rejected', icon: XCircle, className: 'bg-red-50 text-red-700 border-red-200' },
-  COMPLETED: { label: 'Completed', icon: CheckCircle2, className: 'bg-blue-50 text-blue-700 border-blue-200' },
-  CANCELLED: { label: 'Cancelled', icon: AlertCircle, className: 'bg-ink-100 text-ink-600 border-ink-200' },
-}
 
 export default function MyLandVisitsPage() {
   const { visitRequests, fetchMyVisitRequests, cancelVisitRequest, isLoading, isActionLoading } = useLand()
   const { user } = useAuth()
+  const { t } = useLanguage()
+
+  const statusConfig: Record<
+    BackendVisitStatus,
+    { label: string; icon: typeof Clock; className: string }
+  > = {
+    PENDING: { label: t('landVisits.statusPending'), icon: Clock, className: 'bg-amber-50 text-amber-700 border-amber-200' },
+    ACCEPTED: { label: t('landVisits.statusApproved'), icon: CheckCircle2, className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    REJECTED: { label: t('landVisits.statusRejected'), icon: XCircle, className: 'bg-red-50 text-red-700 border-red-200' },
+    COMPLETED: { label: t('landVisits.statusCompleted'), icon: CheckCircle2, className: 'bg-blue-50 text-blue-700 border-blue-200' },
+    CANCELLED: { label: t('landVisits.statusCancelled'), icon: AlertCircle, className: 'bg-ink-100 text-ink-600 border-ink-200' },
+  }
 
   const [activeTab, setActiveTab] = useState<BackendVisitStatus | 'ALL'>('ALL')
   const [cancellingId, setCancellingId] = useState<string | null>(null)
@@ -44,7 +46,7 @@ export default function MyLandVisitsPage() {
   const filteredVisits = visitRequests.filter((v) => (activeTab === 'ALL' ? true : v.status === activeTab))
 
   const handleCancel = async (id: string) => {
-    if (!window.confirm('Cancel this visit request?')) return
+    if (!window.confirm(t('landVisits.confirmCancel'))) return
     setCancellingId(id)
     setErrorMsg(null)
     try {
@@ -60,10 +62,10 @@ export default function MyLandVisitsPage() {
     return (
       <div className="mx-auto max-w-md px-6 py-16 text-center">
         <CalendarClock className="mx-auto h-12 w-12 text-ink-300" />
-        <h2 className="mt-3 text-lg font-bold text-ink-900">Sign in to view site visits</h2>
-        <p className="mt-1 text-xs text-ink-500">Track status and seller responses for your land visits.</p>
+        <h2 className="mt-3 text-lg font-bold text-ink-900">{t('landVisits.signInPromptTitle')}</h2>
+        <p className="mt-1 text-xs text-ink-500">{t('landVisits.signInPromptDesc')}</p>
         <Link to="/login" className="mt-4 inline-block rounded-full bg-brand-600 px-5 py-2 text-xs font-semibold text-white shadow hover:bg-brand-700">
-          Sign In
+          {t('auth.login')}
         </Link>
       </div>
     )
@@ -75,17 +77,17 @@ export default function MyLandVisitsPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <Link to="/land" className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
-            <ChevronLeft className="h-4 w-4" /> Land Marketplace
+            <ChevronLeft className="h-4 w-4" /> {t('landDetails.backToLandMarketplace')}
           </Link>
-          <h1 className="text-2xl font-extrabold text-ink-900">My Requested Site Visits</h1>
-          <p className="text-xs text-ink-500">Track and manage your scheduled agricultural land site visits.</p>
+          <h1 className="text-2xl font-extrabold text-ink-900">{t('landVisits.title')}</h1>
+          <p className="text-xs text-ink-500">{t('landVisits.subtitle')}</p>
         </div>
         <button
           type="button"
           onClick={() => fetchMyVisitRequests(activeTab === 'ALL' ? undefined : activeTab)}
           className="inline-flex items-center gap-1.5 rounded-2xl border border-ink-200 bg-surface px-4 py-2 text-xs font-semibold text-ink-700 hover:bg-ink-50"
         >
-          <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} /> Refresh
+          <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} /> {t('landVisits.refresh')}
         </button>
       </div>
 
@@ -101,7 +103,7 @@ export default function MyLandVisitsPage() {
               activeTab === tab ? 'bg-surface shadow-card text-ink-900' : 'text-ink-500 hover:text-ink-900',
             )}
           >
-            {tab === 'ALL' ? 'All Requests' : STATUS_CONFIG[tab]?.label || tab}
+            {tab === 'ALL' ? t('landVisits.allRequests') : statusConfig[tab]?.label || tab}
           </button>
         ))}
       </div>
@@ -122,16 +124,16 @@ export default function MyLandVisitsPage() {
       ) : filteredVisits.length === 0 ? (
         <div className="mx-auto my-12 max-w-sm rounded-3xl border border-dashed border-ink-200 p-8 text-center">
           <CalendarClock className="mx-auto h-10 w-10 text-ink-300" />
-          <h3 className="mt-2 text-sm font-bold text-ink-900">No visit requests found</h3>
-          <p className="mt-1 text-xs text-ink-500">Schedule site visits directly on land detail pages.</p>
+          <h3 className="mt-2 text-sm font-bold text-ink-900">{t('landVisits.noVisitsFound')}</h3>
+          <p className="mt-1 text-xs text-ink-500">{t('landVisits.noVisitsHint')}</p>
           <Link to="/land" className="mt-4 inline-block rounded-full bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-brand-700">
-            Browse Land Marketplace
+            {t('landVisits.browseLand')}
           </Link>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredVisits.map((visit) => {
-            const statusCfg = STATUS_CONFIG[visit.status] || STATUS_CONFIG.PENDING
+            const statusCfg = statusConfig[visit.status] || statusConfig.PENDING
             const StatusIcon = statusCfg.icon
 
             return (
@@ -155,31 +157,31 @@ export default function MyLandVisitsPage() {
                       to={`/land/${visit.land.slug}`}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
                     >
-                      View Plot Details <ExternalLink className="h-3 w-3" />
+                      {t('landVisits.viewPlotDetails')} <ExternalLink className="h-3 w-3" />
                     </Link>
                   )}
                 </div>
 
                 <div className="mt-4 grid gap-3 rounded-2xl bg-surface-sunk p-3.5 text-xs sm:grid-cols-2">
                   <div>
-                    <span className="font-semibold text-ink-500">Visit Date & Time:</span>
+                    <span className="font-semibold text-ink-500">{t('landVisits.visitDateTime')}</span>
                     <p className="font-bold text-ink-900">{new Date(visit.visitDate).toLocaleDateString()} at {visit.visitTime}</p>
                   </div>
                   <div>
-                    <span className="font-semibold text-ink-500">Request Date:</span>
+                    <span className="font-semibold text-ink-500">{t('landVisits.requestDate')}</span>
                     <p className="text-ink-700">{new Date(visit.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
 
                 {visit.message && (
                   <p className="mt-3 text-xs text-ink-600">
-                    <span className="font-semibold text-ink-900">Your Message:</span> "{visit.message}"
+                    <span className="font-semibold text-ink-900">{t('landVisits.yourMessage')}</span> "{visit.message}"
                   </p>
                 )}
 
                 {visit.responseNote && (
                   <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3 text-xs text-emerald-900">
-                    <span className="font-bold">Seller Response Note:</span> {visit.responseNote}
+                    <span className="font-bold">{t('landVisits.sellerResponseNote')}</span> {visit.responseNote}
                   </div>
                 )}
 
@@ -191,7 +193,7 @@ export default function MyLandVisitsPage() {
                       disabled={cancellingId === visit.id || isActionLoading}
                       className="text-xs font-semibold text-danger-600 hover:underline disabled:opacity-50"
                     >
-                      {cancellingId === visit.id ? 'Cancelling…' : 'Cancel Visit Request'}
+                      {cancellingId === visit.id ? t('landDetails.cancelling') : t('landVisits.cancelVisit')}
                     </button>
                   </div>
                 )}

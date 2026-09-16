@@ -8,6 +8,8 @@ import { env } from '../../config/env';
 function fromPrismaError(err: unknown): ApiError | null {
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
+      case 'P1001':
+        return ApiError.serviceUnavailable('Database connection timed out or is waking up. Please retry in a few seconds.');
       case 'P2002': {
         const target = err.meta?.target;
         const fields = Array.isArray(target) ? target.join(', ') : 'field';
@@ -20,6 +22,12 @@ function fromPrismaError(err: unknown): ApiError | null {
       default:
         return ApiError.badRequest('Database request failed.');
     }
+  }
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    return ApiError.serviceUnavailable('Database connection is initializing or unavailable. Please retry in a few seconds.');
+  }
+  if (err instanceof Prisma.PrismaClientRustPanicError) {
+    return ApiError.internal('Database engine error occurred.');
   }
   if (err instanceof Prisma.PrismaClientValidationError) {
     return ApiError.badRequest('Invalid data sent to the database layer.');

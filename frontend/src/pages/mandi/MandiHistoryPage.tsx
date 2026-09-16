@@ -2,28 +2,30 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { SelectField } from '@/components/common/FormField'
+import { useLanguage } from '@/context/LanguageContext'
 import { mandiService } from '@/services/mandiService'
 import { formatINR } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { Loader2 } from 'lucide-react'
 
-const RANGES = [
-  { key: '7d', label: '7 Days', days: 7 },
-  { key: '30d', label: '30 Days', days: 30 },
-  { key: '3m', label: '3 Months', days: 90 },
-]
-
 export default function MandiHistoryPage() {
+  const { t } = useLanguage()
   const [searchParams] = useSearchParams()
   const initialCropId = searchParams.get('cropId') || ''
   const initialMandiId = searchParams.get('mandiId') || ''
+
+  const ranges = [
+    { key: '7d', label: t('mandiHistory.range7d'), days: 7 },
+    { key: '30d', label: t('mandiHistory.range30d'), days: 30 },
+    { key: '3m', label: t('mandiHistory.range3m'), days: 90 },
+  ]
 
   const [crops, setCrops] = useState<{ id: string; name: string }[]>([])
   const [mandis, setMandis] = useState<{ id: string; name: string }[]>([])
 
   const [cropId, setCropId] = useState(initialCropId)
   const [mandiId, setMandiId] = useState(initialMandiId)
-  const [range, setRange] = useState(RANGES[0])
+  const [range, setRange] = useState(ranges[0])
 
   const [historyData, setHistoryData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -88,16 +90,16 @@ export default function MandiHistoryPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-5 md:px-6 md:py-8">
-      <h1 className="mb-1 text-xl">Price History</h1>
-      <p className="mb-4 text-sm text-ink-500">See how a crop's price changed over time. Pick a crop and a mandi, then choose 7 Days, 30 Days, or 3 Months.</p>
+      <h1 className="mb-1 text-xl">{t('mandiHistory.title')}</h1>
+      <p className="mb-4 text-sm text-ink-500">{t('mandiHistory.subtitle')}</p>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
-        <SelectField id="crop" label="Crop" value={cropId} onChange={(e) => setCropId(e.target.value)}>
+        <SelectField id="crop" label={t('mandiHistory.crop')} value={cropId} onChange={(e) => setCropId(e.target.value)}>
           {crops.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </SelectField>
-        <SelectField id="mandi" label="Mandi" value={mandiId} onChange={(e) => setMandiId(e.target.value)}>
+        <SelectField id="mandi" label={t('mandiHistory.mandi')} value={mandiId} onChange={(e) => setMandiId(e.target.value)}>
           {mandis.map((m) => (
             <option key={m.id} value={m.id}>{m.name}</option>
           ))}
@@ -111,12 +113,12 @@ export default function MandiHistoryPage() {
             {!!earliest && (
               <p className={cn('text-xs font-semibold', change >= 0 ? 'text-brand-600' : 'text-danger-500')}>
                 {change >= 0 ? '+' : ''}
-                {change.toFixed(1)}% over {range.label.toLowerCase()}
+                {change.toFixed(1)}% {t('mandiHistory.overRange', { range: range.label.toLowerCase() })}
               </p>
             )}
           </div>
           <div className="flex gap-1 rounded-full bg-surface-sunk p-1">
-            {RANGES.map((r) => (
+            {ranges.map((r) => (
               <button
                 key={r.key}
                 type="button"
@@ -126,7 +128,7 @@ export default function MandiHistoryPage() {
                   range.key === r.key ? 'bg-brand-600 text-white' : 'text-ink-500',
                 )}
               >
-                {r.key}
+                {r.label}
               </button>
             ))}
           </div>
@@ -140,7 +142,7 @@ export default function MandiHistoryPage() {
           )}
           {data.length === 0 && !loading && (
             <div className="absolute inset-0 flex items-center justify-center text-ink-400">
-              No data for this range.
+              {t('mandiHistory.noData')}
             </div>
           )}
           <ResponsiveContainer width="100%" height="100%">
@@ -153,7 +155,7 @@ export default function MandiHistoryPage() {
               />
               <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-400)' }} width={44} domain={['dataMin - 50', 'dataMax + 50']} />
               <Tooltip
-                formatter={(value) => [formatINR(Number(Array.isArray(value) ? value[0] : (value ?? 0))), 'Price']}
+                formatter={(value) => [formatINR(Number(Array.isArray(value) ? value[0] : (value ?? 0))), t('mandiHistory.priceLabel')]}
                 contentStyle={{ borderRadius: 12, border: '1px solid var(--color-ink-100)', fontSize: 12 }}
               />
               <Line type="monotone" dataKey="price" stroke="var(--color-brand-600)" strokeWidth={2.5} dot={false} />
