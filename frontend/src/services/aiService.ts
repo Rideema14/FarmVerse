@@ -103,7 +103,13 @@ export const cropAnalysisService = {
     if (extra.cropType) form.append('cropType', extra.cropType)
     if (extra.notes) form.append('notes', extra.notes)
     if (extra.language) form.append('language', extra.language)
-    const res = await api.post<{ data: BackendCropAnalysis }>('/ai/disease-detection', form)
+    const res = await api.post<{ data: BackendCropAnalysis }>(
+      '/ai/disease-detection',
+      form,
+      {
+        timeout: 60_000,
+      },
+    )
     return { ...res.data.data.resultData, imageUrl: res.data.data.imageUrl ?? undefined }
   },
 
