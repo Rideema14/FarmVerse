@@ -1,217 +1,110 @@
-import { Router } from "express";
-import { asyncHandler } from "../../common/asyncHandler";
-import { validateBody } from "../../middleware/validateBody";
+import { Router } from 'express';
+import * as controller from './auth.controller';
+import validate from '../../common/middlewares/validate';
+import { authenticate } from '../../common/middlewares/authenticate';
+import { authLimiter } from '../../common/middlewares/rateLimiters';
 import {
-  changePasswordRateLimiter,
-  loginRateLimiter,
-  passwordResetRateLimiter,
-  registerRateLimiter,
-} from "../../middleware/rateLimiters";
-import { AuthService } from "./auth.service";
-import { createAuthMiddleware } from "./auth.middleware";
-import { AuthRepository } from "./auth.repository";
-import { AuditService } from "../audit/audit.service";
-import {
-  changePasswordSchema,
-  forgotPasswordSchema,
+  registerSchema,
+  verifyOtpSchema,
+  resendOtpSchema,
   loginSchema,
-  registerRequestSchema,
+  googleAuthSchema,
+  refreshTokenSchema,
+  forgotPasswordSchema,
   resetPasswordSchema,
-} from "./auth.schemas";
-import { createAuthController } from "./auth.controller";
+} from './auth.validation';
 
-export function createAuthRouter(authService: AuthService, repo: AuthRepository, audit: AuditService) {
-  const router = Router();
-  const controller = createAuthController(authService);
-  const { authenticate } = createAuthMiddleware(repo, audit);
+const router = Router();
 
-  /**
-   * @openapi
-   * /api/auth/register:
-   *   post:
-   *     summary: Register a new farmer account
-   *     description: Public registration always assigns role=FARMER server-side. The client cannot request a different role.
-   *     tags: [Auth]
-   *     security: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [fullName, mobile, password]
-   *             properties:
-   *               fullName: { type: string }
-   *               mobile: { type: string, example: "9876543210" }
-   *               email: { type: string }
-   *               password: { type: string, format: password }
-   *               preferredLanguage: { type: string, enum: [en, hi, mr] }
-   *     responses:
-   *       201: { description: Account created, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
-   *       400: { description: Validation error, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-   *       409: { description: Mobile or email already registered, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-   */
-  router.post(
-    "/register",
-    registerRateLimiter(),
-    validateBody(registerRequestSchema),
-    asyncHandler(controller.register),
-  );
+/**
+ * @openapi
+ * /auth/register:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Register a new account and send an email OTP for verification
+ */
+router.post('/register', authLimiter, validate({ body: registerSchema }), controller.register);
 
-  /**
-   * @openapi
-   * /api/auth/login:
-   *   post:
-   *     summary: Log in with mobile number and password
-   *     tags: [Auth]
-   *     security: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [mobile, password]
-   *             properties:
-   *               mobile: { type: string }
-   *               password: { type: string, format: password }
-   *     responses:
-   *       200: { description: Logged in, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
-   *       401: { description: Invalid credentials or blocked account, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-   */
-  router.post("/login", loginRateLimiter(), validateBody(loginSchema), asyncHandler(controller.login));
+/**
+ * @openapi
+ * /auth/verify-otp:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Verify the email OTP sent at registration and receive tokens
+ */
+router.post('/verify-otp', authLimiter, validate({ body: verifyOtpSchema }), controller.verifyOtp);
 
-  /**
-   * @openapi
-   * /api/auth/refresh:
-   *   post:
-   *     summary: Exchange the refresh session cookie for a new access token
-   *     tags: [Auth]
-   *     security: []
-   *     responses:
-   *       200: { description: Session refreshed, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
-   *       401: { description: Refresh session invalid or expired, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-   */
-  router.post("/refresh", asyncHandler(controller.refresh));
+/**
+ * @openapi
+ * /auth/resend-otp:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Resend a registration or password-reset OTP
+ */
+router.post('/resend-otp', authLimiter, validate({ body: resendOtpSchema }), controller.resendOtp);
 
-  /**
-   * @openapi
-   * /api/auth/me:
-   *   get:
-   *     summary: Get the authenticated user's profile
-   *     tags: [Auth]
-   *     responses:
-   *       200: { description: Current user, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
-   *       401: { description: Not authenticated, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-   */
-  router.get("/me", authenticate, asyncHandler(controller.me));
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Log in with email + password
+ */
+router.post('/login', authLimiter, validate({ body: loginSchema }), controller.login);
 
-  /**
-   * @openapi
-   * /api/auth/logout:
-   *   post:
-   *     summary: Log out the current session (idempotent)
-   *     tags: [Auth]
-   *     security: []
-   *     responses:
-   *       200: { description: Logged out, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
-   */
-  router.post("/logout", asyncHandler(controller.logout));
+/**
+ * @openapi
+ * /auth/google:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Log in or sign up using a Google Sign-In idToken
+ */
+router.post('/google', authLimiter, validate({ body: googleAuthSchema }), controller.googleAuth);
 
-  /**
-   * @openapi
-   * /api/auth/logout-all:
-   *   post:
-   *     summary: Revoke every active session for the authenticated user
-   *     tags: [Auth]
-   *     responses:
-   *       200: { description: All sessions revoked, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
-   *       401: { description: Not authenticated, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-   */
-  router.post("/logout-all", authenticate, asyncHandler(controller.logoutAll));
+/**
+ * @openapi
+ * /auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Exchange a refresh token for a new access + refresh token pair
+ */
+router.post('/refresh', validate({ body: refreshTokenSchema }), controller.refresh);
 
-  /**
-   * @openapi
-   * /api/auth/change-password:
-   *   post:
-   *     summary: Change the authenticated user's password
-   *     tags: [Auth]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [currentPassword, newPassword]
-   *             properties:
-   *               currentPassword: { type: string, format: password }
-   *               newPassword: { type: string, format: password }
-   *     responses:
-   *       200: { description: Password changed, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
-   *       400: { description: Validation error / wrong current password, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-   *       401: { description: Not authenticated, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-   */
-  router.post(
-    "/change-password",
-    authenticate,
-    changePasswordRateLimiter(),
-    validateBody(changePasswordSchema),
-    asyncHandler(controller.changePassword),
-  );
+/**
+ * @openapi
+ * /auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Revoke a refresh token
+ */
+router.post('/logout', controller.logout);
 
-  /**
-   * @openapi
-   * /api/auth/forgot-password:
-   *   post:
-   *     summary: Request a password reset (response is identical whether or not the account exists)
-   *     tags: [Auth]
-   *     security: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [mobile]
-   *             properties:
-   *               mobile: { type: string }
-   *     responses:
-   *       200: { description: Generic acknowledgement, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
-   */
-  router.post(
-    "/forgot-password",
-    passwordResetRateLimiter(),
-    validateBody(forgotPasswordSchema),
-    asyncHandler(controller.forgotPassword),
-  );
+/**
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Request a password-reset OTP by email
+ */
+router.post('/forgot-password', authLimiter, validate({ body: forgotPasswordSchema }), controller.forgotPassword);
 
-  /**
-   * @openapi
-   * /api/auth/reset-password:
-   *   post:
-   *     summary: Complete a password reset using a single-use token
-   *     tags: [Auth]
-   *     security: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [token, newPassword]
-   *             properties:
-   *               token: { type: string }
-   *               newPassword: { type: string, format: password }
-   *     responses:
-   *       200: { description: Password reset, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
-   *       400: { description: Invalid or expired token, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-   */
-  router.post(
-    "/reset-password",
-    passwordResetRateLimiter(),
-    validateBody(resetPasswordSchema),
-    asyncHandler(controller.resetPassword),
-  );
+/**
+ * @openapi
+ * /auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Reset password using the OTP from forgot-password
+ */
+router.post('/reset-password', authLimiter, validate({ body: resetPasswordSchema }), controller.resetPassword);
 
-  return router;
-}
+/**
+ * @openapi
+ * /auth/me:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Get the currently authenticated user
+ *     security: [{ bearerAuth: [] }]
+ */
+router.get('/me', authenticate, controller.me);
+
+export default router;

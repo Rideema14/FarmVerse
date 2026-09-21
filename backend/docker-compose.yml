@@ -1,4 +1,4 @@
-version: "3.9"
+version: '3.8'
 
 services:
   postgres:
@@ -7,38 +7,29 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: farmlink
+      POSTGRES_DB: agri_marketplace
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
-      - farmlink_pg_data:/var/lib/postgresql/data
+      - agri_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-
-  backend:
+  app:
     build: .
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/farmlink?schema=public
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/agri_marketplace?schema=public
     ports:
-      - "4000:4000"
+      - '5000:5000'
 
 volumes:
-  farmlink_pg_data:
+  agri_pgdata:

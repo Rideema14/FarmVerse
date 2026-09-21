@@ -1,325 +1,337 @@
-import { User } from "@prisma/client";
-import {
-  AuthenticationError,
-  ConflictError,
-  InvalidCredentialsError,
-  ValidationError,
-} from "../../common/errors";
-import { trackEvent } from "../../config/posthog";
-import { AuditService } from "../audit/audit.service";
-import { AuthRepository } from "./auth.repository";
-import {
-  AuthTokens,
-  AuthenticatedUserContext,
-  LoginInput,
-  PublicUserDTO,
-  RegisterInput,
-  RequestMeta,
-} from "./auth.types";
-import {
-  generateSecureToken,
-  hashPassword,
-  hashToken,
-  refreshTokenExpiryDate,
-  signAccessToken,
-  verifyPassword,
-} from "./auth.utils";
+import bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
+import type { User } from '@prisma/client';
+import prisma from '../../config/prisma';
+import ApiError from '../../common/utils/ApiError';
+import { sendMail } from '../../config/mailer';
+import { otpEmailHtml } from './otpEmail.template';
+import { signAccessToken, generateRefreshToken, hashToken, expiryDateFromNow } from '../../common/utils/jwt';
+import { generateOtp, hashOtp, otpExpiryDate } from '../../common/utils/otp';
+import { env } from '../../config/env';
+import logger from '../../common/utils/logger';
+import type { RequestMeta } from '../../common/utils/requestMeta';
 
-const BLOCKED_LOGIN_STATUSES = new Set(["SUSPENDED", "DEACTIVATED"]);
+const SALT_ROUNDS = 10;
+const MAX_OTP_ATTEMPTS = 5;
 
-function toPublicUserDTO(user: User): PublicUserDTO {
-  return {
-    id: user.publicId,
-    fullName: user.fullName,
-    mobile: user.mobile,
-    email: user.email,
-    role: user.role,
-    accountStatus: user.accountStatus,
-    preferredLanguage: user.preferredLanguage,
-    verification: {
-      phone: user.phoneVerificationStatus,
-      email: user.emailVerificationStatus,
-      identity: user.identityVerificationStatus,
+const googleClient = new OAuth2Client(env.google.clientId);
+
+export type SafeUser = Omit<User, 'passwordHash' | 'otpCodeHash' | 'otpExpiresAt' | 'otpPurpose' | 'otpAttempts'>;
+
+export function sanitizeUser(user: User): SafeUser {
+  const { passwordHash, otpCodeHash, otpExpiresAt, otpPurpose, otpAttempts, ...safe } = user;
+  return safe;
+}
+
+async function issueTokenPair(user: User, meta: RequestMeta = {}) {
+  const accessToken = signAccessToken(user);
+  const refreshToken = generateRefreshToken();
+
+  await prisma.refreshToken.create({
+    data: {
+      userId: user.id,
+      tokenHash: hashToken(refreshToken),
+      expiresAt: expiryDateFromNow(env.jwt.refreshExpiresIn),
+      userAgent: meta.userAgent,
+      ipAddress: meta.ipAddress,
     },
+  });
+
+  return { accessToken, refreshToken };
+}
+
+async function recordLogin(userId: string, meta: RequestMeta, success: boolean, reason?: string) {
+  await prisma.loginHistory.create({
+    data: { userId, ipAddress: meta.ipAddress, userAgent: meta.userAgent, success, reason },
+  });
+}
+
+/**
+ * Generates and stores a fresh OTP, then attempts to email it. The DB write
+ * happens first and always sticks — if the SMTP send afterwards fails
+ * (bad credentials, provider outage, network blip), we log it and return
+ * `false` instead of throwing. Otherwise a purely transient mail problem
+ * would blow up `register`/`resendOtp`/`forgotPassword` *after* the account
+ * (and OTP hash) were already committed, which is exactly what produced the
+ * confusing "created in the database but the frontend shows an error" bug:
+ * the user really was registered, but the request still rejected.
+ */
+async function sendOtpEmail(user: User, purpose: 'REGISTER' | 'RESET_PASSWORD'): Promise<boolean> {
+  const otp = generateOtp();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      otpCodeHash: hashOtp(otp),
+      otpExpiresAt: otpExpiryDate(),
+      otpPurpose: purpose,
+      otpAttempts: 0,
+    },
+  });
+
+  try {
+    await sendMail({
+      to: user.email,
+      subject: purpose === 'RESET_PASSWORD' ? 'Your password reset code' : 'Verify your email',
+      html: otpEmailHtml({ name: user.name, otp, purpose }),
+    });
+    return true;
+  } catch (err) {
+    logger.error(`Failed to send ${purpose} OTP email to ${user.email}`, err);
+    return false;
+  }
+}
+
+interface RegisterInput {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+}
+
+export async function register({ name, email, phone, password }: RegisterInput) {
+  const existing = await prisma.user.findUnique({ where: { email } });
+
+  if (existing && existing.isEmailVerified) {
+    throw ApiError.conflict('An account with this email already exists. Try logging in.');
+  }
+
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+  const user = existing
+    ? await prisma.user.update({
+        where: { id: existing.id },
+        data: { name, phone, passwordHash },
+      })
+    : await prisma.user.create({
+        data: { name, email, phone, passwordHash },
+      });
+
+  // The account is now safely in the database no matter what happens next —
+  // an email hiccup below must never turn into a "registration failed"
+  // error for something that already succeeded.
+  const emailSent = await sendOtpEmail(user, 'REGISTER');
+
+  return {
+    message: emailSent
+      ? 'Registration started. Check your email for a verification code.'
+      : "Account created, but we couldn't send the verification email right now. Use Resend Code on the next screen.",
+    email: user.email,
+    emailSent,
   };
 }
 
-function toAuthContext(user: User): AuthenticatedUserContext {
-  return { id: user.id, publicId: user.publicId, role: user.role };
+function checkOtp(user: User, purpose: 'REGISTER' | 'RESET_PASSWORD', otp: string): string | null {
+  if (!user.otpCodeHash || user.otpPurpose !== purpose) {
+    return 'No pending verification code for this request. Please request a new one.';
+  }
+  if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+    return 'Too many incorrect attempts. Please request a new code.';
+  }
+  if (!user.otpExpiresAt || user.otpExpiresAt < new Date()) {
+    return 'This code has expired. Please request a new one.';
+  }
+  if (hashOtp(otp) !== user.otpCodeHash) {
+    return 'Incorrect code.';
+  }
+  return null;
 }
 
-export class AuthService {
-  constructor(
-    private readonly repo: AuthRepository,
-    private readonly audit: AuditService,
-  ) {}
+export async function verifyRegistrationOtp({ email, otp }: { email: string; otp: string }, meta: RequestMeta = {}) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    throw ApiError.badRequest('No pending verification code for this request. Please request a new one.');
+  }
 
-  async register(input: RegisterInput, meta: RequestMeta): Promise<{ user: PublicUserDTO }> {
-    const existingByMobile = await this.repo.findUserByMobile(input.mobile);
-    if (existingByMobile) {
-      throw new ConflictError("This mobile number is already registered.", {
-        mobile: "This mobile number is already registered.",
+  const otpError = checkOtp(user, 'REGISTER', otp);
+  if (otpError) {
+    await prisma.user.update({ where: { id: user.id }, data: { otpAttempts: { increment: 1 } } });
+    throw ApiError.badRequest(otpError);
+  }
+
+  const verifiedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      isEmailVerified: true,
+      otpCodeHash: null,
+      otpExpiresAt: null,
+      otpPurpose: null,
+      otpAttempts: 0,
+    },
+  });
+
+  // Every user gets exactly one cart, provisioned the moment their account becomes active.
+  await prisma.cart.upsert({
+    where: { userId: verifiedUser.id },
+    update: {},
+    create: { userId: verifiedUser.id },
+  });
+
+  const tokens = await issueTokenPair(verifiedUser, meta);
+  await recordLogin(verifiedUser.id, meta, true, 'register');
+
+  return { user: sanitizeUser(verifiedUser), ...tokens };
+}
+
+export async function resendOtp({ email, purpose }: { email: string; purpose: 'REGISTER' | 'RESET_PASSWORD' }) {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  // Don't reveal whether the account exists — always return the same message.
+  const genericResponse = { message: 'If that email needs a code, we just sent one.' };
+
+  if (!user) return genericResponse;
+  if (purpose === 'REGISTER' && user.isEmailVerified) return genericResponse;
+  if (purpose === 'RESET_PASSWORD' && !user.passwordHash) return genericResponse; // Google-only account
+
+  await sendOtpEmail(user, purpose);
+  return genericResponse;
+}
+
+export async function login({ email, password }: { email: string; password: string }, meta: RequestMeta = {}) {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user || !user.passwordHash) {
+    throw ApiError.unauthorized('Invalid email or password.');
+  }
+
+  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+  if (!passwordMatches) {
+    await recordLogin(user.id, meta, false, 'bad_password');
+    throw ApiError.unauthorized('Invalid email or password.');
+  }
+
+  if (!user.isEmailVerified) {
+    throw ApiError.forbidden('Please verify your email before logging in.');
+  }
+  if (!user.isActive) {
+    throw ApiError.forbidden('This account has been deactivated.');
+  }
+
+  const tokens = await issueTokenPair(user, meta);
+  await recordLogin(user.id, meta, true, 'password');
+
+  return { user: sanitizeUser(user), ...tokens };
+}
+
+export async function googleAuth({ idToken }: { idToken: string }, meta: RequestMeta = {}) {
+  if (!env.google.clientId) {
+    throw ApiError.internal('Google sign-in is not configured on this server.');
+  }
+
+  let ticket;
+  try {
+    ticket = await googleClient.verifyIdToken({ idToken, audience: env.google.clientId });
+  } catch (err) {
+    throw ApiError.unauthorized('Invalid Google token.');
+  }
+
+  const payload = ticket.getPayload();
+  if (!payload?.email || !payload.sub) {
+    throw ApiError.unauthorized('Google token did not include an email address.');
+  }
+
+  let user = await prisma.user.findUnique({ where: { googleId: payload.sub } });
+
+  if (!user) {
+    user = await prisma.user.findUnique({ where: { email: payload.email } });
+    if (user) {
+      // Existing local account signing in with Google for the first time — link it.
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId: payload.sub,
+          googlePicture: payload.picture,
+          isEmailVerified: true,
+        },
       });
+    } else {
+      user = await prisma.user.create({
+        data: {
+          name: payload.name || payload.email.split('@')[0],
+          email: payload.email,
+          googleId: payload.sub,
+          googlePicture: payload.picture,
+          authProvider: 'GOOGLE',
+          isEmailVerified: true,
+        },
+      });
+      await prisma.cart.create({ data: { userId: user.id } });
     }
+  }
 
-    if (input.email) {
-      const existingByEmail = await this.repo.findUserByEmail(input.email);
-      if (existingByEmail) {
-        throw new ConflictError("This email is already registered.", {
-          email: "This email is already registered.",
-        });
-      }
-    }
+  if (!user.isActive) {
+    throw ApiError.forbidden('This account has been deactivated.');
+  }
 
-    const passwordHash = await hashPassword(input.password);
+  const tokens = await issueTokenPair(user, meta);
+  await recordLogin(user.id, meta, true, 'google');
 
-    // role is deliberately hard-coded here — never taken from the caller.
-    // See auth.schemas.ts (registerRequestSchema.strict()) for the first
-    // line of defense against a client-supplied role.
-    const user = await this.repo.createUser({
-      fullName: input.fullName,
-      mobile: input.mobile,
-      email: input.email,
+  return { user: sanitizeUser(user), ...tokens };
+}
+
+export async function refreshTokens({ refreshToken }: { refreshToken: string }, meta: RequestMeta = {}) {
+  const tokenHash = hashToken(refreshToken);
+  const stored = await prisma.refreshToken.findUnique({ where: { tokenHash } });
+
+  if (!stored || stored.revoked || stored.expiresAt < new Date()) {
+    throw ApiError.unauthorized('Refresh token is invalid or has expired. Please log in again.');
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: stored.userId } });
+  if (!user || !user.isActive) {
+    throw ApiError.unauthorized('Account no longer exists or has been deactivated.');
+  }
+
+  // Rotation: this refresh token can never be used again, even if replayed.
+  await prisma.refreshToken.update({ where: { id: stored.id }, data: { revoked: true } });
+
+  const tokens = await issueTokenPair(user, meta);
+  return { user: sanitizeUser(user), ...tokens };
+}
+
+export async function logout({ refreshToken }: { refreshToken?: string }) {
+  if (!refreshToken) return { message: 'Logged out.' };
+  const tokenHash = hashToken(refreshToken);
+  await prisma.refreshToken.updateMany({ where: { tokenHash }, data: { revoked: true } });
+  return { message: 'Logged out.' };
+}
+
+export async function forgotPassword({ email }: { email: string }) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  const genericResponse = { message: 'If that email is registered, a reset code has been sent.' };
+
+  if (!user || !user.passwordHash) return genericResponse; // don't leak existence / Google-only accounts
+
+  await sendOtpEmail(user, 'RESET_PASSWORD');
+  return genericResponse;
+}
+
+export async function resetPassword({ email, otp, newPassword }: { email: string; otp: string; newPassword: string }) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    throw ApiError.badRequest('No pending verification code for this request. Please request a new one.');
+  }
+
+  const otpError = checkOtp(user, 'RESET_PASSWORD', otp);
+  if (otpError) {
+    await prisma.user.update({ where: { id: user.id }, data: { otpAttempts: { increment: 1 } } });
+    throw ApiError.badRequest(otpError);
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
       passwordHash,
-      role: "FARMER",
-      preferredLanguage: input.preferredLanguage,
-    });
+      otpCodeHash: null,
+      otpExpiresAt: null,
+      otpPurpose: null,
+      otpAttempts: 0,
+    },
+  });
 
-    await this.audit.record({
-      actorUserId: user.id,
-      action: "USER_REGISTERED",
-      entityType: "User",
-      entityId: user.id,
-      metadata: { role: user.role },
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
-    });
-    trackEvent("signup_completed", user.publicId, { role: user.role });
+  // Password changed — kill every existing session on every device.
+  await prisma.refreshToken.updateMany({ where: { userId: user.id, revoked: false }, data: { revoked: true } });
 
-    return { user: toPublicUserDTO(user) };
-  }
-
-  async login(input: LoginInput, meta: RequestMeta): Promise<{ user: PublicUserDTO; tokens: AuthTokens }> {
-    const user = await this.repo.findUserByMobile(input.mobile);
-
-    if (!user) {
-      trackEvent("login_failed", "anonymous", { reason: "no_account" });
-      throw new InvalidCredentialsError();
-    }
-
-    const passwordValid = await verifyPassword(user.passwordHash, input.password);
-    if (!passwordValid) {
-      await this.audit.record({
-        actorUserId: user.id,
-        action: "USER_LOGIN_FAILED",
-        entityType: "User",
-        entityId: user.id,
-        metadata: { reason: "bad_password" },
-        ipAddress: meta.ipAddress,
-        userAgent: meta.userAgent,
-      });
-      trackEvent("login_failed", user.publicId, { reason: "bad_password" });
-      throw new InvalidCredentialsError();
-    }
-
-    if (BLOCKED_LOGIN_STATUSES.has(user.accountStatus)) {
-      await this.audit.record({
-        actorUserId: user.id,
-        action: "USER_LOGIN_FAILED",
-        entityType: "User",
-        entityId: user.id,
-        metadata: { reason: "account_status", accountStatus: user.accountStatus },
-        ipAddress: meta.ipAddress,
-        userAgent: meta.userAgent,
-      });
-      trackEvent("login_failed", user.publicId, { reason: "account_status" });
-      throw new AuthenticationError(
-        user.accountStatus === "DEACTIVATED"
-          ? "This account has been deactivated."
-          : "This account is suspended. Please contact support.",
-      );
-    }
-
-    const tokens = await this.issueSession(user, meta);
-
-    await this.repo.updateLastLogin(user.id);
-    await this.audit.record({
-      actorUserId: user.id,
-      action: "USER_LOGIN",
-      entityType: "User",
-      entityId: user.id,
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
-    });
-    trackEvent("login_success", user.publicId, { role: user.role });
-
-    return { user: toPublicUserDTO(user), tokens };
-  }
-
-  private async issueSession(user: User, meta: RequestMeta): Promise<AuthTokens> {
-    const rawRefreshToken = generateSecureToken();
-    const refreshTokenExpiresAt = refreshTokenExpiryDate();
-
-    await this.repo.createSession({
-      userId: user.id,
-      tokenHash: hashToken(rawRefreshToken),
-      expiresAt: refreshTokenExpiresAt,
-      userAgent: meta.userAgent,
-      ipAddress: meta.ipAddress,
-    });
-
-    const accessToken = signAccessToken(toAuthContext(user));
-    return { accessToken, refreshToken: rawRefreshToken, refreshTokenExpiresAt };
-  }
-
-  async refreshSession(
-    rawRefreshToken: string,
-    meta: RequestMeta,
-  ): Promise<{ user: PublicUserDTO; tokens: AuthTokens }> {
-    const tokenHash = hashToken(rawRefreshToken);
-    const session = await this.repo.findSessionByTokenHash(tokenHash);
-
-    if (!session || session.revokedAt || session.expiresAt < new Date()) {
-      throw new AuthenticationError("Your session has expired. Please log in again.");
-    }
-
-    const user = await this.repo.findUserById(session.userId);
-    if (!user || BLOCKED_LOGIN_STATUSES.has(user.accountStatus)) {
-      await this.repo.revokeSession(session.id);
-      throw new AuthenticationError("Your session is no longer valid. Please log in again.");
-    }
-
-    // Rotate: invalidate the used refresh token and issue a fresh one. This
-    // limits the blast radius if a refresh token is ever stolen.
-    await this.repo.revokeSession(session.id);
-    const tokens = await this.issueSession(user, meta);
-
-    return { user: toPublicUserDTO(user), tokens };
-  }
-
-  async logout(rawRefreshToken: string | undefined): Promise<void> {
-    if (!rawRefreshToken) return; // idempotent — nothing to revoke
-    await this.repo.revokeSessionByTokenHash(hashToken(rawRefreshToken));
-  }
-
-  async logoutAll(userId: string, meta: RequestMeta): Promise<void> {
-    await this.repo.revokeAllSessions(userId);
-    await this.audit.record({
-      actorUserId: userId,
-      action: "USER_LOGOUT_ALL",
-      entityType: "User",
-      entityId: userId,
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
-    });
-  }
-
-  async getCurrentUser(userId: string): Promise<PublicUserDTO> {
-    const user = await this.repo.findUserById(userId);
-    if (!user) {
-      throw new AuthenticationError("Your session is no longer valid. Please log in again.");
-    }
-    return toPublicUserDTO(user);
-  }
-
-  async changePassword(
-    userId: string,
-    currentPassword: string,
-    newPassword: string,
-    currentSessionTokenHash: string | undefined,
-    meta: RequestMeta,
-  ): Promise<void> {
-    const user = await this.repo.findUserById(userId);
-    if (!user) {
-      throw new AuthenticationError("Your session is no longer valid. Please log in again.");
-    }
-
-    const currentValid = await verifyPassword(user.passwordHash, currentPassword);
-    if (!currentValid) {
-      throw new ValidationError("Please correct the highlighted fields", {
-        currentPassword: "Current password is incorrect.",
-      });
-    }
-
-    const newHash = await hashPassword(newPassword);
-    await this.repo.updateUserPassword(userId, newHash);
-
-    // Keep the session the request came in on; revoke every other session.
-    const currentSession = currentSessionTokenHash
-      ? await this.repo.findSessionByTokenHash(currentSessionTokenHash)
-      : null;
-    await this.repo.revokeAllSessions(userId, currentSession?.id);
-
-    await this.audit.record({
-      actorUserId: userId,
-      action: "PASSWORD_CHANGED",
-      entityType: "User",
-      entityId: userId,
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
-    });
-  }
-
-  async requestPasswordReset(mobile: string, meta: RequestMeta): Promise<void> {
-    const user = await this.repo.findUserByMobile(mobile);
-    // Deliberately silent on a miss — the controller always returns the
-    // same generic message regardless of what happens here.
-    if (!user) return;
-
-    const rawToken = generateSecureToken();
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-
-    await this.repo.createPasswordResetToken({
-      userId: user.id,
-      tokenHash: hashToken(rawToken),
-      expiresAt,
-    });
-
-    await this.audit.record({
-      actorUserId: user.id,
-      action: "PASSWORD_RESET_REQUESTED",
-      entityType: "User",
-      entityId: user.id,
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
-    });
-    trackEvent("password_reset_started", user.publicId);
-
-    // SIH demo: delivery is mocked. In a real deployment this raw token is
-    // sent via SMS/email and never logged or returned to the client. Kept
-    // out of production; visible in development so the flow is testable
-    // end-to-end without a paid SMS/email integration, and in test so the
-    // integration suite can assert against a token it never receives over
-    // the wire.
-    if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
-      console.log(`[MockDelivery] Password reset token for ${user.mobile}: ${rawToken}`);
-    }
-  }
-
-  async resetPassword(rawToken: string, newPassword: string, meta: RequestMeta): Promise<void> {
-    const tokenHash = hashToken(rawToken);
-    const tokenRecord = await this.repo.findValidPasswordResetTokenByHash(tokenHash);
-
-    if (!tokenRecord) {
-      throw new ValidationError("Please correct the highlighted fields", {
-        token: "This reset link is invalid or has expired.",
-      });
-    }
-
-    const newHash = await hashPassword(newPassword);
-    await this.repo.updateUserPassword(tokenRecord.userId, newHash);
-    await this.repo.consumePasswordResetToken(tokenRecord.id);
-    await this.repo.revokeAllSessions(tokenRecord.userId);
-
-    await this.audit.record({
-      actorUserId: tokenRecord.userId,
-      action: "PASSWORD_RESET_COMPLETED",
-      entityType: "User",
-      entityId: tokenRecord.userId,
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
-    });
-    trackEvent("password_reset_completed", tokenRecord.userId);
-  }
+  return { message: 'Password has been reset. Please log in again.' };
 }

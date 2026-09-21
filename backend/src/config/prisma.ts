@@ -1,18 +1,10 @@
-import { PrismaClient } from "@prisma/client";
-import { isProduction } from "./env";
+// Single shared Prisma client for the whole app (connection pooling is
+// handled internally by Prisma — do not instantiate PrismaClient anywhere else).
+import { PrismaClient } from '@prisma/client';
+import { env } from './env';
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __prisma: PrismaClient | undefined;
-}
+const prisma = new PrismaClient({
+  log: env.nodeEnv === 'development' ? ['warn', 'error'] : ['error'],
+});
 
-// Avoids exhausting DB connections from hot-reload in dev (tsx watch).
-export const prisma =
-  global.__prisma ??
-  new PrismaClient({
-    log: isProduction ? ["error", "warn"] : ["warn", "error"],
-  });
-
-if (!isProduction) {
-  global.__prisma = prisma;
-}
+export default prisma;

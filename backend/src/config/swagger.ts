@@ -1,73 +1,30 @@
-import swaggerJsdoc from "swagger-jsdoc";
-import path from "path";
-import { env } from "./env";
+import swaggerJsdoc from 'swagger-jsdoc';
+import { env } from './env';
 
 const options: swaggerJsdoc.Options = {
   definition: {
-    openapi: "3.0.3",
+    openapi: '3.0.0',
     info: {
-      title: "FarmLink Intelligence API — Modules 1–8",
-      version: "1.5.0",
+      title: 'Agri Marketplace API',
+      version: '1.0.0',
       description:
-        "SIH26132 — Strengthening market linkages and price discovery for farmers.\n\n" +
-        "**Module 1**: Identity, authentication, sessions, RBAC.\n" +
-        "**Module 2**: Farmer & farm profile management, crops, and reference data.\n" +
-        "**Module 3**: FPO management, farmer aggregation, FPO analytics.\n" +
-        "**Module 4**: Crop/Lot management (drafts, publishing, cancellation).\n" +
-        "**Module 5**: Quality Grading & Produce Assessment (self-reports, AI pipelines, human verification).\n" +
-        "**Module 6**: Market Intelligence & Price Discovery (freshness, local context).\n" +
-        "**Module 7**: Buyer Management & Matching (demands, deterministic lot matching, offers, atomic reservation).\n" +
-        "**Module 8**: Sell vs Store Decision Engine (market/quality/storage context evaluation).\n\n" +
-        "**Price Forecasting**: Deterministic baseline market price forecasting (weighted moving average + damped trend). " +
-        "Never an LLM/ML model; forecasts are analytical estimates, not guarantees.\n\n" +
-        "**Module 15**: Transporter & Vehicle Network — a registry of transporter profiles, their vehicles, " +
-        "declared service areas, and a manually-set availability flag. Discovery/filtering only: no logistics " +
-        "pricing, route optimization, GPS tracking, shipment creation, or payment processing.\n\n" +
-        "**Module 16**: Logistics Quote & Optimization — logistics requests, deterministic cost/route estimates, " +
-        "transporter quotes, and quote acceptance. No GPS tracking, shipment lifecycle, or payment processing.\n\n" +
-        "**Module 17**: Shipment & GPS Tracking — turns an accepted Module 16 quote into a Shipment, an explicit " +
-        "pickup-to-delivery lifecycle, GPS/location ingestion and history, ETA and route-progress estimates. " +
-        "No transport pricing, quote optimization, payment processing, or delivery/quality reconciliation.\n\n" +
-        "Delivery & quality reconciliation and payment status tracking are not yet part of this API.",
+        'Backend API for the multi-category agricultural marketplace platform. ' +
+        'Phase 1: Auth, Catalog, Cart, Orders, Payments (Razorpay). Phase 2: Seller Management, Notifications.',
     },
-    servers: [{ url: env.BACKEND_URL, description: "Current environment" }],
+    servers: [{ url: `http://localhost:${env.port}${env.apiPrefix}` }],
     components: {
       securitySchemes: {
         bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
-          description: "Short-lived access token returned by /api/auth/login or /api/auth/refresh.",
-        },
-      },
-      schemas: {
-        SuccessResponse: {
-          type: "object",
-          properties: {
-            success: { type: "boolean", example: true },
-            data: { type: "object" },
-            message: { type: "string" },
-          },
-        },
-        ErrorResponse: {
-          type: "object",
-          properties: {
-            success: { type: "boolean", example: false },
-            error: {
-              type: "object",
-              properties: {
-                code: { type: "string", example: "VALIDATION_ERROR" },
-                message: { type: "string" },
-                fields: { type: "object" },
-              },
-            },
-          },
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
         },
       },
     },
     security: [{ bearerAuth: [] }],
   },
-  apis: [path.join(__dirname, "../modules/**/*.routes.ts"), path.join(__dirname, "../modules/**/*.routes.js")],
+  // JSDoc @openapi comments in route files are collected from here
+  apis: ['./src/modules/**/*.routes.ts'],
 };
 
-export const swaggerSpec = swaggerJsdoc(options);
+export default swaggerJsdoc(options);

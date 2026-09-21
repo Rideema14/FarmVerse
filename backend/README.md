@@ -1,395 +1,267 @@
-# FarmLink Intelligence — Backend (Modules 1, 2, 3, 4 & 5)
+# Agri Marketplace — Backend (Phase 1 + Phase 2 partial)
 
-SIH26132 — Strengthening market linkages and price discovery for farmers.
-This backend currently covers:
+Node.js/Express backend for the multi-category agricultural marketplace, written in
+**TypeScript**. Built with **PostgreSQL + Prisma**, **JWT auth** (access + rotating
+refresh tokens), **email OTP** verification, **Google Sign-In**, **Razorpay**
+payments, **Cloudinary** image storage, and **Socket.IO** for live order-status
+updates.
 
-- **Module 1** — identity, authentication, session management, and
-  role-based access control.
-- **Module 2** — Farmer & Farm Profile Management: farmer profiles, farms,
-  farmer↔crop records, selling preferences, and the location/crop/FPO
-  reference data behind them. Built entirely on top of Module 1's
-  identity — no second auth system, no duplicate user table.
-- **Module 3** — FPO Management & Farmer Aggregation: FPO registration/
-  verification/administration, farmer membership requests + approval, the
-  FPO member directory, crop-wise supply aggregation computed live from
-  Module 2's farmer/farm/crop data, aggregation targets, FPO analytics,
-  and a read-only government summary. Built entirely on top of Modules 1
-  & 2 — the `Fpo` reference stub Module 2 added is extended in place, not
-  duplicated; no second `PrismaClient`, no second RBAC system.
-- **Module 4** — Crop / Lot Management: the first real transactional
-  object, `CropLot` — a farmer/FPO-declared actual quantity of produce,
-  distinct from Module 2's `FarmerCrop` ("I grow onion") and Module 3's
-  estimated `AggregationGroup` ("our members are estimated to have N
-  QTL"). Lot creation (farmer-owned against their own farm, or FPO-owned
-  by an active FPO admin), draft editing, publish/cancel through a
-  server-enforced status state machine with append-only history, KG/QTL/
-  TONNE quantity normalization, and a farmer lot dashboard summary. Built
-  on top of Modules 1-3 — reuses Module 3's `FpoAuthorizationService` and
-  `unit-conversion.ts` unchanged; no second FPO-scoping check, no second
-  quantity-conversion table.
-- **Module 5** — Quality Grading & Produce Assessment: `QualityAssessment`
-  records how good a specific lot is and how confidently the system knows
-  that — a farmer's self-report, an AI estimate, and a human/lab
-  verification are always separate, permanent rows, never merged into one
-  "truth". AI output is never treated as certified: a farmer can never
-  verify their own self-assessment, and low-confidence AI results route to
-  human review instead of auto-verifying. Flexible per-crop metrics/
-  defects, a crop-agnostic `QualityStandard`-driven grading engine, and an
-  `QualityAIProvider` abstraction that honestly reports unavailability
-  rather than fabricating a result (no AI vendor is configured in this
-  codebase). Built on top of Modules 1-4 — reuses Module 4's
-  `LotAuthorizationService` and Module 3's `FpoAuthorizationService`
-  unchanged; no second lot-ownership check.
+## What's implemented
 
-Every future FarmLink module (market intelligence, buyers, logistics,
-warehouses…) is expected to consume the identity Module 1 issues, the
-farmer/farm/crop data Module 2 issues, the FPO/membership/aggregation data
-Module 3 issues, the actual `CropLot` data Module 4 issues, and the
-`QualityAssessment` data Module 5 issues — not duplicate any of them.
+| Module | Covers |
+|---|---|
+| **Auth** (`/auth`, `/users`) | Register + email OTP verification, login, Google OAuth sign-in/link, JWT access/refresh with rotation, forgot/reset password, profile + profile image, address book, login history |
+| **Catalog** (`/categories`, `/products`, `/wishlist`) | Category/sub-category CRUD (admin), product CRUD with images (Cloudinary) and variants, search/filter/sort/pagination, nearby-products (Haversine distance), top-deals, reviews with rating aggregation + moderation, wishlist |
+| **Cart** (`/cart`) | Add/update/remove items, live price computation, stock checks |
+| **Orders** (`/orders`) | Checkout (cart → order, race-safe stock decrement, address selection), order history, status updates with full audit history, cancellation with stock restoration, live push over Socket.IO |
+| **Payments** (`/payments`) | Razorpay order creation, client-side signature verification, server-to-server webhook (idempotent, signature-verified against the raw payload) |
+| **Sellers** (`/sellers`) | Application/verification workflow (auto-promotes to the `SELLER` role on approval), profile with payout bank details + service area, dashboard (active listings, orders to fulfill, revenue), analytics (daily sales trend, top products, order-status breakdown), and a reviews inbox (`GET /sellers/reviews` — every review left on their products: reviewer name + photo, rating, comment, which product; this is what a frontend "Feedback" button/section for sellers should call) |
+| **Notifications & Feedback** (`/notifications`) | In-app + email notifications with per-user, per-type preferences (mute specific types, toggle channels globally); feedback submission (works anonymously or logged in), admin triage/response |
+| **Mandi Price Intelligence** (`/mandi`) | Markets + crops (admin-managed), price entry (single + bulk upload), state→district→market cascading filters, price history for charting, favorite markets, price threshold alerts (wired into the notification system above) — plus an *optional* sync from data.gov.in's real Agmarknet dataset, inactive until you supply your own API key |
+| **Weather Intelligence** (`/weather`) | Current conditions + up to 16-day forecast via Open-Meteo (free, no API key needed), DB-backed cache (`WeatherCache`) to avoid re-fetching the same location on every request |
+| **Admin Console** (`/admin`) | Platform-wide analytics (user/seller counts, total orders, GMV + monthly GMV trend, order-status breakdown), user management (list/search/filter, activate/deactivate, role changes), a cross-product review moderation queue, and product oversight that (unlike the public catalog) also shows inactive listings. Category CRUD, review approval actions, and the seller-verification console already existed in Catalog/Sellers — this module adds what didn't: user management and platform-wide analytics. |
+| **Seed Store** (`/seeds`) | A fully independent sub-marketplace — own categories, catalog (with variety/sowing-season/germination-rate fields, plus variants and images), reviews, wishlist, cart, checkout, orders with status tracking, and its own Razorpay integration (own webhook endpoint too). Deliberately *not* built by reusing `Product`/`Order` — the spec calls for genuinely separate structures, and the frontend's `SeedCartContext` already assumes that independence. The "AI seed advisor" mentioned alongside this in the spec is intentionally excluded — that belongs with AI Farm Advisory (3.9), which needs its own provider decision first. |
+| **Machinery & Equipment Rental** (`/machinery`) | Genuinely different problem from the other modules: availability isn't a stored counter, it's computed per date-range from overlapping bookings (with a mandatory buffer period between rentals). Booking creation runs in a `Serializable` Postgres transaction with retry-on-conflict, so two people can't book the last unit at the same time. Also: quantity-based discount tiers, direct booking (no cart — matches the spec's "detail modal → booking action" framing), cancellation, reviews, its own Razorpay integration, and seller analytics including a booking calendar and fleet utilization rate. See "Machinery Rental — the availability model" below for the actual math. |
 
-## Stack
+Full endpoint list is in Swagger at `/api-docs` once the server is running.
 
-Express + TypeScript, Prisma + PostgreSQL, Redis (rate limiting, optional),
-Argon2id password hashing, JWT access tokens + rotating HttpOnly refresh
-cookies, Zod validation, Swagger/OpenAPI, Jest + Supertest.
+## Not yet built
 
-## Getting started
+The original spec has 13 modules; this covers everything except:
 
+- **3.6 Land Marketplace** — listings + site-visit request workflow
+- **3.9 AI Farm Advisory Suite** — crop/disease/soil/fertilizer/irrigation/weather advice, AI chat, voice, and the seed advisor referenced in 3.5
+
+Ask to continue building either of these and it'll plug into the same `src/modules/<name>/`
+pattern and the existing Prisma schema.
+
+## Machinery Rental — the availability model
+
+This is the one module where "is it in stock" genuinely depends on *when* you're asking.
+A listing's `totalUnits` (fleet size) isn't decremented anywhere — availability for a
+given date range is computed live by summing the quantity of existing bookings that
+conflict with that range, then subtracting from `totalUnits`. "Conflict" includes each
+listing's `bufferDays` (recovery time before the same units can go out again): a booking
+ending Day 5 with a 1-day buffer keeps those units unavailable through Day 6, so the
+earliest a new booking can start is Day 7. The exact overlap math is documented in
+`machineryAvailability.service.ts`.
+
+Two consequences worth knowing:
+- **Search with date filters is a two-stage query**, not a single Prisma call: ordinary
+  attributes (category, price, search) are filtered first via the normal query builder,
+  then that candidate set is filtered again by real availability via one raw SQL query
+  (Prisma's query builder can't express a correlated "sum of overlapping bookings"
+  subquery directly). Candidates are capped at 500 per search as a safety bound — a
+  catalog that regularly exceeds that needs this reworked into a single indexed query.
+- **Booking creation runs in a `Serializable` transaction**, not a plain one. A plain
+  transaction can still let two concurrent requests both see "5 available" and both
+  book 5 — Postgres's serializable isolation detects that conflict itself and aborts one
+  side with a `P2034` error, which the service catches and retries (up to 3 times) rather
+  than silently over-booking. This is Prisma's own documented pattern for exactly this
+  kind of "check an aggregate constraint, then insert" race condition.
+
+The "calendar analytics" you asked for (`GET /machinery/analytics/calendar`) returns
+booking blocks — machine, quantity, start/end date, status — shaped for a calendar or
+timeline UI component to render. It is **not** an integration with Google's actual
+Calendar API/service; nothing in the request suggested bookings should sync to
+someone's Google account, so I built the data a calendar-*style* UI needs instead. Say
+so if real Google Calendar sync (OAuth, writing events to a user's calendar) is
+actually what you meant, and I'll build that separately.
+
+## Seed Store routing — mount order matters
+
+`/seeds` (the seed catalog itself) and `/seeds/categories`, `/seeds/wishlist`, `/seeds/cart`,
+`/seeds/orders`, `/seeds/payments` are separate routers in `routes/index.ts`. The specific
+ones **must** be registered before the bare `/seeds` mount — Express matches prefixes in
+registration order, so `/seeds` alone would otherwise swallow `/seeds/categories` and try to
+route `categories` into `seed.routes.ts`'s `GET /:slug` handler as if it were a seed's slug.
+If you ever reorder these, keep the specific prefixes first.
+
+## On the two external data sources
+
+- **Weather (Open-Meteo)**: genuinely free, no API key, no signup — verified via their public docs. `OPEN_METEO_BASE_URL` in `.env` only needs to change if you're self-hosting their (also open-source) service.
+- **Mandi prices (data.gov.in)**: the real dataset ("Variety-wise Daily Market Prices of Commodity") requires *your own* free API key and the dataset's current resource ID, so it's optional — set `DATA_GOV_IN_API_KEY` and `DATA_GOV_IN_RESOURCE_ID` in `.env` and `POST /mandi/sync` pulls real records. Without either seller entering data manually via `POST /mandi/prices` / `/mandi/prices/bulk` still works with zero setup. The field mapping in `src/modules/mandi/ingestion.service.ts` (`State`/`District`/`Market`/`Commodity`/`Variety`/`Arrival_Date`/`Min_Price`/`Max_Price`/`Modal_Price`, PascalCase) has been **confirmed against a live response with a real key** — it's not a guess anymore.
+
+## "Feedback" means two different things here — on purpose, kept apart
+
+- **`/sellers/reviews`** is a seller's view of the existing product **Review** system
+  (`Product` → `Review`, the same thing `POST /products/:id/reviews` writes to). It's
+  everything a customer said about their products — rating, comment, reviewer name +
+  profile picture, which product — newest first. If your frontend shows sellers a
+  button labeled "Feedback," this is the endpoint it should call.
+- **`/notifications/feedback`** is a *separate*, already-existing model — bug reports,
+  feature requests, complaints, submitted by anyone (logged in or not) about the
+  platform itself, triaged by admins. Nothing to do with product reviews.
+
+They're named differently in the API specifically so they don't get confused with each
+other later — worth keeping that distinction in mind if you add more to either one.
+
+## Cloudinary cleanup — what's covered
+
+Every image this project stores in Cloudinary is cleaned up when it stops being
+referenced, so nothing accumulates as orphaned storage:
+- **Product images**: deleting one image, or deleting the whole product, removes the
+  matching Cloudinary asset(s).
+- **Profile pictures**: replacing one (`POST /users/me/image`) deletes the old asset;
+  `DELETE /users/me/image` removes the picture entirely (also from Cloudinary).
+- **Category images**: same as profile pictures — replacing or deleting a category's
+  image cleans up Cloudinary. (This one required a small schema change: `Category`
+  didn't originally store the image's `publicId`, so there was nothing to delete by —
+  fixed by adding `Category.imagePublicId`, same pattern already used for `User` and
+  `ProductImage`.)
+
+All of these are "best-effort" deletes (`.catch(() => {})`) — if Cloudinary is briefly
+unreachable, the database operation still succeeds rather than failing the user's
+request over a storage-cleanup step; you'd just be left with one orphaned asset to
+clean up later rather than a broken delete/update.
+
+## Tech stack & key decisions
+
+- **TypeScript**, strict mode. Every third-party surface this project touches
+  (`req.user`, `req.rawBody`, Socket.IO's custom socket fields) is properly typed via
+  declaration merging in `src/types/express.d.ts`. The `razorpay` package doesn't ship
+  reliable types, so `src/types/razorpay.d.ts` hand-declares just the slice this
+  project calls.
+- **PostgreSQL via Prisma** — chosen over MongoDB because orders/payments/inventory need
+  real transactions, and the domain (users→addresses, orders→items→payments 1:1,
+  cart→items, category→subcategory→product) is inherently relational. `Json` columns
+  (`Product.specifications`, `ProductVariant.attributes`) give you Mongo-like flexibility
+  exactly where the data genuinely varies, without losing integrity everywhere else.
+- **Prisma pinned to 5.22.x** rather than the current major (Prisma 7 shipped a large
+  ESM/config rewrite in late 2025). Deliberate, stable choice — bump it yourself when
+  you're ready, it's just a version bump in `package.json`.
+- **Socket.IO** stands in for the original spec's STOMP-over-WebSocket — same result
+  (live order-status push), more idiomatic in the Express ecosystem.
+- **Refresh token rotation**: refresh tokens are opaque random strings (not JWTs),
+  stored only as a SHA-256 hash (`RefreshToken` table), and rotated on every use — a
+  leaked DB dump can't be replayed, and reuse of an old token is detectable.
+- **Razorpay webhook**: verified against the *raw* request bytes (captured via the
+  `verify` hook on `express.json()` in `app.ts`), not a re-serialized body — a common
+  gotcha that silently breaks HMAC verification if you get it wrong.
+- **Checkout race safety**: stock is decremented inside the order transaction using a
+  guarded `UPDATE ... WHERE stock >= quantity`, not a plain decrement — two concurrent
+  checkouts for the last unit can't both succeed.
+- **Seller analytics/dashboard** use raw parameterized SQL (`prisma.$queryRaw`) rather
+  than the query builder — the numbers span three joined tables (Order/OrderItem/Product)
+  with `GROUP BY`/date-truncation the query builder can't express directly.
+
+## Setup
+
+### 1. Install dependencies
 ```bash
 npm install
-cp .env.example .env      # fill in real secrets — never commit .env
-npx prisma generate
-npx prisma migrate dev --name module_5_quality_grading
-npm run prisma:seed       # demo farmer + Maharashtra reference data + crop catalog + demo FPO (verified, with an admin + 50 fictional members)
-npm run dev
 ```
 
-The API is at `http://localhost:4000`, docs at `http://localhost:4000/api/docs`.
-
-> **Note on this build environment:** the sandbox this project was built in
-> could not reach `binaries.prisma.sh` to download Prisma's query/schema
-> engine binaries, so `prisma generate`/`migrate` could not be run here —
-> true for Module 1 originally, Modules 2-4, and Module 5 now. Everything
-> else — repository/service/controller logic, RBAC, ownership checks,
-> validation, the full Jest+Supertest suite (213 tests: 127 from Modules 1
-> & 2 + 51 from Module 3 + 20 from Module 4 + 15 from Module 5) — was
-> written and verified against in-memory fake repositories instead
-> (`tests/testUtils/`). Run the commands above once on a machine with
-> normal internet access and everything resolves normally; nothing about
-> this limitation requires touching application code.
-
-### Demo accounts (development only)
-
+### 2. Configure environment
+```bash
+cp .env.example .env
 ```
-Farmer:     mobile 9876543210, password DemoFarmer123!
-FPO admin:  mobile 9876500000, password DemoFpoAdmin123!  (of the seeded, VERIFIED demo FPO)
+Fill in real values — at minimum: `DATABASE_URL`, `JWT_ACCESS_SECRET`,
+`JWT_REFRESH_SECRET`, SMTP credentials (for OTP emails), Cloudinary credentials, and
+Razorpay test keys (`RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` from the
+[Razorpay dashboard](https://dashboard.razorpay.com/) test mode). `GOOGLE_CLIENT_ID`
+is only required if you want Google sign-in to work.
+
+### 3. Start Postgres
+Either run it yourself, or use the bundled compose file:
+```bash
+docker compose up -d postgres
 ```
 
-After seeding, the demo farmer has a complete Module 2 profile: a 4.5-acre
-farm in Nashik (Niphad taluka, drip irrigation), Onion (primary) + Soybean,
-and selling preferences set. The demo FPO ("Nashik Farmers Producer
-Organization") is already `VERIFIED`/`ACTIVE`, has the FPO admin above as
-its `PRIMARY_ADMIN`, and has 50 fictional farmer members spread across
-Onion/Soybean/Wheat so `GET /api/fpos/:fpoId/crop-aggregation` and
-`/analytics/overview` show real, non-trivial numbers immediately.
+### 4. Run migrations + seed
+```bash
+npm run prisma:migrate   # creates the schema
+npm run prisma:seed      # seeds the 7 categories + an admin login
+```
+The seed creates `admin@agrimarketplace.com` / `ChangeMe123!` — change this password
+immediately in any shared environment.
 
-## Scripts
+### 5. Run the server
+```bash
+npm run dev       # tsx watch, auto-reload, no separate build step
+npm run typecheck # tsc --noEmit, checks the whole project without producing output
+npm run build      # compiles src/ -> dist/
+npm start          # runs the compiled dist/server.js
+```
+API root: `http://localhost:5000/api/v1` · Swagger: `http://localhost:5000/api-docs`
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start with hot reload |
-| `npm run build` / `npm start` | Production build + run |
-| `npm test` | Full Jest suite (unit + integration, in-memory repos) |
-| `npm run test:unit` / `test:integration` | Just one half of the suite |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run prisma:migrate` | Create/apply a dev migration |
-| `npm run prisma:seed` | Seed demo farmer/FPO-admin + Module 2/3 reference/demo data |
+### Razorpay webhook locally
+Razorpay needs a public URL to call. Use a tunnel (e.g. `ngrok http 5000`) and
+register `https://<tunnel>/api/v1/payments/webhook` in the Razorpay dashboard, with
+the **same secret** as `RAZORPAY_WEBHOOK_SECRET` in `.env`.
 
-## Architecture
+## Project layout
 
 ```
 src/
-  config/       env validation, logger, prisma client, redis, swagger, sentry/posthog stubs
-  common/       error classes, API response envelope, asyncHandler
-  middleware/   error handler, 404, rate limiters, security headers, body/query/param validation
+  types/           Express Request/Socket.IO augmentation, hand-written Razorpay types
+  config/          env, Prisma client, Cloudinary, Razorpay, mailer, cache, Socket.IO, Swagger
+  common/
+    middlewares/   auth, role guard, validation, rate limits, error handling, uploads
+    utils/         ApiError, ApiResponse, JWT, OTP, pagination, slugify, logger
   modules/
-    auth/             Module 1 — controller → service → repository, RBAC middleware, schemas, OTP abstraction
-    audit/            audit log service (shared by all three modules)
-    users/            minimal ADMIN-only demo route (proves RBAC end-to-end)
-    farmers/          Module 2 — FarmerProfile CRUD, the profile+farms+crops aggregate, completion calculator
-    farms/            Module 2 — farm CRUD, ownership-scoped
-    crops/            Module 2 — farmer↔crop CRUD, atomic primary-crop transaction
-    reference-data/   Module 2 — states/districts/talukas/crops/fpos/languages/irrigation-types
-    fpo/              Module 3 — FPO registration/verification/admins, membership workflow,
-                       crop aggregation + unit normalization, aggregation targets, analytics,
-                       government summary (see "Module 3" below for the file breakdown)
-    lots/             Module 4 — CropLot lifecycle (create/list/get/update/publish/cancel/
-                       history), farmer- and FPO-owned lots, status state machine, quantity
-                       normalization (see "Module 4" below for the file breakdown)
-    quality/          Module 5 — QualityAssessment lifecycle (create/list/get/update/verify),
-                       flexible metrics/images/defects, AI provider abstraction (ai/), crop-
-                       agnostic grading engine (see "Module 5" below for the file breakdown)
-  app.ts        Express app factory — takes injected dependencies, never touches Prisma directly
-  server.ts     composition root — the only file that constructs the real PrismaClient
+    auth/          register/login/OTP/Google/refresh/profile/addresses
+    catalog/       categories, products, reviews, wishlist
+    cart/
+    order/
+    payment/
+    seller/        application/verification, dashboard, analytics
+    notification/  in-app + email notifications, preferences, feedback
+    mandi/         markets, crops, prices, history, favorites, alerts, optional data.gov.in sync
+    weather/       Open-Meteo integration + DB-backed cache
+    admin/         user management, platform analytics, review moderation queue, product oversight
+    seedstore/     independent seed catalog/cart/order/payment/review/wishlist (mirrors catalog+cart+order+payment)
+    machinery/     date-range availability, Serializable-transaction bookings, discount tiers, payment, seller analytics + calendar
+  routes/          mounts every module under /api/v1
+  app.ts           Express app + middleware
+  server.ts        HTTP server + Socket.IO + graceful shutdown
+prisma/
+  schema.prisma
+  seed.ts
 ```
 
-`app.ts` is dependency-injected on purpose:
-`createApp({ authRepository, auditService, prisma, referenceDataRepository,
-farmerProfileRepository, farmsRepository, farmerCropRepository,
-fpoRepository, fpoAdminRepository, fpoMembershipRepository,
-aggregationGroupRepository, cropLotRepository, qualityRepository,
-qualityStandardRepository, qualityAiProvider? })`. Tests pass in-memory
-fakes for all of these (and can override `qualityAiProvider`, which
-otherwise defaults to `UnavailableQualityAIProvider`); `server.ts` passes
-the real Prisma-backed ones for everything else. This is also why the
-test suite runs without a live database — see `tests/testUtils/`.
+Every module follows the same shape: `*.validation.ts` (Zod schemas, each exporting
+both the schema and its inferred `z.infer<>` type) → `*.routes.ts` → `*.controller.ts`
+→ `*.service.ts` (all Prisma access lives in the service layer). New modules plug into
+this without touching existing ones.
 
-### Module 2 data model
+## Business-rule placeholders to revisit
 
-```
-User (Module 1)
-  └── FarmerProfile (1:1) — fpoMembershipStatus, fpoId (self-declared, Module 2),
-      │                     liquidityPreference, willingToStore, communicationPreference
-      ├── Farm[]           — structured location (State → District → Taluka
-      │     │                FKs + free-text village), area/unit, irrigation
-      │     └── FarmerCrop[] — area, optional typical yield, isPrimary
-      └── Fpo (optional self-declared reference)
+A few numbers in `order.service.ts` are reasonable defaults, not requirements from the
+spec — adjust them to your actual policy:
+- Flat shipping fee ₹49, free above ₹999 subtotal
+- Flat 5% tax
+- No coupon/discount system yet (the `discount` column exists on `Order` for when you add one)
 
-Crop
-  ├── CropTranslation[]   — en/hi/mr display names, never duplicate Crop rows
-  └── FarmerCrop[]
+A couple more, elsewhere:
+- `WEATHER_CACHE_TTL_MINUTES=30` — how long a cached forecast is served before re-fetching. Weather doesn't change fast enough to need much lower; raise it if you want to be gentler on Open-Meteo's free tier.
+- Mandi price alerts have a 24-hour re-trigger cooldown per alert (`alert.service.ts`) so a price sitting past someone's threshold doesn't re-notify them on every single price tick.
 
-State → District → Taluka  — normalized, Maharashtra-seeded, shaped for
-                              any other state to be added without a schema change
-```
+## A note on testing this without installing anything
 
-Two deliberate departures from a literal reading of the build spec, both
-explained in comments at the point of the decision:
+`npm install` needs network access this sandbox doesn't have, so a live DB round-trip
+hasn't been run here. What *was* checked without it:
+- Every relative import path (470 of them, across the whole project) was verified to
+  resolve to a real file, and every named/default import from a local module (545 of
+  them) was cross-checked against that file's actual exports.
+- A manual, targeted re-check for the one class of Prisma typing mistake this project
+  has actually hit before (using the relation-style `XUpdateInput` where scalar FK
+  fields are being set directly, instead of `XUncheckedUpdateInput`) — none found in
+  the admin/seedstore modules.
+- Compound unique-key names used in code (e.g. `cartId_seedId_variantId`,
+  `seedId_userId`, `machineryId_minQuantity`) were checked against the exact field
+  order in each model's `@@unique([...])` declaration — Prisma derives the key name
+  from that order, so a mismatch there is a real, easy-to-make bug.
+- The `Serializable` transaction + retry-on-`P2034` pattern used for machinery booking
+  creation — the one piece of new logic in this project actually relying on subtle
+  database behavior — was checked against Prisma's own documentation rather than just
+  written from memory; it matches their officially recommended pattern for this exact
+  "check an aggregate constraint, then insert" race condition.
+- `tsc --noEmit` against a temporary `declare module '*'` stub was tried and abandoned
+  as not useful: without real `node_modules`, that stub can't provide named exports
+  for anything (Prisma's generated model types, Express's `Request`, Zod's `infer`,
+  etc.), so nearly every error it reported was "no exported member" noise, not a real
+  bug. The checks above are what actually caught something.
 
-- **No separate `FarmerPreferences` table.** Selling preferences
-  (`fpoMembershipStatus`, `liquidityPreference`, `willingToStore`,
-  `communicationPreference`) live directly on `FarmerProfile` — see the
-  comment above that model in `prisma/schema.prisma`.
-- **`profileCompletionPercentage` is not a stored column.** It's computed
-  on every read from the current farms/crops/preferences
-  (`modules/farmers/completion.ts`), so it can never drift out of sync the
-  way a stored-and-forgotten-to-recompute value could.
-
-### Module 3 data model
-
-```
-Fpo (extended in place from Module 2's minimal stub — id/name/districtId/
-     active are unchanged in meaning; a farmer's Module 2 self-declared
-     fpoId can still point here)
-  ├── FpoAdmin[]           — (userId, fpoId) -> role/status; the only source
-  │                          of truth for "can this FPO_ADMIN manage this FPO"
-  ├── FpoMembership[]      — admin-approved join workflow, separate from
-  │     │                    FarmerProfile.fpoMembershipStatus (Module 2)
-  │     └── farmer: FarmerProfile (Module 2) -> Farm[] -> FarmerCrop[]
-  └── AggregationGroup[]   — planning target only (never a sale/order/
-                             contract/lot/shipment); references Crop directly
-```
-
-Crop-wise **estimated supply** itself is not a stored table — it's
-computed live by `FpoAggregationService.computeCropAggregation()` from
-active `FpoMembership` rows -> their `FarmerCrop` rows, normalized to KG
-via `modules/fpo/unit-conversion.ts` and converted back to QTL for display.
-
-### Security model (what to point reviewers at)
-
-- **Role is never client-supplied.** Same `.strict()` Zod treatment as
-  Modules 1 & 2 on every Module 3 write schema — an unexpected field like a
-  smuggled `farmerId` on a membership request is rejected outright or
-  simply never read.
-- **`FpoAuthorizationService.canManageFpo(user, fpoId)` is the single
-  ownership check every FPO-scoped admin action goes through** — an
-  `FPO_ADMIN` role alone never implies access to a specific FPO; an active
-  `FpoAdmin` row for that exact `(userId, fpoId)` pair (or platform
-  `ADMIN`) is required. See `tests/integration/fpo.security.test.ts`'s
-  "FPO Admin A cannot manage FPO B" suite (build spec's mandatory
-  cross-FPO test).
-- **Every URL path id (`:fpoId`, `:membershipId`, `:aggregationId`) is a
-  `publicId`**, resolved to an internal id server-side before any query —
-  never the raw database primary key.
-- **State transitions are atomic and idempotent-safe.**
-  `FpoMembershipRepository.transition()` / `AggregationGroupRepository.transition()`
-  only apply a change if the row is still in one of the expected starting
-  statuses (inside a DB transaction in the Prisma implementation); a
-  double-approval or double-cancel gets a clear 409, never a corrupted or
-  silently-reapplied state.
-- **Crop-aggregation never invents a number.** Missing `typicalYield` or an
-  unrecognized `yieldUnit` string excludes that farmer's row from the sum
-  (never treated as zero); the response's `estimateCoverage` field always
-  says how many of the counted farmers actually contributed a number.
-- **Aggregation reads Module 2 data in O(1) queries, not per-farmer.**
-  `computeCropAggregation` does one query for active member ids and one
-  batched query (`WHERE farmerProfileId IN (...)`) for all of their crop
-  rows, then groups in memory — see the doc comment on that method.
-- **Government access is read-only.** Every `/api/government/*` route is a
-  `GET`; `GOVERNMENT_VIEWER` cannot reach any mutating Module 3 endpoint
-  (enforced the same way as every other role — `requireRole`/
-  `requireAnyRole` — not a separate check).
-- **Backend is authoritative** (unchanged from Modules 1 & 2):
-  `authenticate()` re-verifies the JWT and re-checks account status on
-  every request; FPO/crop ids are always verified server-side.
-
-See `tests/integration/fpo.security.test.ts` for Module 3's full security
-suite (cross-FPO IDOR, farmer-identity spoofing, government read-only,
-role spoofing) — mirroring `rbac.security.test.ts` and the Module 2
-ownership-isolation tests it sits alongside.
-
-### Module 4 data model
-
-```
-CropLot
-  ├── farmer: FarmerProfile (Module 2, optional — set only when ownerType = FARMER)
-  ├── farm:   Farm (Module 2, optional — set only when ownerType = FARMER;
-  │           origin village/taluka/district/state snapshotted from it at
-  │           creation, never re-derived later)
-  ├── fpo:    Fpo (Module 3, optional — set only when ownerType = FPO; origin
-  │           snapshotted from the FPO's own registered location instead)
-  ├── crop:   Crop (Module 2, required)
-  └── statusHistory: LotStatusHistory[]  — append-only, kept alongside
-                                            CropLot.status, not instead of it
-```
-
-Exactly one of `farmer`/`farm` or `fpo` is set, matching `ownerType`
-(`FARMER`/`FPO`); `sourceType` (`FARMER_CREATED`/`FPO_AGGREGATED`) is
-tracked separately for future traceability. Quantities
-(`quantityKg`/`availableQuantityKg`) are Prisma `Decimal`, not `Float` —
-the one deliberate numeric-convention departure from Module 2/3, since a
-lot is the record future Sell/Store, Warehouse and Payment modules will do
-arithmetic against; `modules/fpo/unit-conversion.ts` is still reused
-as-is for KG/QTL/TONNE conversion above the repository boundary, which
-exposes plain `number`.
-
-### Module 4 security model
-
-- **Farm/FPO ownership is never trusted from the request.** `farmId` is
-  checked against the authenticated farmer's own `FarmerProfile` — a farm
-  that doesn't exist at all is a 404, one that exists but belongs to
-  someone else is a 403 (mirrors `CropsService`'s own farm-reference
-  check in Module 2, not `FarmsService.getOwnedOrThrow`'s uniform
-  not-found — see `lots.service.ts`'s comment on that distinction).
-  FPO-lot creation/management reuses
-  `FpoAuthorizationService.canManageFpo` unchanged (via
-  `LotAuthorizationService`), so it's exactly Module 3's own "an
-  `FPO_ADMIN` role alone never implies access to a specific FPO" rule.
-- **A lot's existence itself is not public.** Every `GET`/`PATCH`/`DELETE`/
-  `/publish`/`/cancel`/`/history` route on `/api/lots/:id` resolves
-  ownership through the same `loadOwnedLotOrThrow` — an unauthorized
-  caller (including a different farmer, or an FPO admin outside their own
-  FPO) gets the same 404 a nonexistent `publicId` would, never a 403 that
-  would confirm the lot exists.
-- **State transitions are atomic, mirroring Module 3.**
-  `CropLotRepository.transition()` is a guarded conditional `UPDATE`
-  (only applies if the row is still in one of the expected starting
-  statuses) exactly like `AggregationGroupRepository.transition()` — a
-  double-publish or double-cancel gets a clear 409, never a corrupted or
-  silently-reapplied state. `CropLotRepository.adjustAvailableQuantity`
-  follows the same pattern for the (not yet route-reachable)
-  reserve/release/consume foundation, so `availableQuantityKg` can never
-  go negative even under concurrent calls.
-- **Only explicit action endpoints change status** (`/publish`,
-  `/cancel`) — there is no generic `PATCH .../status`, so a client can
-  never smuggle an arbitrary status value the way an unrestricted PATCH
-  body would allow.
-
-## What's intentionally not in Module 3
-
-Per the build spec: no crop lots, quality grading, market intelligence,
-price forecasting, sell-vs-store decisioning, warehouse management, buyer
-matching, offers/RFQ, transport/shipment, payments, or grievances.
-`AggregationGroup` is a planning object only, never a commitment — Module
-3 exposes a forward-compatible service seam
-(`FpoAggregationService.getFpoCropAvailability(fpoId, cropId)`) for the
-future Buyer Matching module to consume rather than inventing a fake
-`lotId` today. See "What's next" in the top-level README for exactly which
-future module consumes which Module 3 piece.
-
-## What's intentionally not in Module 4
-
-Per the build spec: no market intelligence, price forecasting,
-sell-vs-store decisioning, warehouse management, buyer matching/discovery,
-offers/RFQ, transport/shipment, payments, or grievances (quality grading
-was out of scope for Module 4 specifically — see Module 5 above, which now
-covers it). Reservation against a lot (`reserve`/`release`/`consume` on
-`LotQuantityService`) is built but deliberately not wired to any route —
-nothing in Module 4 calls it; it exists so the future Offers/RFQ or
-Warehouse module has a settled, already-safe-under-concurrency shape to
-call into rather than inventing its own quantity-mutation path. Lot
-splitting and merging (build spec sections 57-58) are explicitly out of
-scope — `CropLot`'s id/publicId/`LotStatusHistory` shape is meant to make
-a future `splitLot()`/`mergeLots()` addable without corrupting history,
-but neither is implemented here.
-
-### Module 5 data model
-
-```
-QualityAssessment
-  ├── lot: CropLot (Module 4, required)
-  ├── metrics: QualityMetric[]     — flexible metricCode/value rows
-  ├── images: QualityImage[]       — metadata only, see "Images" below
-  ├── defects: QualityDefect[]     — AI-detected only in this build
-  ├── aiAnalyses: QualityAIAnalysis[]  — one row per attempt, incl. retries
-  └── supersededBy: QualityAssessment?  — self-relation, set once replaced
-
-QualityStandard
-  └── crop: Crop (Module 2, required) — (grade, metricCode) -> allowed range
-```
-
-Two columns track two different things on purpose (see the root README's
-design notes for the one-paragraph version): `status`
-(`DRAFT`/`PENDING_IMAGES`/`PROCESSING`/`AI_COMPLETED`/`PENDING_REVIEW`/
-`VERIFIED`/`REJECTED`/`SUPERSEDED`/`FAILED`) is workflow position;
-`verificationStatus` (`SELF_REPORTED`/`AI_ESTIMATED`/`VERIFIED`/
-`LAB_VERIFIED`) is trust level. `qualityScore` (0-100, produce condition)
-and `confidenceScore` (0-1, AI certainty) are likewise never conflated —
-both are Prisma `Decimal`, matching `CropLot`'s quantity fields.
-
-### Module 5 security model
-
-- **Verification is never the same check as access.**
-  `QualityAuthorizationService.canAccessLot` reuses Module 4's
-  `LotAuthorizationService.canViewLot` as-is (create a self-assessment,
-  upload images, view — anyone who can already touch the lot). `canVerify`
-  is stricter and never true for the lot's own farmer (build spec section
-  55) — an FPO-owned lot's own admin, or `ADMIN`, may verify; a plain
-  farmer-owned lot can only be verified by `ADMIN` today (no inspector
-  role exists yet — see "Deferred: QUALITY_INSPECTOR" below). Because of
-  this split, `POST /verify` on a visible-but-not-verifiable assessment is
-  a 403 (you can see this, you just can't do that), while every other
-  quality-assessment endpoint follows Module 4's "a lot's existence isn't
-  public" 404 pattern.
-- **Deferred: `QUALITY_INSPECTOR`.** The build spec explicitly permits
-  this ("do not force a breaking role migration without evaluating
-  architecture") — `UserRole` in `schema.prisma` is unchanged. Adding the
-  role later only touches `QualityAuthorizationService.canVerify`.
-- **AI cost/abuse protection is enforced, not just documented:**
-  `findProcessingAIAnalysis` makes a concurrent second `/analyze` call a
-  409, `countAIAnalysisAttempts` caps retries at 5 total, and an
-  already-`AI_COMPLETED` assessment returns its existing result instead of
-  triggering another provider call — see `quality.service.ts`'s
-  `assertCanStartAnalysis`/`analyzeAssessment`.
-- **Never a fabricated AI result.** `UnavailableQualityAIProvider`
-  (`quality/ai/quality-ai.provider.ts`) always throws a typed
-  `QualityAiProviderError`, which `runAiAnalysis` turns into a real
-  `FAILED` `QualityAIAnalysis` row — there is no code path that invents a
-  grade or confidence score when no real provider is configured.
-
-## What's intentionally not in Module 5
-
-Per the build spec: no market intelligence, price forecasting,
-sell-vs-store decisioning, warehouse management, buyer matching/discovery,
-offers/RFQ, transport/shipment, payments, or grievances — `Quality*`
-tables exist purely to be read by those future modules (build spec
-section 70), never to implement any of them here. No real AI vendor
-integration, no real file-storage integration, and no BullMQ/queue-based
-async processing — see the root README's Module 5 write-up ("AI pipeline,
-honestly" and "Images, without inventing infrastructure") for why each of
-those three is a deliberate, documented scope decision rather than an
-oversight, and what the drop-in replacement point is for each
-(`QualityAIProvider`, `storageProvider`/`externalId` on `QualityImage`,
-and the fact that `analyze()` already returns a `Promise` so a queue
-worker could call it exactly as the HTTP layer does today).
-
+Run `npm install && npm run typecheck && npm run prisma:migrate` locally before trusting
+this against real traffic.

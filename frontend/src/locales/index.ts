@@ -20,13 +20,35 @@ const loaders: Record<string, () => Promise<{ default: TranslationShape }>> = {
 /** Fetches and caches a language's translation file the first time it's
  *  needed (language switch or a stored preference on load). Resolves
  *  immediately from cache on subsequent calls. */
-export async function loadTranslation(code: string): Promise<TranslationShape | null> {
-  if (translations[code]) return translations[code]!
+const pendingLoads: Partial<Record<string, Promise<TranslationShape | null>>> = {}
+
+export function loadTranslation(code: string): Promise<TranslationShape | null> {
+  if (translations[code]) return Promise.resolve(translations[code]!)
+  if (pendingLoads[code]) return pendingLoads[code]!
   const loader = loaders[code]
-  if (!loader) return null
-  const mod = await loader()
-  translations[code] = mod.default
-  return mod.default
+  if (!loader) return Promise.resolve(null)
+
+  const pending = loader()
+    .then((mod) => {
+      translations[code] = mod.default
+      return mod.default
+    })
+    .catch(() => null)
+    .finally(() => {
+      delete pendingLoads[code]
+    })
+
+  pendingLoads[code] = pending
+  return pending
+}
+
+// Start downloading translation chunks in the background without blocking the
+// initial page. This makes the actual switch effectively instant after the
+// language menu has been opened/hovered once.
+export function preloadTranslations(codes: string[] = supportedLanguages.map((l) => l.code)): void {
+  for (const code of codes) {
+    if (code !== DEFAULT_LANGUAGE) void loadTranslation(code)
+  }
 }
 
 export interface LanguageOption {

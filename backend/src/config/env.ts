@@ -1,175 +1,204 @@
-import "dotenv/config";
-import { z } from "zod";
+// Validates that all required environment variables are present before the
+// app starts. Fail fast and loud rather than crashing later mid-request.
+import dotenv from 'dotenv';
 
-// Feature flags that gate outbound network calls must parse "false" as false.
-// (z.coerce.boolean() would turn the string "false" into `true`.)
-const strictBoolean = z
-  .enum(["true", "false", "1", "0"])
-  .default("false")
-  .transform((v) => v === "true" || v === "1");
+dotenv.config();
 
-const envObjectSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().default(4000),
+const REQUIRED_VARS = [
+  'DATABASE_URL',
+  'JWT_ACCESS_SECRET',
+  'JWT_REFRESH_SECRET',
+  'EMAILJS_SERVICE_ID',
+  'EMAILJS_TEMPLATE_ID',
+  'EMAILJS_PUBLIC_KEY',
+  'EMAILJS_PRIVATE_KEY',
+  'MAIL_FROM_NAME',
+  'MAIL_FROM_EMAIL',
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET',
+  'RAZORPAY_KEY_ID',
+  'RAZORPAY_KEY_SECRET',
+  'GEMINI_API_KEY',
+] as const;
 
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+export function validateEnv(): void {
+  const missing = REQUIRED_VARS.filter((key) => !process.env[key] || process.env[key]?.trim() === '');
 
-  JWT_ACCESS_SECRET: z.string().min(16, "JWT_ACCESS_SECRET must be a long random string"),
-  JWT_REFRESH_SECRET: z.string().min(16, "JWT_REFRESH_SECRET must be a long random string"),
-  SESSION_SECRET: z.string().min(16, "SESSION_SECRET must be a long random string"),
-
-  JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
-  JWT_REFRESH_EXPIRES_IN_DAYS: z.coerce.number().default(30),
-
-  FRONTEND_URL: z.string().default("http://localhost:3000"),
-  BACKEND_URL: z.string().default("http://localhost:4000"),
-
-  REDIS_URL: z.string().optional(),
-
-  POSTHOG_API_KEY: z.string().optional().default(""),
-  POSTHOG_HOST: z.string().optional().default("https://app.posthog.com"),
-
-  SENTRY_DSN: z.string().optional().default(""),
-
-  COOKIE_DOMAIN: z.string().optional().default("localhost"),
-  MARKET_SYNC_ENABLED: z.coerce.boolean().default(false),
-  MARKET_DATA_GOV_API_KEY: z.string().optional().default(""),
-  MARKET_DATA_GOV_RESOURCE_ID: z.string().optional().default(""),
-  MARKET_DATA_GOV_BASE_URL: z.string().url().default("https://api.data.gov.in/resource"),
-  MARKET_DATA_GOV_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
-  MARKET_DATA_GOV_PAGE_SIZE: z.coerce.number().int().min(1).max(1_000).default(500),
-  MARKET_DATA_GOV_MAX_RETRIES: z.coerce.number().int().min(0).max(10).default(3),
-  MARKET_DATA_GOV_RATE_LIMIT_MS: z.coerce.number().int().min(0).max(60_000).default(250),
-
-  // Warehouse Ecosystem Ingestion Layer — government/private-partner
-  // warehouse data sources. Both default to disabled/unconfigured: no
-  // fake endpoint is ever assumed (see
-  // UnavailableGovernmentWarehouseProvider / UnavailablePartnerWarehouseProvider).
-  // A real provider implementation, when one exists, reads its own
-  // endpoint/credential variables the same way DataGovMarketProvider reads
-  // MARKET_DATA_GOV_* above — none are declared here speculatively.
-  WAREHOUSE_GOVERNMENT_PROVIDER_ENABLED: z.coerce.boolean().default(false),
-  WAREHOUSE_GOVERNMENT_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
-  WAREHOUSE_GOVERNMENT_PROVIDER_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),
-
-  WAREHOUSE_PARTNER_PROVIDER_ENABLED: z.coerce.boolean().default(false),
-  WAREHOUSE_PARTNER_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
-  WAREHOUSE_PARTNER_PROVIDER_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),
-
-  // Batch size for warehouse-sync.service.ts's per-provider persistence
-  // loop — mirrors MARKET_DATA_GOV_PAGE_SIZE's role of keeping a single
-  // sync run from opening one unbounded transaction.
-  WAREHOUSE_SYNC_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(100),
-
-  // Module 16 — Logistics Quote & Optimization. Every rate/weight below is
-  // a starting default for development/test only (Step 4/9: "DO NOT
-  // invent real-world Indian transport prices as permanent business
-  // truth" / "these are starting defaults only") — an operator is
-  // expected to tune them per deployment without a code change.
-  LOGISTICS_ROAD_DISTANCE_MULTIPLIER: z.coerce.number().positive().default(1.25),
-  LOGISTICS_AVERAGE_SPEED_KMPH: z.coerce.number().positive().default(35),
-
-  LOGISTICS_BASE_COST_INR: z.coerce.number().min(0).default(500),
-  LOGISTICS_RATE_PER_KM_INR: z.coerce.number().min(0).default(18),
-  LOGISTICS_MINIMUM_TRIP_COST_INR: z.coerce.number().min(0).default(800),
-  LOGISTICS_LOADING_COST_INR: z.coerce.number().min(0).default(200),
-  LOGISTICS_UNLOADING_COST_INR: z.coerce.number().min(0).default(200),
-  LOGISTICS_TOLL_ESTIMATE_PER_KM_INR: z.coerce.number().min(0).default(1.5),
-  LOGISTICS_REFRIGERATION_SURCHARGE_PERCENT: z.coerce.number().min(0).max(100).default(15),
-
-  // Optimization weights (Step 9) — must sum to 1 at the point of use;
-  // LogisticsOptimizationEngine normalizes rather than trusting the sum
-  // blindly (an operator could still misconfigure these).
-  LOGISTICS_WEIGHT_PRICE: z.coerce.number().min(0).max(1).default(0.4),
-  LOGISTICS_WEIGHT_DISTANCE: z.coerce.number().min(0).max(1).default(0.1),
-  LOGISTICS_WEIGHT_TIME: z.coerce.number().min(0).max(1).default(0.2),
-  LOGISTICS_WEIGHT_CAPACITY: z.coerce.number().min(0).max(1).default(0.15),
-  LOGISTICS_WEIGHT_RELIABILITY: z.coerce.number().min(0).max(1).default(0.15),
-
-  LOGISTICS_DEFAULT_QUOTE_VALIDITY_HOURS: z.coerce.number().int().positive().default(72),
-  LOGISTICS_ROUTE_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).default(3600),
-  LOGISTICS_COST_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).default(3600),
-
-  // Module 17 — Shipment & GPS Tracking
-  GPS_LOCATION_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).default(120),
-  GPS_FUTURE_TIMESTAMP_TOLERANCE_SECONDS: z.coerce.number().int().min(0).default(120),
-  SHIPMENT_LOCATION_MAX_BATCH_SIZE: z.coerce.number().int().positive().max(500).default(100),
-
-  // Module 18 — Delivery & Quality Reconciliation
-  DELIVERY_QUANTITY_TOLERANCE_PERCENT: z.coerce.number().min(0).max(100).default(2),
-
-  // WhatsApp Farmer Assistant (Meta WhatsApp Business Cloud API). Disabled by
-  // default: with WHATSAPP_ENABLED=false no credentials are required, the
-  // webhook answers 503, and no external WhatsApp/AI call is ever made.
-  WHATSAPP_ENABLED: strictBoolean,
-  WHATSAPP_PROVIDER: z.enum(["meta"]).default("meta"),
-  WHATSAPP_API_BASE_URL: z.string().url().default("https://graph.facebook.com"),
-  WHATSAPP_API_VERSION: z.string().regex(/^v\d+\.\d+$/, "e.g. v21.0").default("v21.0"),
-  WHATSAPP_ACCESS_TOKEN: z.string().optional().default(""),
-  WHATSAPP_PHONE_NUMBER_ID: z.string().optional().default(""),
-  WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().optional().default(""),
-  WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().optional().default(""),
-  // The Meta *App Secret* — used only to verify the X-Hub-Signature-256 header
-  // on incoming webhooks. Distinct from the access token.
-  WHATSAPP_APP_SECRET: z.string().optional().default(""),
-  WHATSAPP_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
-  WHATSAPP_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),
-  WHATSAPP_CONVERSATION_TTL_MINUTES: z.coerce.number().int().min(1).max(1_440).default(30),
-  // Webhook events older than this are acknowledged but not answered.
-  WHATSAPP_MAX_MESSAGE_AGE_SECONDS: z.coerce.number().int().positive().default(21_600),
-  WHATSAPP_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(20),
-  WHATSAPP_AI_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(0).default(30),
-  WHATSAPP_MATCHING_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(0).default(20),
-  // Optional natural-language layer. "none" = deterministic rules only.
-  WHATSAPP_AI_PROVIDER: z.enum(["none", "gemini"]).default("none"),
-  GEMINI_API_KEY: z.string().optional().default(""),
-  GEMINI_MODEL: z.string().default("gemini-2.0-flash"),
-  GEMINI_API_BASE_URL: z.string().url().default("https://generativelanguage.googleapis.com"),
-  WHATSAPP_AI_TIMEOUT_MS: z.coerce.number().int().positive().default(6_000),
-  // DEV/DEMO ONLY. When true (and NODE_ENV !== "production") a WhatsApp number
-  // that equals a FARMER's registered mobile is auto-linked without the
-  // website-issued code. Ignored in production, because User.mobile is not
-  // OTP-verified and phone equality alone is not proof of identity.
-  WHATSAPP_DEV_AUTO_LINK_BY_MOBILE: strictBoolean,
-});
-
-const envSchema = envObjectSchema.superRefine((value, ctx) => {
-  if (value.WHATSAPP_ENABLED) {
-    const required = [
-      "WHATSAPP_ACCESS_TOKEN",
-      "WHATSAPP_PHONE_NUMBER_ID",
-      "WHATSAPP_WEBHOOK_VERIFY_TOKEN",
-      "WHATSAPP_APP_SECRET",
-    ] as const;
-    for (const key of required) {
-      if (!value[key]) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [key],
-          message: `${key} is required when WHATSAPP_ENABLED=true`,
-        });
-      }
+  if (missing.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `\n[ENV] Missing required environment variables:\n  - ${missing.join('\n  - ')}\n\n` +
+        'Copy .env.example to .env and fill these in before starting the server.\n'
+    );
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
     }
   }
-  if (value.WHATSAPP_ENABLED && value.WHATSAPP_AI_PROVIDER === "gemini" && !value.GEMINI_API_KEY) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["GEMINI_API_KEY"],
-      message: "GEMINI_API_KEY is required when WHATSAPP_AI_PROVIDER=gemini",
-    });
+
+  if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
+    // eslint-disable-next-line no-console
+    console.warn('[ENV] RAZORPAY_WEBHOOK_SECRET is not set — the payment webhook endpoint will reject all events.');
   }
-});
 
-const parsed = envSchema.safeParse(process.env);
-
-if (!parsed.success) {
-  // Intentionally do not log process.env itself — only the validation issues.
-  // eslint-disable-next-line no-console
-  console.error("Invalid environment configuration:", parsed.error.flatten().fieldErrors);
-  throw new Error("Invalid environment configuration. Check .env against .env.example.");
+  if (!process.env.GROQ_API_KEY) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[ENV] GROQ_API_KEY is not set — text chat/advisory and voice transcription will run on Gemini only ' +
+        '(noticeably slower than Groq for these). See .env.example; this is optional, not required.'
+    );
+  }
 }
 
-export const env = parsed.data;
+export const env = {
+  nodeEnv: process.env.NODE_ENV || 'development',
+  port: parseInt(process.env.PORT || '5000', 10),
+  apiPrefix: process.env.API_PREFIX || '/api/v1',
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
 
-export const isProduction = env.NODE_ENV === "production";
-export const isTest = env.NODE_ENV === "test";
+  databaseUrl: process.env.DATABASE_URL as string,
+
+  jwt: {
+    accessSecret: process.env.JWT_ACCESS_SECRET as string,
+    refreshSecret: process.env.JWT_REFRESH_SECRET as string,
+    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
+  },
+
+    emailjs: {
+    serviceId: process.env.EMAILJS_SERVICE_ID as string,
+    templateId: process.env.EMAILJS_TEMPLATE_ID as string,
+    publicKey: process.env.EMAILJS_PUBLIC_KEY as string,
+    // Optional but strongly recommended — see the warning below. Required
+    // for server-side (non-browser) sends unless that account setting is
+    // relaxed.
+    privateKey: process.env.EMAILJS_PRIVATE_KEY,
+    fromName: process.env.MAIL_FROM_NAME || 'Agri Marketplace',
+    fromEmail: process.env.MAIL_FROM_EMAIL || 'no-reply@agrimarketplace.com',
+  },
+
+  otp: {
+    length: parseInt(process.env.OTP_LENGTH || '6', 10),
+    expiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10),
+  },
+
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+  },
+
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME as string,
+    apiKey: process.env.CLOUDINARY_API_KEY as string,
+    apiSecret: process.env.CLOUDINARY_API_SECRET as string,
+  },
+
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID as string,
+    keySecret: process.env.RAZORPAY_KEY_SECRET as string,
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+  },
+
+  // Platform/checkout pricing — previously hardcoded as constants inside
+  // order.service.ts, machineryBooking.service.ts and seedOrder.service.ts.
+  // Centralized here so the fee can be changed via .env without a code
+  // change/redeploy, and so all three modules stay in sync.
+  pricing: {
+    // Flat fee (in rupees) added to an order when the subtotal is below
+    // freeShippingThreshold.
+    platformFee: parseFloat(process.env.PLATFORM_FEE || '49'),
+    // Subtotal (in rupees) at/above which platformFee is waived (0).
+    freeShippingThreshold: parseFloat(process.env.FREE_SHIPPING_THRESHOLD || '999'),
+    // Flat tax rate applied to the subtotal, e.g. 0.05 = 5%.
+    taxRate: parseFloat(process.env.TAX_RATE || '0.05'),
+  },
+
+  rateLimit: {
+    authWindowMin: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MIN || '15', 10),
+    authMax: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '2000', 10),
+  },
+
+  weather: {
+    baseUrl: process.env.OPEN_METEO_BASE_URL || 'https://api.open-meteo.com/v1/forecast',
+    cacheTtlMinutes: parseInt(process.env.WEATHER_CACHE_TTL_MINUTES || '30', 10),
+  },
+
+  dataGovIn: {
+    apiKey: process.env.DATA_GOV_IN_API_KEY,
+    resourceId: process.env.DATA_GOV_IN_RESOURCE_ID,
+    baseUrl: process.env.DATA_GOV_IN_BASE_URL || 'https://api.data.gov.in/resource',
+  },
+
+  // NOTE: there is no third-party shipment-tracking provider integration
+  // anymore (17TRACK has been fully removed). Shipment tracking is now
+  // seller-submitted (courier + AWB — see order/courier.config.ts) and
+  // manually verified by admins via the official courier tracking link;
+  // there is no API key, webhook, or cron config left to set for it.
+
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY as string,
+    // Runs on Google's Gemini API instead of a paid provider — Google AI
+    // Studio (https://aistudio.google.com/apikey) issues a free key with no
+    // card required, and its free tier covers text, vision, audio input, and
+    // TTS all through this one key. It IS rate-limited (roughly single-digit
+    // to low-double-digit requests/minute, capped per day) and Google may use
+    // free-tier prompts/outputs to improve its models, so this is meant to
+    // get the project running at zero cost, not to be a production SLA.
+    // Defaults below are confirmed-current as of mid-2026 (checked live
+    // rather than assumed, since Google revises the free-tier model list
+    // every few months and Pro-tier models moved to paid-only in April
+    // 2026). Each is independently overridable so you can move to a newer
+    // model ID later without a code change — check
+    // https://ai.google.dev/gemini-api/docs/models for what's current and
+    // still free. gemini-2.5-flash is the safe, vision-capable, free-tier
+    // floor for both chat and disease-detection image analysis; swap
+    // GEMINI_MODEL to gemini-2.5-flash-lite if you hit rate limits, since
+    // Flash-Lite trades a little quality for a noticeably higher daily quota.
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    // Reuses a plain multimodal model rather than a dedicated ASR one —
+    // Gemini has no separate transcription endpoint; audio is transcribed by
+    // passing it as multimodal input to generateContent with an instruction
+    // prompt (see aiProvider.service.ts). Flash is accurate enough for this
+    // and stays on the free tier.
+    transcribeModel: process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-2.5-flash',
+    // Gemini's TTS models are a separate "-tts" family (text-only in, audio-
+    // only out) and are still Preview as of mid-2026, but Preview here just
+    // means the model ID may change — the free tier applies to them too.
+    ttsModel: process.env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts',
+    // One of Gemini TTS's ~30 prebuilt voice names (see the TTS docs for the
+    // full list) — Kore is a clear, neutral default; override freely.
+    ttsVoice: process.env.GEMINI_TTS_VOICE || 'Kore',
+  },
+
+  groq: {
+    // Entirely optional — deliberately NOT in REQUIRED_VARS above, so the
+    // app runs fine on Gemini alone with this blank. When present,
+    // aiProvider.service.ts routes text chat/advisory and voice
+    // transcription through Groq instead (see that file for exactly which
+    // calls move and why), because Groq's LPU inference is dramatically
+    // faster than Gemini for both: openai/gpt-oss-120b runs at roughly
+    // 500 tokens/sec vs. Gemini Flash's typical throughput, and Whisper
+    // Large v3 Turbo is a purpose-built transcription endpoint rather than
+    // Gemini's "feed audio into a text model" workaround. Free tier, no
+    // card required: https://console.groq.com/keys.
+    apiKey: process.env.GROQ_API_KEY,
+    // openai/gpt-oss-120b is Groq's current flagship open-weight model and
+    // is what Groq itself recommends migrating to now that
+    // llama-3.3-70b-versatile has been retired (Aug 2026). Swap to
+    // openai/gpt-oss-20b for even higher free-tier throughput at a slight
+    // quality cost, or check https://console.groq.com/docs/models for
+    // what's current.
+    chatModel: process.env.GROQ_CHAT_MODEL || 'openai/gpt-oss-120b',
+    whisperModel: process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo',
+    // Voice-assistant replies default to Groq's Orpheus TTS: it's several
+    // times faster than Gemini's, and synthesis was otherwise the slowest
+    // leg of a voice round trip. Orpheus is English-only and billed per
+    // character (no confirmed free tier as of mid-2026), and any
+    // non-Latin-script reply (Hindi/Marathi/Punjabi/Gujarati) always still
+    // goes to Gemini regardless of this setting — see aiProvider.service.ts.
+    // Set AI_TTS_PROVIDER=gemini to opt out and use Gemini's free TTS for
+    // every language instead, at the cost of slower voice replies.
+    ttsProvider: (process.env.AI_TTS_PROVIDER === 'gemini' ? 'gemini' : 'groq') as 'groq' | 'gemini',
+    ttsModel: process.env.GROQ_TTS_MODEL || 'canopylabs/orpheus-v1-english',
+    ttsVoice: process.env.GROQ_TTS_VOICE || 'autumn',
+  },
+};

@@ -1,99 +1,55 @@
-import { Request, Response } from "express";
-import { sendSuccess } from "../../common/apiResponse";
-import { AuthenticationError } from "../../common/errors";
-import { AuthService } from "./auth.service";
-import {
-  ChangePasswordRequestBody,
-  ForgotPasswordRequestBody,
-  LoginRequestBody,
-  RegisterRequestBody,
-  ResetPasswordRequestBody,
-} from "./auth.schemas";
-import { REFRESH_COOKIE_NAME, clearRefreshCookie, hashToken, setRefreshCookie } from "./auth.utils";
-import { RequestMeta } from "./auth.types";
+import * as authService from './auth.service';
+import ApiResponse from '../../common/utils/ApiResponse';
+import asyncHandler from '../../common/middlewares/asyncHandler';
+import { getRequestMeta } from '../../common/utils/requestMeta';
+import ApiError from '../../common/utils/ApiError';
 
-function meta(req: Request): RequestMeta {
-  return { ipAddress: req.ip, userAgent: req.headers["user-agent"] };
-}
+export const register = asyncHandler(async (req, res) => {
+  const result = await authService.register(req.body);
+  ApiResponse.created(res, result, result.message);
+});
 
-export function createAuthController(authService: AuthService) {
-  async function register(req: Request, res: Response) {
-    const body = req.body as RegisterRequestBody;
-    const { user } = await authService.register(
-      {
-        fullName: body.fullName,
-        mobile: body.mobile,
-        email: body.email,
-        password: body.password,
-        preferredLanguage: body.preferredLanguage,
-      },
-      meta(req),
-    );
-    return sendSuccess(res, { user }, "Account created successfully.", 201);
-  }
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const result = await authService.verifyRegistrationOtp(req.body, getRequestMeta(req));
+  ApiResponse.ok(res, result, 'Email verified. You are now logged in.');
+});
 
-  async function login(req: Request, res: Response) {
-    const body = req.body as LoginRequestBody;
-    const { user, tokens } = await authService.login(body, meta(req));
-    setRefreshCookie(res, tokens.refreshToken, tokens.refreshTokenExpiresAt);
-    return sendSuccess(res, { user, accessToken: tokens.accessToken }, "Logged in successfully.");
-  }
+export const resendOtp = asyncHandler(async (req, res) => {
+  const result = await authService.resendOtp(req.body);
+  ApiResponse.ok(res, result);
+});
 
-  async function refresh(req: Request, res: Response) {
-    const rawRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
-    if (!rawRefreshToken) {
-      throw new AuthenticationError("Your session has expired. Please log in again.");
-    }
-    const { user, tokens } = await authService.refreshSession(rawRefreshToken, meta(req));
-    setRefreshCookie(res, tokens.refreshToken, tokens.refreshTokenExpiresAt);
-    return sendSuccess(res, { user, accessToken: tokens.accessToken }, "Session refreshed.");
-  }
+export const login = asyncHandler(async (req, res) => {
+  const result = await authService.login(req.body, getRequestMeta(req));
+  ApiResponse.ok(res, result, 'Logged in successfully.');
+});
 
-  async function me(req: Request, res: Response) {
-    const user = await authService.getCurrentUser(req.user!.id);
-    return sendSuccess(res, user, "Current user retrieved.");
-  }
+export const googleAuth = asyncHandler(async (req, res) => {
+  const result = await authService.googleAuth(req.body, getRequestMeta(req));
+  ApiResponse.ok(res, result, 'Logged in with Google.');
+});
 
-  async function logout(req: Request, res: Response) {
-    const rawRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
-    await authService.logout(rawRefreshToken);
-    clearRefreshCookie(res);
-    return sendSuccess(res, null, "Logged out successfully.");
-  }
+export const refresh = asyncHandler(async (req, res) => {
+  const result = await authService.refreshTokens(req.body, getRequestMeta(req));
+  ApiResponse.ok(res, result, 'Token refreshed.');
+});
 
-  async function logoutAll(req: Request, res: Response) {
-    await authService.logoutAll(req.user!.id, meta(req));
-    clearRefreshCookie(res);
-    return sendSuccess(res, null, "Logged out of all sessions.");
-  }
+export const logout = asyncHandler(async (req, res) => {
+  const result = await authService.logout(req.body);
+  ApiResponse.ok(res, result);
+});
 
-  async function changePassword(req: Request, res: Response) {
-    const body = req.body as ChangePasswordRequestBody;
-    const rawRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
-    const currentSessionTokenHash = rawRefreshToken ? hashToken(rawRefreshToken) : undefined;
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const result = await authService.forgotPassword(req.body);
+  ApiResponse.ok(res, result);
+});
 
-    await authService.changePassword(
-      req.user!.id,
-      body.currentPassword,
-      body.newPassword,
-      currentSessionTokenHash,
-      meta(req),
-    );
-    return sendSuccess(res, null, "Password changed successfully.");
-  }
+export const resetPassword = asyncHandler(async (req, res) => {
+  const result = await authService.resetPassword(req.body);
+  ApiResponse.ok(res, result);
+});
 
-  async function forgotPassword(req: Request, res: Response) {
-    const body = req.body as ForgotPasswordRequestBody;
-    await authService.requestPasswordReset(body.mobile, meta(req));
-    // Always the same response, regardless of whether the account exists.
-    return sendSuccess(res, null, "If an account exists, reset instructions have been sent.");
-  }
-
-  async function resetPassword(req: Request, res: Response) {
-    const body = req.body as ResetPasswordRequestBody;
-    await authService.resetPassword(body.token, body.newPassword, meta(req));
-    return sendSuccess(res, null, "Password has been reset. Please log in with your new password.");
-  }
-
-  return { register, login, refresh, me, logout, logoutAll, changePassword, forgotPassword, resetPassword };
-}
+export const me = asyncHandler(async (req, res) => {
+  if (!req.user) throw ApiError.unauthorized('Authentication required.');
+  ApiResponse.ok(res, authService.sanitizeUser(req.user));
+});
