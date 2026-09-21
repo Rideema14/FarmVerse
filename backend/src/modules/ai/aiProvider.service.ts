@@ -110,7 +110,7 @@ async function geminiGenerateContent(messages: AiMessage[], jsonMode: boolean): 
       contents,
       config: {
         systemInstruction,
-        temperature: 0.4, // advisory answers should be fairly consistent, not creative
+        temperature: 0.4,
         responseMimeType: jsonMode ? 'application/json' : undefined,
       },
     });
