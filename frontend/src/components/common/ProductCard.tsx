@@ -375,6 +375,11 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
 
       {!outOfStock && (
         <div className="mt-2 w-full shrink-0">
+          {product.stock < 10 && (
+            <p className="mb-1.5 text-center text-[10px] font-bold text-[#D92D20]">
+              Only {product.stock} left in stock
+            </p>
+          )}
           {inCart ? (
             <div
               className="

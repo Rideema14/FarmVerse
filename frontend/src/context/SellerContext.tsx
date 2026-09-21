@@ -82,6 +82,26 @@ export function SellerProvider({ children }: { children: ReactNode }) {
     refreshSellerOrders()
   }, [refreshListings, refreshSellerOrders])
 
+  // Listen to socket CustomEvents emitted by SocketContext
+  useEffect(() => {
+    const handleNewOrder = () => {
+      console.log('[SellerContext] Received socket:seller:newOrder, refreshing orders...')
+      refreshSellerOrders()
+    }
+    const handleListingUpdated = () => {
+      console.log('[SellerContext] Received socket:seller:listingUpdated, refreshing listings...')
+      refreshListings()
+    }
+
+    window.addEventListener('socket:seller:newOrder', handleNewOrder)
+    window.addEventListener('socket:seller:listingUpdated', handleListingUpdated)
+
+    return () => {
+      window.removeEventListener('socket:seller:newOrder', handleNewOrder)
+      window.removeEventListener('socket:seller:listingUpdated', handleListingUpdated)
+    }
+  }, [refreshSellerOrders, refreshListings])
+
   const toggleListingActive = useCallback(async (id: string) => {
     const current = listings.find((l) => l.id === id)
     if (!current) return

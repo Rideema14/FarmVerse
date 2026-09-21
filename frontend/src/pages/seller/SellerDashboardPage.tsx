@@ -12,7 +12,7 @@ export default function SellerDashboardPage() {
   const [dashboard, setDashboard] = useState<SellerDashboard | null>(null)
   const [analytics, setAnalytics] = useState<SellerAnalytics | null>(null)
 
-  useEffect(() => {
+  const refresh = () => {
     let cancelled = false
     Promise.all([sellerService.getDashboard(), sellerService.getAnalytics(90, 5)]).then(([d, a]) => {
       if (cancelled) return
@@ -21,6 +21,24 @@ export default function SellerDashboardPage() {
     })
     return () => {
       cancelled = true
+    }
+  }
+
+  useEffect(() => {
+    const cleanup = refresh()
+
+    const handleUpdate = () => {
+      console.log('[SellerDashboard] Auto-refreshing due to socket event')
+      refresh()
+    }
+
+    window.addEventListener('socket:seller:newOrder', handleUpdate)
+    window.addEventListener('socket:seller:listingUpdated', handleUpdate)
+
+    return () => {
+      if (cleanup) cleanup()
+      window.removeEventListener('socket:seller:newOrder', handleUpdate)
+      window.removeEventListener('socket:seller:listingUpdated', handleUpdate)
     }
   }, [])
 

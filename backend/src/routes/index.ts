@@ -27,7 +27,22 @@ import landRoutes from '../modules/land/land.routes';
 import landVisitRoutes from '../modules/land/landVisit.routes';
 import aiRoutes from '../modules/ai/ai.routes';
 
+import { env } from '../config/env';
+
 const router = Router();
+
+// Public config — exposes non-sensitive platform settings so the frontend
+// reads from the backend's single .env instead of duplicating the values.
+router.get('/config', (_req, res) => {
+  res.json({
+    success: true,
+    data: {
+      platformFee: env.pricing.platformFee,
+      freeShippingThreshold: env.pricing.freeShippingThreshold,
+      taxRate: env.pricing.taxRate,
+    },
+  });
+});
 
 router.use('/auth', authRoutes);
 router.use('/users', profileRoutes);

@@ -6,6 +6,8 @@ import { parsePagination, buildPaginationMeta } from '../../common/utils/paginat
 import logger from '../../common/utils/logger';
 import type { ListNotificationsQuery, UpdatePreferencesInput } from './notification.validation';
 
+import { emitNotificationNew } from '../../config/socket';
+
 async function getOrCreatePreference(userId: string) {
   let pref = await prisma.notificationPreference.findUnique({ where: { userId } });
   if (!pref) {
@@ -42,6 +44,7 @@ export async function notifyUser({ userId, type, title, message, relatedEntityTy
       await prisma.notification.create({
         data: { userId, type, title, message, relatedEntityType, relatedEntityId },
       });
+      emitNotificationNew(userId);
     }
 
     if (pref.emailEnabled && email) {

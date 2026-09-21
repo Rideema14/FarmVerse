@@ -36,6 +36,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     refresh()
   }, [refresh])
 
+  useEffect(() => {
+    const handleNewNotification = () => {
+      console.log('[NotificationContext] Received socket:notification:new, refreshing notifications...')
+      refresh()
+    }
+    window.addEventListener('socket:notification:new', handleNewNotification)
+    return () => {
+      window.removeEventListener('socket:notification:new', handleNewNotification)
+    }
+  }, [refresh])
+
   const markRead = useCallback((id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
     notificationService.markRead(id).catch(() => {

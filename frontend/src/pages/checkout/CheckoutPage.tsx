@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { CheckCircle2, MapPin, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/common/Button'
 import { StepperHeader } from '@/components/common/StepperHeader'
-import { useCart, getDeliveryFee } from '@/context/CartContext'
+import { useCart } from '@/context/CartContext'
 import { useOrders } from '@/context/OrderContext'
 import { useAuth } from '@/context/AuthContext'
 import { orderService } from '@/services/orderService'
@@ -15,7 +15,7 @@ import { cn } from '@/utils/cn'
 
 export default function CheckoutPage() {
   const { user } = useAuth()
-  const { lines, subtotal, clearCart } = useCart()
+  const { lines, subtotal, clearCart, freeShippingThreshold, taxRate, isConfigLoading, getPlatformFee } = useCart()
   const { refresh: refreshOrders } = useOrders()
   const navigate = useNavigate()
   const { t } = useLanguage()
@@ -28,8 +28,9 @@ export default function CheckoutPage() {
   const [placedOrderNumber, setPlacedOrderNumber] = useState<string | null>(null)
 
   const activeLines = lines.filter((l) => !l.savedForLater)
-  const deliveryFee = getDeliveryFee(subtotal)
-  const total = subtotal + deliveryFee
+  const platformFee = getPlatformFee(subtotal)
+  const taxAmount = subtotal * taxRate
+  const total = subtotal + platformFee + taxAmount
   const address = user?.addresses.find((a) => a.id === addressId)
 
   if (activeLines.length === 0 && !placedOrderNumber) {
@@ -134,18 +135,44 @@ export default function CheckoutPage() {
             ))}
           </div>
           <div className="mt-4 space-y-1 border-t border-ink-100 pt-3 text-sm">
-            <div className="flex justify-between text-ink-600">
-              <span>{t('cart.subtotal')}</span>
-              <span>{formatINR(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-ink-600">
-              <span>{t('cart.delivery')}</span>
-              <span>{deliveryFee === 0 ? t('cart.free') : formatINR(deliveryFee)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-ink-900">
-              <span>{t('cart.total')}</span>
-              <span>{formatINR(total)}</span>
-            </div>
+            {isConfigLoading ? (
+              <div className="space-y-4 animate-pulse pt-2 pb-2">
+                <div className="h-10 rounded-xl bg-ink-50"></div>
+                <div className="flex justify-between"><div className="h-4 w-20 bg-ink-50 rounded"></div><div className="h-4 w-16 bg-ink-50 rounded"></div></div>
+                <div className="flex justify-between"><div className="h-4 w-24 bg-ink-50 rounded"></div><div className="h-4 w-16 bg-ink-50 rounded"></div></div>
+                <div className="flex justify-between"><div className="h-4 w-28 bg-ink-50 rounded"></div><div className="h-4 w-16 bg-ink-50 rounded"></div></div>
+              </div>
+            ) : (
+              <>
+                {subtotal > 0 && subtotal < freeShippingThreshold && (
+                  <div className="mb-3 rounded-xl bg-orange-50 px-3.5 py-2 text-xs text-orange-800">
+                    <p className="font-semibold">Add {formatINR(freeShippingThreshold - subtotal)} more</p>
+                    <p className="mt-0.5 text-[11px] opacity-90">to get free platform fees!</p>
+                  </div>
+                )}
+                {subtotal >= freeShippingThreshold && (
+                  <div className="mb-3 rounded-xl bg-green-50 px-3.5 py-2 text-xs text-green-800">
+                    <p className="font-semibold">Free Platform Fees Unlocked!</p>
+                  </div>
+                )}
+                <div className="flex justify-between text-ink-600">
+                  <span>{t('cart.subtotal')}</span>
+                  <span>{formatINR(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-ink-600">
+                  <span>Tax ({(taxRate * 100).toFixed(0)}%)</span>
+                  <span>{formatINR(taxAmount)}</span>
+                </div>
+                <div className="flex justify-between text-ink-600">
+                  <span>Platform Fee</span>
+                  <span>{platformFee === 0 ? t('cart.free') : formatINR(platformFee)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-ink-900 mt-2 border-t border-ink-100 pt-2">
+                  <span>{t('cart.total')}</span>
+                  <span>{formatINR(total)}</span>
+                </div>
+              </>
+            )}
           </div>
           <div className="mt-5 flex gap-2">
             <Button variant="secondary" onClick={() => setStep(0)}>
