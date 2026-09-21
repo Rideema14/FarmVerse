@@ -69,83 +69,111 @@ export default function SellerListingsPage() {
       ) : filtered.length === 0 ? (
         <p className="py-10 text-center text-sm text-ink-500">{t('sellerListings.noListings', { tab: tabLabelFormatted })}</p>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {filtered.map((listing) => (
-            <div key={listing.id} className="flex items-center gap-3 rounded-2xl border border-ink-100 bg-surface p-3">
-              <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-sunk text-brand-600', listing.stock === 0 && 'grayscale')}>
+            <div
+              key={listing.id}
+              className="flex flex-col overflow-hidden rounded-2xl border border-ink-100 bg-surface shadow-sm transition-shadow hover:shadow-md"
+            >
+              {/* Top: Image container */}
+              <div className={cn('relative h-40 w-full bg-surface-sunk', listing.stock === 0 && 'grayscale')}>
                 {listing.images?.[0] ? (
-                  <img src={listing.images[0]} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                  <img
+                    src={listing.images[0]}
+                    alt={listing.name}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
-                  <Sprout className="h-5 w-5" aria-hidden="true" />
+                  <div className="flex h-full w-full items-center justify-center text-brand-600">
+                    <Sprout className="h-10 w-10" aria-hidden="true" />
+                  </div>
                 )}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="line-clamp-1 text-sm font-medium text-ink-900">{listing.name}</p>
-                <p className="text-xs text-ink-400">
-                  {formatINR(listing.price)} / {listing.unit}
+
+                {/* Status Badge Positioned on Image */}
+                <span
+                  className={cn(
+                    'absolute right-3 top-3 rounded-md px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide',
+                    listing.stock === 0
+                      ? 'bg-danger-600 text-white'
+                      : listing.isActive !== false
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-ink-600 text-white',
+                  )}
+                >
+                  {listing.stock === 0
+                    ? t('sellerListings.outOfStock')
+                    : listing.isActive !== false
+                      ? t('sellerListings.activeBadge')
+                      : t('sellerListings.inactiveBadge')}
+                </span>
+              </div>
+
+              {/* Middle: Content */}
+              <div className="flex flex-1 flex-col p-4">
+                <h3 className="line-clamp-1 font-semibold text-ink-900">{listing.name}</h3>
+                <p className="mt-1 text-sm font-medium text-ink-500">
+                  <span className="font-bold text-ink-900">{formatINR(listing.price)}</span> / {listing.unit}
                 </p>
-                {/* Stock controls */}
-                <div className="mt-1 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => updateListingStock(listing.id, listing.stock - 1)}
-                    disabled={busyId === listing.id || listing.stock <= 0}
-                    className="flex h-5 w-5 items-center justify-center rounded-md border border-ink-200 bg-surface-sunk text-ink-600 transition-colors hover:bg-ink-100 disabled:opacity-30"
-                    aria-label={t('sellerListings.decreaseStock')}
-                  >
-                    <Minus className="h-3 w-3" />
-                  </button>
-                  <span className={cn('min-w-[28px] text-center text-xs font-bold', listing.stock === 0 ? 'text-danger-600' : 'text-ink-700')}>
-                    {listing.stock}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => updateListingStock(listing.id, listing.stock + 1)}
-                    disabled={busyId === listing.id}
-                    className="flex h-5 w-5 items-center justify-center rounded-md border border-ink-200 bg-surface-sunk text-ink-600 transition-colors hover:bg-ink-100 disabled:opacity-30"
-                    aria-label={t('sellerListings.increaseStock')}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                  <span className="ml-1 text-[10px] text-ink-400">{t('sellerListings.stock')}</span>
+
+                {/* Stock Controls */}
+                <div className="mt-4 flex items-center justify-between rounded-xl border border-ink-100 bg-surface-sunk p-2.5">
+                  <span className="text-xs font-semibold text-ink-600">{t('sellerListings.stock')}</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => updateListingStock(listing.id, listing.stock - 1)}
+                      disabled={busyId === listing.id || listing.stock <= 0}
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-ink-200 bg-white text-ink-600 shadow-sm transition-colors hover:bg-ink-50 hover:text-ink-900 disabled:opacity-40"
+                      aria-label={t('sellerListings.decreaseStock')}
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span
+                      className={cn(
+                        'min-w-[32px] text-center text-sm font-bold',
+                        listing.stock === 0 ? 'text-danger-600' : 'text-ink-900',
+                      )}
+                    >
+                      {listing.stock}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateListingStock(listing.id, listing.stock + 1)}
+                      disabled={busyId === listing.id}
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-ink-200 bg-white text-ink-600 shadow-sm transition-colors hover:bg-ink-50 hover:text-ink-900 disabled:opacity-40"
+                      aria-label={t('sellerListings.increaseStock')}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-              <span
-                className={cn(
-                  'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize',
-                  listing.stock === 0
-                    ? 'bg-danger-50 text-danger-700'
-                    : listing.isActive !== false
-                      ? 'bg-brand-50 text-brand-700'
-                      : 'bg-ink-100 text-ink-500',
-                )}
-              >
-                {listing.stock === 0
-                  ? t('sellerListings.outOfStock')
-                  : listing.isActive !== false
-                    ? t('sellerListings.activeBadge')
-                    : t('sellerListings.inactiveBadge')}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleToggle(listing.id)}
-                disabled={busyId === listing.id}
-                className={cn(
-                  'shrink-0 text-xs font-semibold hover:underline disabled:opacity-50',
-                  listing.isActive !== false ? 'text-ink-500' : 'text-brand-600',
-                )}
-              >
-                {listing.isActive !== false ? t('sellerListings.deactivate') : t('sellerListings.activate')}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRemove(listing.id)}
-                disabled={busyId === listing.id}
-                aria-label={t('sellerListings.deleteListing')}
-                className="shrink-0 text-danger-500 disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-              </button>
+
+              {/* Bottom: Actions Footer */}
+              <div className="flex items-center justify-between border-t border-ink-100 bg-surface-sunk px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => handleToggle(listing.id)}
+                  disabled={busyId === listing.id}
+                  className={cn(
+                    'text-xs font-bold transition-colors hover:underline disabled:opacity-50',
+                    listing.isActive !== false ? 'text-ink-500 hover:text-ink-700' : 'text-brand-600 hover:text-brand-700',
+                  )}
+                >
+                  {listing.isActive !== false ? t('sellerListings.deactivate') : t('sellerListings.activate')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(listing.id)}
+                  disabled={busyId === listing.id}
+                  aria-label={t('sellerListings.deleteListing')}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-danger-500 transition-colors hover:bg-danger-50 hover:text-danger-600 disabled:opacity-50"
+                >
+                  <Trash2 className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
