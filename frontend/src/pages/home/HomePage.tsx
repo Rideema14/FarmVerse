@@ -30,6 +30,7 @@ import type { Product } from "@/types";
 import { formatINR } from "@/utils/format";
 import { formatCategoryName, formatCropName, formatMandiMarket, formatOrderStatus, formatProductName, formatWeatherCondition } from "@/utils/localize";
 import { cn } from "@/utils/cn";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { useEffect, useState } from "react";
 
 /* =========================================================
@@ -144,67 +145,48 @@ export default function HomePage() {
 
   const [weather, setWeather] =
     useState<HomeWeatherSnapshot | null>(null);
+  const geo = useGeolocation();
+
+  function fetchWeather(
+    lat: number,
+    lng: number,
+    locationLabel: string,
+  ) {
+    weatherService
+      .getWeather(lat, lng, 1)
+      .then((res: any) => {
+        const payload = res.data || res;
+        const current = payload.current;
+
+        if (current) {
+          setWeather({
+            tempC: Math.round(current.temperatureC),
+            condition: current.condition,
+            location: locationLabel,
+          });
+        }
+      })
+      .catch(() => {
+        setWeather(null);
+      });
+  }
+
+  // Show a sensible default immediately — never left blank while the
+  // location permission (which needs a user tap on most mobile browsers,
+  // see useGeolocation) gets sorted out. The "Weather" page itself offers
+  // the explicit "Use my location" control; this snapshot just upgrades
+  // quietly if permission is already granted.
+  useEffect(() => {
+    fetchWeather(28.6139, 77.209, t('weather.fallbackLocation'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    function fetchWeather(
-      lat: number,
-      lng: number,
-      locationLabel: string,
-    ) {
-      weatherService
-        .getWeather(lat, lng, 1)
-        .then((res: any) => {
-          if (cancelled) return;
-
-          const payload = res.data || res;
-          const current = payload.current;
-
-          if (current) {
-            setWeather({
-              tempC: Math.round(current.temperatureC),
-              condition: current.condition,
-              location: locationLabel,
-            });
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setWeather(null);
-          }
-        });
+    if (geo.status === 'success' && geo.coords) {
+      fetchWeather(geo.coords.latitude, geo.coords.longitude, t('home.yourArea'));
     }
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          fetchWeather(
-            pos.coords.latitude,
-            pos.coords.longitude,
-            t('home.yourArea'),
-          );
-        },
-        () => {
-          fetchWeather(
-            28.6139,
-            77.209,
-            t('weather.fallbackLocation'),
-          );
-        },
-      );
-    } else {
-      fetchWeather(
-        28.6139,
-        77.209,
-        t('weather.fallbackLocation'),
-      );
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.status, geo.coords]);
 
   /* =======================================================
      MANDI

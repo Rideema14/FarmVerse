@@ -15,12 +15,14 @@ import {
 
 import { ProductCard } from '@/components/common/ProductCard'
 import { ProductRail } from '@/components/common/ProductRail'
+import { LocationPrompt } from '@/components/common/LocationPrompt'
 
 import { categoryService, type Category } from '@/services/categoryService'
 import { productService } from '@/services/productService'
 import type { Product } from '@/types'
 
 import { useLanguage } from '@/context/LanguageContext'
+import { useGeolocation } from '@/hooks/useGeolocation'
 import { cn } from '@/utils/cn'
 
 import { formatCategoryName } from '@/utils/localize'
@@ -137,67 +139,41 @@ export default function MarketplacePage() {
   ======================================================= */
 
   const [nearbyProducts, setNearbyProducts] = useState<Product[]>([])
+  const geo = useGeolocation()
 
+  // Newest listings while we don't (yet) have a precise location — never
+  // leaves the "Near you" rail empty.
   useEffect(() => {
     let cancelled = false
-
-    function loadFallback() {
-      productService
-        .list({
-          sortBy: 'newest',
-          limit: 6,
-        })
-        .then((res) => {
-          if (!cancelled) {
-            setNearbyProducts(res.items)
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setNearbyProducts([])
-          }
-        })
-    }
-
-    if (!navigator.geolocation) {
-      loadFallback()
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (cancelled) return
-
-        productService
-          .nearby(
-            position.coords.latitude,
-            position.coords.longitude,
-          )
-          .then((items) => {
-            if (!cancelled) {
-              setNearbyProducts(items)
-            }
-          })
-          .catch(() => {
-            if (!cancelled) {
-              loadFallback()
-            }
-          })
-      },
-      () => {
-        if (!cancelled) {
-          loadFallback()
-        }
-      },
-      {
-        timeout: 8000,
-      },
-    )
-
+    productService
+      .list({ sortBy: 'newest', limit: 6 })
+      .then((res) => {
+        if (!cancelled) setNearbyProducts(res.items)
+      })
+      .catch(() => {
+        if (!cancelled) setNearbyProducts([])
+      })
     return () => {
       cancelled = true
     }
   }, [])
+
+  // Swap in truly nearby listings once location is available.
+  useEffect(() => {
+    if (geo.status !== 'success' || !geo.coords) return
+    let cancelled = false
+    productService
+      .nearby(geo.coords.latitude, geo.coords.longitude)
+      .then((items) => {
+        if (!cancelled && items.length > 0) setNearbyProducts(items)
+      })
+      .catch(() => {
+        /* keep showing the newest-listings fallback already on screen */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [geo.status, geo.coords])
 
   /* =======================================================
      SEARCH / FILTER / SORT
@@ -629,6 +605,16 @@ export default function MarketplacePage() {
                       {t('market.localDesc')}
                     </p>
                   </div>
+
+                  {geo.status !== 'success' && (
+                    <LocationPrompt
+                      variant="compact"
+                      status={geo.status}
+                      onRequest={geo.requestLocation}
+                      fallbackLabel={t('weather.fallbackLocation')}
+                      className="ml-auto"
+                    />
+                  )}
                 </div>
 
                 <div

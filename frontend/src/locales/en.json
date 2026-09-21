@@ -453,7 +453,15 @@
     "highTempBody": "Ensure adequate irrigation in the late afternoon. Protect temperature-sensitive crops with shade netting if possible.",
     "optimalConditions": "Optimal conditions",
     "optimalConditionsBody": "Weather is perfect for routine field maintenance, spraying, and harvesting. Proceed with planned agricultural activities.",
-    "fallbackLocation": "New Delhi (Fallback)"
+    "fallbackLocation": "New Delhi (Fallback)",
+    "useMyLocation": "Use my location",
+    "locating": "Finding your location…",
+    "locationUnavailableTitle": "Showing {location} for now",
+    "locationInsecure": "Your location can't be used on this connection. Ask the site owner to switch to a secure (https://) address — it's required on mobile.",
+    "locationDenied": "Location access was turned off. Enable it in your phone's Settings or your browser's site permissions, then try again.",
+    "locationTimeout": "Finding your location took too long. Check your signal and try again.",
+    "locationGenericError": "Couldn't find your location on this device.",
+    "retry": "Try again"
   },
   "mandi": {
     "title": "Mandi Prices",

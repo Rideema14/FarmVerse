@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Droplets,
   MapPin,
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { weatherService } from '@/services/weatherService'
 import { useLanguage } from '@/context/LanguageContext'
+import { useGeolocation } from '@/hooks/useGeolocation'
+import { LocationPrompt } from '@/components/common/LocationPrompt'
 
 // Helper to map WMO weather codes to Lucide icons
 function getWeatherIcon(code: number) {
@@ -39,39 +41,43 @@ export default function WeatherPage() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [locationName, setLocationName] = useState(t('weather.yourLocation'))
+  const [locationName, setLocationName] = useState(t('weather.fallbackLocation'))
+  const geo = useGeolocation()
+  const hasLoadedFallbackRef = useRef(false)
 
+  async function fetchWeather(lat: number, lng: number) {
+    try {
+      setLoading(true)
+      const res = await weatherService.getWeather(lat, lng, 7)
+      setData(res.data || res)
+      setError('')
+    } catch (err) {
+      console.error('Failed to fetch weather', err)
+      setError(t('weather.failedToLoad'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load a sensible default immediately so the page is never blank while
+  // the location permission is sorted out (mobile browsers require a tap
+  // before they'll even show the permission prompt — see useGeolocation).
   useEffect(() => {
-    async function fetchWeather(lat: number, lng: number) {
-      try {
-        setLoading(true)
-        const res = await weatherService.getWeather(lat, lng, 7)
-        setData(res.data || res)
-      } catch (err) {
-        console.error('Failed to fetch weather', err)
-        setError(t('weather.failedToLoad'))
-      } finally {
-        setLoading(false)
-      }
-    }
+    if (hasLoadedFallbackRef.current) return
+    hasLoadedFallbackRef.current = true
+    fetchWeather(28.6139, 77.209)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          fetchWeather(pos.coords.latitude, pos.coords.longitude)
-        },
-        (err) => {
-          console.warn('Geolocation blocked or failed', err)
-          // Fallback to New Delhi if denied
-          setLocationName(t('weather.fallbackLocation'))
-          fetchWeather(28.6139, 77.209)
-        },
-      )
-    } else {
-      setLocationName(t('weather.fallbackLocation'))
-      fetchWeather(28.6139, 77.209)
+  // Swap in the farmer's real location the moment permission is granted
+  // and a position comes back.
+  useEffect(() => {
+    if (geo.status === 'success' && geo.coords) {
+      setLocationName(t('weather.yourLocation'))
+      fetchWeather(geo.coords.latitude, geo.coords.longitude)
     }
-  }, [t])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.status, geo.coords])
 
   if (loading) {
     return (
@@ -144,6 +150,14 @@ export default function WeatherPage() {
   return (
     <div className="min-h-screen bg-[#f4f0e6] text-[#292b24]">
       <main className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-9">
+        {geo.status !== 'success' && (
+          <LocationPrompt
+            status={geo.status}
+            onRequest={geo.requestLocation}
+            fallbackLabel={t('weather.fallbackLocation')}
+          />
+        )}
+
         {/* =================================================
             HERO
         ================================================= */}

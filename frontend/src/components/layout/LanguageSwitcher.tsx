@@ -3,7 +3,13 @@ import { Check, Globe } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/utils/cn'
 
-export function LanguageSwitcher({ className }: { className?: string }) {
+export function LanguageSwitcher({
+  className,
+  compact = false,
+}: {
+  className?: string
+  compact?: boolean
+}) {
   const { language, setLanguage, supportedLanguages, plannedLanguages, t } = useLanguage()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -22,17 +28,30 @@ export function LanguageSwitcher({ className }: { className?: string }) {
 
   return (
     <div className={cn('relative', className)} ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={t('common.language')}
-        className="flex h-10 items-center gap-1.5 rounded-full border border-ink-100 bg-surface px-3 text-sm font-medium text-ink-700 hover:border-brand-300 hover:text-brand-700"
-      >
-        <Globe className="h-4 w-4" aria-hidden="true" />
-        <span>{current?.nativeLabel ?? 'English'}</span>
-      </button>
+      {compact ? (
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={t('common.language')}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#57564F] transition-all duration-200 hover:bg-[#EEECE5] hover:text-[#3F4935] active:scale-90"
+        >
+          <Globe className="h-[19px] w-[19px]" aria-hidden="true" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={t('common.language')}
+          className="flex h-10 items-center gap-1.5 rounded-full border border-ink-100 bg-surface px-3 text-sm font-medium text-ink-700 hover:border-brand-300 hover:text-brand-700"
+        >
+          <Globe className="h-4 w-4" aria-hidden="true" />
+          <span>{current?.nativeLabel ?? 'English'}</span>
+        </button>
+      )}
 
       {open && (
         <div

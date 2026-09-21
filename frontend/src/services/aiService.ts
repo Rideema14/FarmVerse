@@ -310,13 +310,17 @@ const FALLBACK_COORDS = { latitude: 28.6139, longitude: 77.209 } // New Delhi
 
 export function getCurrentCoords(): Promise<{ latitude: number; longitude: number }> {
   return new Promise((resolve) => {
-    if (!navigator.geolocation) {
+    // Mobile browsers refuse geolocation entirely on non-HTTPS origins —
+    // resolve the fallback immediately instead of waiting on a call that
+    // will never succeed. See frontend/src/hooks/useGeolocation.ts.
+    if (!navigator.geolocation || !window.isSecureContext) {
       resolve(FALLBACK_COORDS)
       return
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
       () => resolve(FALLBACK_COORDS),
+      { timeout: 8000, maximumAge: 5 * 60 * 1000 },
     )
   })
 }
