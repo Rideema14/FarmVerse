@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import {
   DEFAULT_LANGUAGE,
   loadTranslation,
-  preloadTranslations,
   plannedLanguages,
   supportedLanguages,
   translations,
@@ -34,7 +33,7 @@ function resolvePath(obj: unknown, path: string): string {
 
 interface LanguageContextValue {
   language: string
-  setLanguage: (code: string) => Promise<void>
+  setLanguage: (code: string) => void
   t: (key: TranslationKey, params?: Record<string, string | number>) => string
   supportedLanguages: typeof supportedLanguages
   plannedLanguages: typeof plannedLanguages
@@ -51,22 +50,32 @@ function getInitialLanguage(): string {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<string>(getInitialLanguage)
+  const [loadedLanguages, setLoadedLanguages] = useState<Record<string, boolean>>(() => ({
+    en: true,
+    ...(translations[getInitialLanguage()] ? { [getInitialLanguage()]: true } : {}),
+  }))
+
   useEffect(() => {
     document.documentElement.lang = language
     window.localStorage.setItem(STORAGE_KEY, language)
-  }, [language])
 
-  const setLanguage = useCallback(async (code: string) => {
-    if (!supportedCodes.has(code) || code === language) return
-
-    // Never render a half-translated page. The language chunk is normally
-    // already cached because the switcher preloads it in the background.
-    if (!translations[code]) {
-      const loaded = await loadTranslation(code)
-      if (!loaded) return
+    if (!translations[language]) {
+      let cancelled = false
+      loadTranslation(language).then(() => {
+        if (!cancelled) {
+          setLoadedLanguages((prev) => ({ ...prev, [language]: true }))
+        }
+      })
+      return () => {
+        cancelled = true
+      }
     }
-    setLanguageState(code)
   }, [language])
+
+  const setLanguage = useCallback((code: string) => {
+    if (!supportedCodes.has(code)) return // not yet translated — picker marks these "coming soon"
+    setLanguageState(code)
+  }, [])
 
   const t = useCallback(
     (key: TranslationKey, params?: Record<string, string | number>): string => {
@@ -83,7 +92,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       }
       return value
     },
-    [language],
+    [language, loadedLanguages],
   )
 
   const value = useMemo(

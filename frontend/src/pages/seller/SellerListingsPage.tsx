@@ -93,6 +93,12 @@ export default function SellerListingsPage() {
               >
                 {listing.isActive !== false ? t('sellerListings.activeBadge') : t('sellerListings.inactiveBadge')}
               </span>
+              <Link
+                to={`/seller/listings/${encodeURIComponent(listing.slug || listing.id)}/edit`}
+                className="shrink-0 rounded-lg border border-ink-200 px-2.5 py-1.5 text-xs font-semibold text-ink-700 hover:border-brand-400 hover:text-brand-700"
+              >
+                Edit
+              </Link>
               <button
                 type="button"
                 onClick={() => handleToggle(listing.id)}

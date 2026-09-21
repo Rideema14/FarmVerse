@@ -1,215 +1,162 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ImagePlus, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/common/Button'
+import { TextField, SelectField } from '@/components/common/FormField'
 import { LoadingOverlay } from '@/components/common/LoadingOverlay'
-import { TextField } from '@/components/common/FormField'
-import { productService } from '@/services/productService'
+import { categoryService, type Category } from '@/services/categoryService'
+import { productService, type EditableProduct } from '@/services/productService'
 import { useSeller } from '@/context/SellerContext'
-import { formatINR } from '@/utils/format'
-import type { Product } from '@/types'
+import { useLanguage } from '@/context/LanguageContext'
+import { formatCategoryName } from '@/utils/localize'
 
 export default function EditProductPage() {
-  const { slug } = useParams<{ slug: string }>()
+  const { slug = '' } = useParams()
   const navigate = useNavigate()
-  const { listings, refreshListings } = useSeller()
-
-  const [product, setProduct] = useState<Product | null>(null)
+  const { refreshListings } = useSeller()
+  const { t } = useLanguage()
+  const [product, setProduct] = useState<EditableProduct | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [name, setName] = useState('')
+  const [brand, setBrand] = useState('')
+  const [description, setDescription] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [price, setPrice] = useState('')
   const [discountPrice, setDiscountPrice] = useState('')
   const [stock, setStock] = useState('')
-  const [unit, setUnit] = useState('')
-  const [brand, setBrand] = useState('')
-  const [description, setDescription] = useState('')
+  const [unit, setUnit] = useState('piece')
   const [newImages, setNewImages] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    async function load() {
-      setLoading(true)
-      try {
-        // Seller listings contain the slug, while the detail endpoint gives us
-        // the complete editable record and current image URLs.
-        const listing = listings.find((item) => item.slug === slug)
-        const detail = listing?.slug ? await productService.getBySlug(listing.slug) : null
-        if (!detail) throw new Error('Listing not found.')
+    Promise.all([productService.getEditableBySlug(slug), categoryService.list()])
+      .then(([p, cats]) => {
         if (cancelled) return
-        setProduct(detail)
-        setName(detail.name)
-        setPrice(String(detail.originalPrice ?? detail.price))
-        setDiscountPrice(detail.originalPrice ? String(detail.price) : '')
-        setStock(String(detail.stock))
-        setUnit(detail.unit)
-        setDescription(detail.description)
-        setBrand(detail.brand ?? '')
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load listing.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
+        setProduct(p)
+        setCategories(cats.filter((c) => c.slug !== 'machinery'))
+        setName(p.name)
+        setBrand(p.brand ?? '')
+        setDescription(p.description ?? '')
+        setCategoryId(p.categoryId ?? '')
+        setPrice(String(p.price))
+        setDiscountPrice(p.discountPrice != null ? String(p.discountPrice) : '')
+        setStock(String(p.stock))
+        setUnit(p.unit)
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load listing.'))
+      .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }
-  }, [slug, listings])
+  }, [slug])
 
-  useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews])
-
-  function handleImages(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []).slice(0, 8)
+  function pickImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
     if (!files.length) return
-    previews.forEach((url) => URL.revokeObjectURL(url))
     setNewImages(files)
-    setPreviews(files.map((file) => URL.createObjectURL(file)))
-    event.target.value = ''
+    setPreviews(files.map((f) => URL.createObjectURL(f)))
   }
 
-  async function handleSave(event: FormEvent) {
-    event.preventDefault()
+  async function removeExistingImage(imageId: string) {
     if (!product) return
-    setError(null)
-    setSaved(false)
-
-    const parsedPrice = Number(price)
-    const parsedStock = Number(stock)
-    const parsedDiscount = discountPrice.trim() === '' ? null : Number(discountPrice)
-
-    if (!name.trim()) return setError('Product name is required.')
-    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) return setError('Enter a valid price.')
-    if (!Number.isInteger(parsedStock) || parsedStock < 0) return setError('Stock quantity must be a whole number and cannot be negative.')
-    if (parsedDiscount !== null && (!Number.isFinite(parsedDiscount) || parsedDiscount <= 0 || parsedDiscount >= parsedPrice)) {
-      return setError('Discount price must be greater than 0 and lower than the selling price.')
+    try {
+      await productService.removeImage(product.id, imageId)
+      setProduct((p) => p ? { ...p, images: p.images.filter((img) => img.id !== imageId) } : p)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not remove image.')
     }
-    if (!unit.trim()) return setError('Unit is required.')
+  }
 
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    if (!product) return
+    setError('')
     setSaving(true)
     try {
       await productService.update(product.id, {
+        categoryId: categoryId || undefined,
         name: name.trim(),
-        price: parsedPrice,
-        discountPrice: parsedDiscount,
-        stock: parsedStock,
-        unit: unit.trim(),
+        brand: brand.trim() || undefined,
         description: description.trim() || undefined,
-        ...(brand.trim() ? { brand: brand.trim() } : {}),
+        price: Number(price),
+        discountPrice: discountPrice.trim() ? Number(discountPrice) : undefined,
+        stock: Number(stock),
+        unit: unit.trim() || 'piece',
       })
-
-      // Image replacement is independent of the product fields. Saving stock,
-      // quantity or price never depends on an image being selected.
-      if (newImages.length) {
-        await productService.replaceImages(product.id, newImages)
-      }
-
+      if (newImages.length) await productService.uploadImages(product.id, newImages)
       await refreshListings()
-      setSaved(true)
-      navigate('/seller/listings', { replace: true })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save changes.')
+      navigate('/seller/listings')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save listing.')
     } finally {
       setSaving(false)
     }
   }
 
-  if (loading) {
-    return <div className="mx-auto max-w-3xl px-4 py-10 text-center text-sm text-ink-500">Loading listing…</div>
-  }
-
-  if (!product) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-10 text-center">
-        <p className="text-sm text-danger-500">{error ?? 'Listing not found.'}</p>
-        <Link to="/seller/listings" className="mt-4 inline-block text-sm font-semibold text-brand-600">Back to listings</Link>
-      </div>
-    )
-  }
+  if (loading) return <div className="mx-auto max-w-2xl px-4 py-12 text-center text-sm text-ink-500">Loading listing…</div>
+  if (!product) return <div className="mx-auto max-w-2xl px-4 py-12 text-center text-sm text-danger-500">{error || 'Listing not found.'}</div>
 
   return (
-    <div className="relative mx-auto max-w-3xl px-4 py-5 md:px-6 md:py-8">
-      <LoadingOverlay isLoading={saving} title="Saving listing" message="Updating price, quantity, details and images…" />
-
-      <div className="mb-6 flex items-center gap-3">
-        <button type="button" onClick={() => navigate('/seller/listings')} className="rounded-full p-2 hover:bg-surface-sunk" aria-label="Back">
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-ink-900">Edit listing</h1>
-          <p className="text-sm text-ink-500">Update every part of your product without losing your stock or price changes.</p>
-        </div>
+    <div className="relative mx-auto max-w-2xl px-4 py-6 md:px-6 md:py-8">
+      <LoadingOverlay isLoading={saving} title="Saving listing" message="Updating your product details…" />
+      <button type="button" onClick={() => navigate('/seller/listings')} className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-ink-600 hover:text-ink-900">
+        <ArrowLeft className="h-4 w-4" /> Back to listings
+      </button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-ink-900">Edit Listing</h1>
+        <p className="mt-1 text-sm text-ink-500">Update price, quantity, product details, category and images from one place.</p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-5">
-        <section className="rounded-2xl border border-ink-100 bg-surface p-4 md:p-5">
-          <h2 className="mb-4 text-sm font-bold text-ink-900">Product information</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <TextField id="name" label="Product name" value={name} onChange={(e) => setName(e.target.value)} required />
-            <TextField id="brand" label="Brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Optional" />
-          </div>
-          <label className="mt-4 block">
-            <span className="mb-1.5 block text-sm font-medium text-ink-700">Description</span>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={5000}
-              className="w-full rounded-xl border border-ink-200 bg-surface px-3 py-2.5 text-sm text-ink-900 outline-none focus:border-brand-500" />
-          </label>
-        </section>
+      {error && <p className="mb-4 rounded-xl bg-danger-50 px-4 py-3 text-sm text-danger-600">{error}</p>}
 
-        <section className="rounded-2xl border border-ink-100 bg-surface p-4 md:p-5">
-          <h2 className="mb-4 text-sm font-bold text-ink-900">Price & quantity</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            <TextField id="price" label="Selling price (₹)" type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required />
-            <TextField id="discountPrice" label="Discount price (₹)" type="number" min="0.01" step="0.01" value={discountPrice} onChange={(e) => setDiscountPrice(e.target.value)} placeholder="Optional" />
-            <TextField id="stock" label="Quantity / stock" type="number" min="0" step="1" value={stock} onChange={(e) => setStock(e.target.value)} required />
+      <form onSubmit={save} className="space-y-5">
+        <div className="rounded-2xl border border-ink-100 bg-surface p-4 md:p-5">
+          <h2 className="mb-4 font-semibold text-ink-900">Product details</h2>
+          <div className="space-y-3">
+            <SelectField id="edit-category" label="Category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              {categories.map((c) => <option key={c.id} value={c.id}>{formatCategoryName(c, t)}</option>)}
+            </SelectField>
+            <TextField id="edit-name" label="Product name" value={name} onChange={(e) => setName(e.target.value)} required />
+            <TextField id="edit-brand" label="Brand" value={brand} onChange={(e) => setBrand(e.target.value)} />
+            <label className="block text-sm font-medium text-ink-700">Description<textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border border-ink-200 bg-surface px-3 py-2 text-sm outline-none focus:border-brand-500" /></label>
           </div>
-          <div className="mt-4 max-w-sm">
-            <TextField id="unit" label="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="kg, litre, piece, bag…" required />
-          </div>
-          <p className="mt-3 text-xs text-ink-400">
-            Current displayed price: {formatINR(Number(discountPrice || price) || 0)} / {unit || 'unit'} · Quantity: {stock || 0}
-          </p>
-        </section>
+        </div>
 
-        <section className="rounded-2xl border border-ink-100 bg-surface p-4 md:p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-ink-900">Product images</h2>
-              <p className="text-xs text-ink-500">Choose new images to replace the current set. Leave empty to keep them unchanged.</p>
-            </div>
-            <label className="flex cursor-pointer items-center gap-2 rounded-full bg-brand-600 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-700">
-              <ImagePlus className="h-4 w-4" />
-              Replace images
-              <input type="file" accept="image/*" multiple className="hidden" onChange={handleImages} />
-            </label>
+        <div className="rounded-2xl border border-ink-100 bg-surface p-4 md:p-5">
+          <h2 className="mb-4 font-semibold text-ink-900">Price & quantity</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextField id="edit-price" label="Price" type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} required />
+            <TextField id="edit-discount" label="Discount price (optional)" type="number" min="0" value={discountPrice} onChange={(e) => setDiscountPrice(e.target.value)} />
+            <TextField id="edit-stock" label="Quantity / stock" type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} required />
+            <TextField id="edit-unit" label="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} required />
           </div>
+        </div>
 
+        <div className="rounded-2xl border border-ink-100 bg-surface p-4 md:p-5">
+          <h2 className="mb-4 font-semibold text-ink-900">Product images</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(previews.length ? previews : product.images ?? []).map((url, index) => (
-              <div key={`${url}-${index}`} className="relative aspect-square overflow-hidden rounded-xl bg-surface-sunk">
-                <img src={url} alt={`${name} ${index + 1}`} className="h-full w-full object-cover" />
+            {product.images.map((img) => (
+              <div key={img.id} className="relative aspect-square overflow-hidden rounded-xl bg-surface-sunk">
+                <img src={img.url} alt="" className="h-full w-full object-cover" />
+                <button type="button" onClick={() => removeExistingImage(img.id)} className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-danger-500 shadow" aria-label="Remove image"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
+            {previews.map((src) => <img key={src} src={src} alt="New preview" className="aspect-square rounded-xl object-cover" />)}
+            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-ink-200 text-ink-400 hover:border-brand-400 hover:text-brand-600">
+              <ImagePlus className="h-6 w-6" />
+              <span className="mt-1 text-xs font-medium">Add / replace</span>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={pickImages} />
+            </label>
           </div>
+          <p className="mt-2 text-xs text-ink-400">Remove old images above and add new ones. Your changes are saved together.</p>
+        </div>
 
-          {newImages.length > 0 && (
-            <div className="mt-3 flex items-center justify-between rounded-xl bg-brand-50 px-3 py-2 text-xs text-brand-700">
-              <span>{newImages.length} new image{newImages.length > 1 ? 's' : ''} selected.</span>
-              <button type="button" onClick={() => { previews.forEach((url) => URL.revokeObjectURL(url)); setNewImages([]); setPreviews([]) }} className="font-semibold hover:underline">
-                Keep current images
-              </button>
-            </div>
-          )}
-        </section>
-
-        {error && <p className="rounded-xl bg-danger-50 px-3 py-2 text-sm text-danger-600">{error}</p>}
-        {saved && <p className="rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-700">Listing updated successfully.</p>}
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={() => navigate('/seller/listings')} disabled={saving}>Cancel</Button>
-          <Button type="submit" loading={saving}>
-            <Save className="mr-1.5 h-4 w-4" />
-            Save all changes
+        <div className="flex gap-3 pb-6">
+          <Button type="button" variant="secondary" onClick={() => navigate('/seller/listings')}>Cancel</Button>
+          <Button type="submit" fullWidth loading={saving} disabled={!name.trim() || !price || !stock}>
+            <Save className="mr-1.5 h-4 w-4" /> Save all changes
           </Button>
         </div>
       </form>

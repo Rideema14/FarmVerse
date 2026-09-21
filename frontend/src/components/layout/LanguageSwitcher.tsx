@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Globe } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
-import { preloadTranslations } from '@/locales'
 import { cn } from '@/utils/cn'
 
 export function LanguageSwitcher({
@@ -28,7 +27,7 @@ export function LanguageSwitcher({
   const current = supportedLanguages.find((l) => l.code === language)
 
   return (
-    <div className={cn('relative', className)} ref={ref} onPointerEnter={preloadTranslations}>
+    <div className={cn('relative', className)} ref={ref}>
       {compact ? (
         <button
           type="button"
@@ -69,7 +68,7 @@ export function LanguageSwitcher({
               role="menuitemradio"
               aria-checked={option.code === language}
               onClick={() => {
-                void setLanguage(option.code)
+                setLanguage(option.code)
                 setOpen(false)
               }}
               className="flex w-full items-center justify-between px-3 py-2 text-sm text-ink-700 hover:bg-surface-sunk"
