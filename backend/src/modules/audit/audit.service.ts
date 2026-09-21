@@ -1,0 +1,238 @@
+import { Prisma, PrismaClient } from "@prisma/client";
+
+export type AuditAction =
+  | "USER_REGISTERED"
+  | "USER_LOGIN"
+  | "USER_LOGIN_FAILED"
+  | "USER_LOGOUT"
+  | "USER_LOGOUT_ALL"
+  | "PASSWORD_CHANGED"
+  | "PASSWORD_RESET_REQUESTED"
+  | "PASSWORD_RESET_COMPLETED"
+  | "ACCOUNT_SUSPENDED"
+  | "ACCOUNT_REACTIVATED"
+  | "ROLE_CHANGED"
+  | "VERIFICATION_CHANGED"
+  | "AUTHORIZATION_DENIED"
+  // Module 2 — Farmer & Farm Profile Management
+  | "FARMER_PROFILE_CREATED"
+  | "FARMER_PROFILE_UPDATED"
+  | "FARM_CREATED"
+  | "FARM_UPDATED"
+  | "FARM_DELETED"
+  | "CROP_ADDED"
+  | "CROP_UPDATED"
+  | "CROP_REMOVED"
+  | "FPO_ASSOCIATED"
+  | "PREFERENCE_UPDATED"
+  // Module 3 — FPO Management & Farmer Aggregation
+  | "FPO_CREATED"
+  | "FPO_UPDATED"
+  | "FPO_VERIFIED"
+  | "FPO_REJECTED"
+  | "FPO_SUSPENDED"
+  | "FPO_REACTIVATED"
+  | "FPO_ADMIN_ADDED"
+  | "FPO_ADMIN_REMOVED"
+  | "MEMBERSHIP_REQUESTED"
+  | "MEMBERSHIP_APPROVED"
+  | "MEMBERSHIP_REJECTED"
+  | "MEMBER_SUSPENDED"
+  | "MEMBER_REMOVED"
+  | "AGGREGATION_CREATED"
+  | "AGGREGATION_UPDATED"
+  | "AGGREGATION_CANCELLED"
+  // Module 4 — Crop / Lot Management (build spec section 59)
+  | "LOT_CREATED"
+  | "LOT_UPDATED"
+  | "LOT_DELETED"
+  | "LOT_PUBLISHED"
+  | "LOT_CANCELLED"
+  | "LOT_STATUS_CHANGED"
+  | "LOT_QUANTITY_RESERVED"
+  | "LOT_QUANTITY_RELEASED"
+  | "LOT_QUANTITY_CONSUMED"
+  // Module 5 — Quality Grading & Produce Assessment (build spec section 62)
+  | "QUALITY_ASSESSMENT_CREATED"
+  | "QUALITY_ASSESSMENT_UPDATED"
+  | "QUALITY_IMAGE_UPLOADED"
+  | "QUALITY_IMAGE_REMOVED"
+  | "QUALITY_AI_ANALYSIS_STARTED"
+  | "QUALITY_AI_ANALYSIS_COMPLETED"
+  | "QUALITY_AI_ANALYSIS_FAILED"
+  | "QUALITY_ASSESSMENT_VERIFIED"
+  | "QUALITY_ASSESSMENT_SUPERSEDED"
+  // Module 6 — Market intelligence operations that materially affect an
+  // actor or data pipeline (routine chart reads are intentionally absent).
+  | "MARKET_DATA_IMPORTED"
+  | "MARKET_DATA_SEEDED"
+  | "MARKET_DATA_SYNCED"
+  | "MARKET_DATA_SYNC_GAP_DETECTED"
+  // Warehouse Ecosystem Ingestion Layer. "Provider configuration changes"
+  // (Part 29) never gets its own action — there is no runtime-mutable
+  // provider config in this implementation, only env-var-gated
+  // enable/disable (see config/env.ts's WAREHOUSE_*_PROVIDER_ENABLED),
+  // which is deploy-time, not an auditable in-app action.
+  | "WAREHOUSE_PROVIDER_SYNC_INITIATED"
+  | "WAREHOUSE_PROVIDER_SYNC_COMPLETED"
+  | "MARKET_RECOMMENDATION_GENERATED"
+  // Module 7 — buyer verification, demand lifecycle and negotiations.
+  | "BUYER_PROFILE_CREATED"
+  | "BUYER_VERIFIED"
+  | "BUYER_REJECTED"
+  | "BUYER_SUSPENDED"
+  | "BUYER_DEMAND_CREATED"
+  | "BUYER_DEMAND_ACTIVATED"
+  | "BUYER_DEMAND_PAUSED"
+  | "BUYER_DEMAND_CANCELLED"
+  | "TRADE_OFFER_SENT"
+  | "TRADE_OFFER_COUNTERED"
+  | "TRADE_OFFER_ACCEPTED"
+  | "TRADE_OFFER_REJECTED"
+  | "TRADE_OFFER_WITHDRAWN"
+  | "TRADE_OFFER_QUANTITY_COMMITTED"
+  // Module 8 — Sell vs Store Decision Engine. One entry per persisted
+  // decision (mirrors MARKET_RECOMMENDATION_GENERATED above); historical
+  // reads (getDecisionByPublicId/getDecisionsForLot) are routine reads and
+  // are intentionally not audited, same reasoning as Module 6's chart reads.
+  | "SELL_STORE_DECISION_GENERATED"
+  // Module 9 Part 2 — Warehouse Intelligence. Only capacity mutations are
+  // audited; nearby search and availability reads are routine reads, same
+  // reasoning as Module 6/8's own read-vs-write audit split above.
+  | "WAREHOUSE_CAPACITY_UPDATED"
+  // Module 9 Part 3 — Storage Conditions, Crop Suitability & Storage
+  // Constraints. Only configuration writes are audited; suitability and
+  // storage-eligibility reads are routine reads, same split as above —
+  // this part's own explicit "do not audit ordinary read-only suitability
+  // checks" instruction.
+  | "WAREHOUSE_STORAGE_CONDITIONS_UPDATED"
+  | "CROP_STORAGE_REQUIREMENT_UPDATED"
+  // Module 14 — Net Realization Calculator. Every calculation outcome is
+  // audited (created/completed/insufficient-data/failed) per Part P's own
+  // "audit: calculation created, completed, failed" instruction — ordinary
+  // GET reads of a persisted calculation are intentionally not audited,
+  // same read-vs-write split as every module above.
+  | "NET_REALIZATION_CALCULATION_CREATED"
+  | "NET_REALIZATION_CALCULATION_COMPLETED"
+  | "NET_REALIZATION_CALCULATION_INSUFFICIENT_DATA"
+  | "NET_REALIZATION_CALCULATION_FAILED"
+  // Module 15 — Transporter & Vehicle Network
+  | "TRANSPORTER_PROFILE_CREATED"
+  | "TRANSPORTER_PROFILE_UPDATED"
+  | "TRANSPORTER_VERIFIED"
+  | "TRANSPORTER_REJECTED"
+  | "TRANSPORTER_SUSPENDED"
+  | "TRANSPORTER_REACTIVATED"
+  | "VEHICLE_REGISTERED"
+  | "VEHICLE_BULK_REGISTERED"
+  | "VEHICLE_UPDATED"
+  | "VEHICLE_AVAILABILITY_UPDATED"
+  | "VEHICLE_STATUS_UPDATED"
+  | "VEHICLE_VERIFIED"
+  | "VEHICLE_REJECTED"
+  | "SERVICE_AREA_ADDED"
+  | "SERVICE_AREA_REMOVED"
+  // Module 16 — Logistics Quote & Optimization
+  | "LOGISTICS_REQUEST_CREATED"
+  | "LOGISTICS_REQUEST_UPDATED"
+  | "LOGISTICS_REQUEST_CANCELLED"
+  | "LOGISTICS_ESTIMATE_CALCULATED"
+  | "LOGISTICS_OPTIMIZATION_CALCULATED"
+  | "LOGISTICS_QUOTE_SUBMITTED"
+  | "LOGISTICS_QUOTE_UPDATED"
+  | "LOGISTICS_QUOTE_WITHDRAWN"
+  | "LOGISTICS_QUOTE_ACCEPTED"
+  | "LOGISTICS_QUOTE_REJECTED"
+  // Module 17 — Shipment & GPS Tracking
+  | "SHIPMENT_CREATED"
+  | "SHIPMENT_CONFIRMED"
+  | "SHIPMENT_VEHICLE_ASSIGNED"
+  | "SHIPMENT_DRIVER_ASSIGNED"
+  | "SHIPMENT_READY_FOR_PICKUP"
+  | "SHIPMENT_PICKED_UP"
+  | "SHIPMENT_TRANSIT_STARTED"
+  | "SHIPMENT_LOCATION_UPDATED"
+  | "SHIPMENT_ARRIVED"
+  | "SHIPMENT_DELIVERED"
+  | "SHIPMENT_CANCELLED"
+  // Module 18 — Delivery & Quality Reconciliation
+  | "DELIVERY_CREATED"
+  | "DELIVERY_RECEIVED"
+  | "DELIVERY_WEIGHMENT_RECORDED"
+  | "DELIVERY_QUALITY_ASSESSED"
+  | "DELIVERY_RECONCILIATION_CALCULATED"
+  | "DELIVERY_ACCEPTED"
+  | "DELIVERY_PARTIALLY_ACCEPTED"
+  | "DELIVERY_REJECTED"
+  | "DELIVERY_RECONCILED"
+  | "DELIVERY_EVIDENCE_ADDED"
+  // Module 19 — Payment Status Tracking
+  | "PAYMENT_OBLIGATION_CREATED"
+  | "PAYMENT_RECORDED"
+  | "PAYMENT_CONFIRMED"
+  | "PAYMENT_PARTIALLY_PAID"
+  | "PAYMENT_COMPLETED"
+  | "PAYMENT_OVERPAID"
+  | "PAYMENT_MARKED_OVERDUE"
+  | "PAYMENT_DISPUTED"
+  | "PAYMENT_CANCELLED"
+  | "PAYMENT_RECORD_REVERSED"
+  | "WHATSAPP_LINK_CODE_ISSUED"
+  | "WHATSAPP_ACCOUNT_LINKED"
+  | "WHATSAPP_ACCOUNT_UNLINKED"
+  | "WHATSAPP_BUYER_SEARCH"
+  | "WHATSAPP_LOT_CREATED"
+  | "WHATSAPP_OFFER_VIEWED"
+  | "WHATSAPP_OFFER_ACTION"
+  | "WHATSAPP_PAYMENT_VIEWED"
+  | "WHATSAPP_SHIPMENT_VIEWED";
+
+export interface AuditEvent {
+  actorUserId?: string | null;
+  action: AuditAction;
+  entityType: string;
+  entityId?: string | null;
+  metadata?: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface AuditService {
+  record(event: AuditEvent): Promise<void>;
+}
+
+// Metadata is logged for operational visibility, so we defensively strip
+// anything that looks like a secret even though callers shouldn't pass one.
+const FORBIDDEN_METADATA_KEYS = new Set([
+  "password",
+  "passwordHash",
+  "otp",
+  "token",
+  "tokenHash",
+  "refreshToken",
+  "accessToken",
+  "jwtSecret",
+]);
+
+function sanitizeMetadata(metadata?: Record<string, unknown>) {
+  if (!metadata) return undefined;
+  return Object.fromEntries(Object.entries(metadata).filter(([key]) => !FORBIDDEN_METADATA_KEYS.has(key)));
+}
+
+export class PrismaAuditService implements AuditService {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async record(event: AuditEvent): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        actorUserId: event.actorUserId ?? null,
+        action: event.action,
+        entityType: event.entityType,
+        entityId: event.entityId ?? null,
+        metadata: sanitizeMetadata(event.metadata) as Prisma.InputJsonValue | undefined,
+        ipAddress: event.ipAddress,
+        userAgent: event.userAgent,
+      },
+    });
+  }
+}

@@ -1,12 +1,14 @@
-// Prisma schema for the Agri Marketplace backend.
-// Phase 1: User Management & Auth, Marketplace Catalog, Cart, Orders, Payments (Razorpay).
-// Later phases (Seed Store, Land Marketplace, Machinery Rental, Mandi Price Intelligence,
-// AI Advisory, Weather, Seller Analytics, Notifications, Admin) will extend this file.
+// FarmLink Intelligence — Module 1: Authentication & RBAC
+//           + Module 2: Farmer & Farm Profile Management
+// Prisma schema. Module 1 (User/Session/PasswordResetToken/OtpChallenge/
+// AuditLog) is untouched except for one additive back-relation on User
+// (`farmerProfile`) required by Prisma for the new 1:1 relation — no
+// existing Module 1 field, index, or behavior changes.
+// Designed to be extended by future modules (FPOProfile, BuyerProfile,
+// TransporterProfile, WarehouseProfile, etc.) without touching this core.
 
 generator client {
   provider = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
-
 }
 
 datasource db {
@@ -18,1545 +20,3627 @@ datasource db {
 // Enums
 // ---------------------------------------------------------------------------
 
-enum Role {
+enum UserRole {
+  FARMER
+  FPO_ADMIN
   BUYER
-  SELLER
+  TRANSPORTER
+  WAREHOUSE_OPERATOR
   ADMIN
+  GOVERNMENT_VIEWER
 }
 
-enum AuthProvider {
-  LOCAL
-  GOOGLE
-}
-
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  OUT_FOR_DELIVERY
-  DELIVERED
-  // Seller shipped, but the shipment could not be successfully delivered
-  // (courier attempt failed, lost parcel, refused, etc.) — surfaced by the
-  // admin while manually monitoring the shipment (no more automatic
-  // tracking provider). Always pushes the order's settlement into
-  // PENDING_REVIEW; see SettlementStatus below.
-  DELIVERY_FAILED
-  CANCELLED
-  RETURNED
-  // Set only when a customer opens a delivery dispute on a DELIVERED order
-  // (see Dispute below) — keeps the order from being treated as
-  // successfully completed while it's under review. Reverts to DELIVERED
-  // once the dispute is RESOLVED/REJECTED by an admin.
-  DISPUTED
-}
-
-// ---------------------------------------------------------------------------
-// Settlement — who ultimately gets the money for an order (see Settlement
-// model below). Deliberately kept separate from OrderStatus (courier/
-// fulfillment outcome) and PaymentStatus (gateway state): an order can be
-// DELIVERY_FAILED + PAID + PENDING_REVIEW all at once, and that's valid.
-// ---------------------------------------------------------------------------
-
-enum SettlementStatus {
-  NOT_ELIGIBLE // Nothing to settle yet (order unpaid, or still in flight).
-  PENDING_REVIEW // Order needs an admin decision (failed/returned/cancelled-after-payment/disputed).
-  SELLER_PAYOUT_PENDING // Decided in the seller's favor — counted in their payable balance, not yet paid out.
-  SELLER_PAID // Seller has actually been paid out (see Payout) for this order's eligible amount.
-  BUYER_REFUND_PENDING // Decided in the buyer's favor — refund owed, not yet issued.
-  BUYER_REFUNDED // Buyer has actually been refunded.
-}
-
-enum SettlementDecision {
-  REFUND_BUYER
-  PAY_SELLER
-}
-
-enum DisputeStatus {
-  OPEN
-  UNDER_REVIEW
-  RESOLVED
-  REJECTED
-}
-
-enum PaymentStatus {
-  CREATED
-  PENDING
-  PAID
-  FAILED
-  REFUNDED
-}
-
-enum SellerVerificationStatus {
-  UNSUBMITTED
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum NotificationType {
-  ORDER_STATUS
-  PAYMENT
-  SELLER_VERIFICATION
-  REVIEW
-  PRICE_ALERT
-  GENERAL
-}
-
-enum NotificationChannel {
-  IN_APP
-  EMAIL
-}
-
-enum FeedbackCategory {
-  BUG
-  FEATURE_REQUEST
-  COMPLAINT
-  GENERAL
-}
-
-enum FeedbackStatus {
-  OPEN
-  IN_REVIEW
-  RESOLVED
-  CLOSED
-}
-
-enum MandiPriceSource {
-  ADMIN
-  EXTERNAL_API
-}
-
-enum PriceAlertCondition {
-  ABOVE
-  BELOW
-}
-
-enum MandiPriceType {
-  MIN
-  MAX
-  MODAL
-}
-
-enum MachineryBookingStatus {
-  PENDING
-  CONFIRMED
+enum AccountStatus {
   ACTIVE
-  COMPLETED
-  CANCELLED
+  PENDING_VERIFICATION
+  SUSPENDED
+  DEACTIVATED
 }
 
-enum LandDealType {
-  SALE
-  LEASE
-}
-
-enum LandVisitStatus {
+enum VerificationStatus {
   PENDING
-  ACCEPTED
+  VERIFIED
   REJECTED
-  COMPLETED
-  CANCELLED
+  EXPIRED
 }
 
-enum AiChatRole {
-  USER
-  ASSISTANT
-}
-
-enum CropAnalysisType {
-  CROP_ADVISOR
-  DISEASE_DETECTION
-  FERTILIZER_ADVICE
-  IRRIGATION_ADVICE
-  CROP_ROTATION
-  WEATHER_ADVICE
+enum Language {
+  en
+  hi
+  mr
 }
 
 // ---------------------------------------------------------------------------
-// 3.1 User Management & Authentication
+// Module 2 enums
 // ---------------------------------------------------------------------------
 
-model User {
-  id                   String       @id @default(uuid())
-  name                 String
-  email                String       @unique
-  phone                String?      @unique
-  passwordHash         String?
-  role                 Role         @default(BUYER)
-  authProvider         AuthProvider @default(LOCAL)
-  googleId             String?      @unique
-  googlePicture        String?
-  profileImage         String?
-  profileImagePublicId String?
-  isEmailVerified      Boolean      @default(false)
-  isPhoneVerified      Boolean      @default(false)
-  isActive             Boolean      @default(true)
-  latitude             Float?
-  longitude            Float?
-
-  // Email OTP (registration verification, password reset, login 2FA-ish flows)
-  otpCodeHash  String?
-  otpExpiresAt DateTime?
-  otpPurpose   String? // REGISTER | RESET_PASSWORD
-  otpAttempts  Int       @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  addresses              Address[]
-  loginHistory           LoginHistory[]
-  refreshTokens          RefreshToken[]
-  products               Product[]                       @relation("SellerProducts")
-  reviews                Review[]
-  wishlist               Wishlist[]
-  cart                   Cart?
-  orders                 Order[]
-  payments               Payment[]
-  orderStatusChanges     OrderStatusHistory[]            @relation("StatusChangedBy")
-  sellerProfile          SellerProfile?
-  notifications          Notification[]
-  notificationPreference NotificationPreference?
-  feedbacks              Feedback[]
-  verificationsReviewed  SellerProfile[]                 @relation("VerificationReviewedBy")
-  favoriteMandis         FavoriteMandi[]
-  mandiPriceAlerts       MandiPriceAlert[]
-  sellerSeeds            Seed[]                          @relation("SellerSeeds")
-  seedReviews            SeedReview[]
-  seedWishlist           SeedWishlist[]
-  seedCart               SeedCart?
-  seedOrders             SeedOrder[]
-  seedPayments           SeedPayment[]
-  seedOrderStatusChanges SeedOrderStatusHistory[]        @relation("SeedStatusChangedBy")
-  sellerMachinery        Machinery[]                     @relation("SellerMachinery")
-  machineryBookings      MachineryBooking[]
-  machineryReviews       MachineryReview[]
-  machineryPayments      MachineryPayment[]
-  machineryStatusChanges MachineryBookingStatusHistory[] @relation("MachineryStatusChangedBy")
-  sellerLand             Land[]                          @relation("SellerLand")
-  landVisitRequests      LandVisitRequest[]              @relation("LandVisitBuyer")
-  aiChatSessions         AiChatSession[]
-  cropAnalyses           CropAnalysis[]
-  soilReports            SoilReport[]
-  payoutsReceived        Payout[]                        @relation("PayoutSeller")
-  payoutsRecorded        Payout[]                        @relation("PayoutRecordedBy")
-  shipmentsAsSeller      Shipment[]                      @relation("ShipmentSeller")
-  disputesRaised         Dispute[]                       @relation("DisputeRaisedBy")
-  settlementsReceived    Settlement[]                    @relation("SettlementSeller")
-
-  @@index([email])
-  @@map("users")
+enum IrrigationType {
+  RAINFED
+  CANAL
+  BOREWELL
+  DRIP
+  SPRINKLER
+  MIXED
+  OTHER
+  NOT_SPECIFIED
 }
 
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String   @unique
-  userAgent String?
-  ipAddress String?
-  revoked   Boolean  @default(false)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@map("refresh_tokens")
+enum AreaUnit {
+  ACRE
+  HECTARE
 }
 
-model LoginHistory {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ipAddress String?
-  userAgent String?
-  success   Boolean
-  reason    String?
-  loginAt   DateTime @default(now())
-
-  @@index([userId])
-  @@map("login_history")
+enum FpoMembershipStatus {
+  NOT_A_MEMBER
+  MEMBER
+  PENDING
 }
 
-model Address {
-  id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  label        String   @default("Home")
-  fullName     String
-  phone        String
-  addressLine1 String
-  addressLine2 String?
-  city         String
-  state        String
-  postalCode   String
-  country      String   @default("India")
-  latitude     Float?
-  longitude    Float?
-  isDefault    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+enum LiquidityPreference {
+  URGENT
+  WITHIN_3_DAYS
+  WITHIN_1_WEEK
+  CAN_WAIT_2_WEEKS
+  FLEXIBLE
+}
 
-  orders            Order[]
-  seedOrders        SeedOrder[]
-  machineryBookings MachineryBooking[]
-
-  @@index([userId])
-  @@map("addresses")
+enum CommunicationPreference {
+  IN_APP
+  SMS
+  WHATSAPP
+  VOICE
 }
 
 // ---------------------------------------------------------------------------
-// 3.2 Marketplace — Multi-Category Product Catalog
+// Module 3 enums — FPO Management & Farmer Aggregation
 // ---------------------------------------------------------------------------
 
-model Category {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  slug          String   @unique
-  description   String?
-  imageUrl      String?
-  imagePublicId String? // Cloudinary public_id, needed to delete the asset on replace/delete
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  subCategories SubCategory[]
-  products      Product[]
-
-  @@map("categories")
-}
-
-model SubCategory {
-  id          String   @id @default(uuid())
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  name        String
-  slug        String   @unique
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  products Product[]
-
-  @@unique([categoryId, name])
-  @@index([categoryId])
-  @@map("sub_categories")
-}
-
-model Product {
-  id            String       @id @default(uuid())
-  sellerId      String
-  seller        User         @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
-  categoryId    String
-  category      Category     @relation(fields: [categoryId], references: [id])
-  subCategoryId String?
-  subCategory   SubCategory? @relation(fields: [subCategoryId], references: [id])
-
-  name           String
-  slug           String   @unique
-  description    String?
-  brand          String?
-  price          Decimal  @db.Decimal(12, 2)
-  discountPrice  Decimal? @db.Decimal(12, 2)
-  stock          Int      @default(0)
-  unit           String   @default("piece") // kg, litre, piece, bag, quintal...
-  specifications Json? // flexible per-category attributes (e.g. seed variety, HP for machinery)
-  latitude       Float?
-  longitude      Float?
-  isActive       Boolean  @default(true)
-  avgRating      Float    @default(0)
-  reviewCount    Int      @default(0)
-  viewCount      Int      @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  images       ProductImage[]
-  variants     ProductVariant[]
-  reviews      Review[]
-  wishlistedBy Wishlist[]
-  cartItems    CartItem[]
-  orderItems   OrderItem[]
-
-  @@index([categoryId])
-  @@index([subCategoryId])
-  @@index([sellerId])
-  @@index([isActive])
-  @@map("products")
-}
-
-model ProductImage {
-  id        String   @id @default(uuid())
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  url       String
-  publicId  String? // Cloudinary public_id, needed to delete the asset later
-  isPrimary Boolean  @default(false)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-
-  @@index([productId])
-  @@map("product_images")
-}
-
-model ProductVariant {
-  id         String   @id @default(uuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name       String // e.g. "5kg pack", "10 HP"
-  sku        String?  @unique
-  price      Decimal  @db.Decimal(12, 2)
-  stock      Int      @default(0)
-  attributes Json?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-
-  @@index([productId])
-  @@map("product_variants")
-}
-
-model Review {
-  id         String   @id @default(uuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating     Int // 1-5
-  comment    String?
-  isApproved Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([productId, userId])
-  @@index([productId])
-  @@map("reviews")
-}
-
-model Wishlist {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, productId])
-  @@index([userId])
-  @@map("wishlist")
-}
-
-// ---------------------------------------------------------------------------
-// 3.3 Orders, Cart & Checkout
-// ---------------------------------------------------------------------------
-
-model Cart {
-  id        String     @id @default(uuid())
-  userId    String     @unique
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     CartItem[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-
-  @@map("carts")
-}
-
-model CartItem {
-  id        String          @id @default(uuid())
-  cartId    String
-  cart      Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  variantId String?
-  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  quantity  Int             @default(1)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-
-  @@unique([cartId, productId, variantId])
-  @@index([cartId])
-  @@map("cart_items")
-}
-
-model Order {
-  id          String      @id @default(uuid())
-  orderNumber String      @unique
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  addressId   String
-  address     Address     @relation(fields: [addressId], references: [id])
-  status      OrderStatus @default(PENDING)
-
-  subtotal    Decimal @db.Decimal(12, 2)
-  shippingFee Decimal @default(0) @db.Decimal(12, 2)
-  tax         Decimal @default(0) @db.Decimal(12, 2)
-  discount    Decimal @default(0) @db.Decimal(12, 2)
-  totalAmount Decimal @db.Decimal(12, 2)
-
-  notes        String?
-  cancelReason String?
-
-  // Cached "current" settlement state for this order — always equal to the
-  // most recent Settlement row's status (see Settlement below), kept here
-  // too purely so listing/filtering orders doesn't need a join/subquery.
-  settlementStatus SettlementStatus @default(NOT_ELIGIBLE)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  items         OrderItem[]
-  statusHistory OrderStatusHistory[]
-  payment       Payment?
-  // Seller-submitted shipment record (courier + AWB) — see Shipment below.
-  shipment      Shipment?
-  disputes      Dispute[]
-  settlements   Settlement[]
-
-  @@index([userId])
-  @@index([status])
-  @@index([settlementStatus])
-  @@map("orders")
-}
-
-model OrderItem {
-  id          String          @id @default(uuid())
-  orderId     String
-  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product         @relation(fields: [productId], references: [id])
-  variantId   String?
-  variant     ProductVariant? @relation(fields: [variantId], references: [id])
-  productName String // snapshot at time of order
-  quantity    Int
-  unitPrice   Decimal         @db.Decimal(12, 2)
-  totalPrice  Decimal         @db.Decimal(12, 2)
-
-  @@index([orderId])
-  @@map("order_items")
-}
-
-model OrderStatusHistory {
-  id          String      @id @default(uuid())
-  orderId     String
-  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status      OrderStatus
-  note        String?
-  changedById String?
-  changedBy   User?       @relation("StatusChangedBy", fields: [changedById], references: [id])
-  changedAt   DateTime    @default(now())
-
-  @@index([orderId])
-  @@map("order_status_history")
-}
-
-// The seller-submitted shipment record for an order. One shipment per
-// order (matches this project's Order model, which is not split
-// per-seller) — courier + AWB, submitted exactly once by the seller and
-// never auto-updated by any tracking provider (17TRACK integration has
-// been removed — see courier.config.ts). The admin verifies delivery
-// manually via the official courier tracking link and moves the order
-// through OrderStatus/Settlement themselves; this row is never written to
-// after creation.
-model Shipment {
-  id      String @id @default(uuid())
-  orderId String @unique
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  sellerId String
-  seller   User   @relation("ShipmentSeller", fields: [sellerId], references: [id])
-
-  carrierCode String // one of courier.config.ts's SUPPORTED_COURIERS codes (incl. "OTHER" for local/unlisted couriers)
-  carrierName String? // free-text display name, only meaningful when carrierCode = "OTHER"
-  awb         String // seller-entered AWB/tracking number, as typed
-  normalizedAwb String // uppercased/trimmed form of `awb`, used for duplicate-AWB detection
-
-  shipmentDate DateTime? // optional — when the seller says the parcel was handed to the courier
-  note         String? // optional free-text note from the seller
-
-  submittedById String // same as sellerId today, kept as its own column so an admin-entered correction is distinguishable later
-  submittedAt   DateTime @default(now())
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([normalizedAwb])
-  @@index([carrierCode])
-  @@index([sellerId])
-  @@map("shipments")
-}
-
-// A buyer-reported delivery problem on an order the courier has already
-// marked DELIVERED. Never deletes or edits prior shipment/tracking
-// evidence — this is purely an overlay reviewed by an admin.
-model Dispute {
-  id      String @id @default(uuid())
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  userId  String
-  user    User   @relation("DisputeRaisedBy", fields: [userId], references: [id])
-
-  reason  String
-  details String?
-
-  status DisputeStatus @default(OPEN)
-
-  // Plain string (no FK) — an audit trail should still show who reviewed a
-  // dispute even if that admin account is later removed.
-  resolvedById String?
-  resolvedAt   DateTime?
-  adminNote    String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([orderId])
-  @@index([status])
-  @@map("disputes")
-}
-
-// Append-only audit trail for shipment/order actions — who did what, when,
-// and from what source (seller/courier/customer/admin/system). Nothing in
-// this app ever updates or deletes a row here.
-model ShipmentAuditLog {
-  id         String  @id @default(uuid())
-  orderId    String
-  shipmentId String?
-
-  action   String // e.g. "SELLER_SUBMITTED_AWB", "AWB_VERIFIED", "DELIVERED", "CUSTOMER_CREATED_DISPUTE"
-  // Plain strings (no FK) so the audit trail survives account deletion and
-  // covers non-user actors (the tracking cron, a webhook).
-  actorId   String?
-  actorRole String? // "SELLER" | "CUSTOMER" | "ADMIN" | "SYSTEM"
-  source    String // "SELLER" | "COURIER" | "CUSTOMER" | "ADMIN" | "SYSTEM"
-
-  previousState String?
-  newState      String?
-  metadata      Json?
-
-  createdAt DateTime @default(now())
-
-  @@index([orderId])
-  @@index([shipmentId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("shipment_audit_logs")
-}
-
-// Who ultimately receives the money for an order. Append-only: every
-// settlement decision AND every correction/reversal of one creates a new
-// row (never edits/deletes a prior one — see settlement.service.ts), so the
-// full financial history survives. `isCurrent` marks the single latest row
-// for an order, which is what Order.settlementStatus always mirrors — kept
-// denormalized purely so seller-balance/reporting queries don't need a
-// window function to find "the" settlement for an order.
-model Settlement {
-  id      String @id @default(uuid())
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  status   SettlementStatus
-  decision SettlementDecision?
-
-  // Recipient when decision = PAY_SELLER. Null for REFUND_BUYER (the
-  // recipient there is simply order.userId) and null while still
-  // PENDING_REVIEW (no decision made yet).
-  sellerId String?
-  seller   User?   @relation("SettlementSeller", fields: [sellerId], references: [id])
-
-  // Snapshot of the order's money at the moment of this settlement record,
-  // so the audit trail reads correctly even if something upstream changes.
-  buyerPaidTotal Decimal @db.Decimal(12, 2) // subtotal + platform charge + tax (+ shipping if any)
-  productAmount  Decimal @db.Decimal(12, 2) // the seller's eligible product-only amount
-  platformAmount Decimal @db.Decimal(12, 2) // platform's retained cut (never paid to the seller, never refunded from a partial settlement)
-  amount         Decimal @db.Decimal(12, 2) // the actual amount for THIS record's decision/recipient
-
-  reason String? // required for manual/exceptional decisions; optional for the automatic happy-path settlement
-
-  // True only for the automatic settlement created when an order is marked
-  // DELIVERED with no dispute/failure history — every other row here was
-  // an explicit admin decision.
-  isAutomatic Boolean @default(false)
-  isCurrent   Boolean @default(true)
-
-  paymentReference String? // e.g. the Payout.id or refund reference, once actually paid/refunded
-
-  resolvedById   String?
-  resolvedByRole String? // "ADMIN" | "SYSTEM"
-  resolvedAt     DateTime @default(now())
-
-  createdAt DateTime @default(now())
-
-  @@index([orderId])
-  @@index([status])
-  @@index([sellerId])
-  @@index([isCurrent])
-  @@map("settlements")
-}
-
-// ---------------------------------------------------------------------------
-// 3.4 Payments (Razorpay)
-// ---------------------------------------------------------------------------
-
-model Payment {
-  id      String @id @default(uuid())
-  orderId String @unique
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  userId  String
-  user    User   @relation(fields: [userId], references: [id])
-
-  razorpayOrderId   String  @unique
-  razorpayPaymentId String?
-  razorpaySignature String?
-
-  amount        Decimal       @db.Decimal(12, 2)
-  currency      String        @default("INR")
-  status        PaymentStatus @default(CREATED)
-  method        String? // upi, card, netbanking, wallet...
-  failureReason String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([razorpayOrderId])
-  @@map("payments")
-}
-
-// ---------------------------------------------------------------------------
-// 3.11 Seller Management & Analytics
-// ---------------------------------------------------------------------------
-
-model SellerProfile {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  businessName        String
-  businessDescription String?
-  gstNumber           String?
-
-  verificationStatus SellerVerificationStatus @default(UNSUBMITTED)
-  verificationNote   String?
-  reviewedById       String?
-  reviewedBy         User?                    @relation("VerificationReviewedBy", fields: [reviewedById], references: [id])
-  reviewedAt         DateTime?
-
-  // Payout details. NOTE: for a real production deployment, prefer a payment
-  // processor's connected-accounts API (e.g. Razorpay Route) over storing raw
-  // bank details, or encrypt these columns at rest — kept simple here to match
-  // the spec's "Seller Profile with bank account details for payouts".
-  bankAccountHolder String?
-  bankAccountNumber String?
-  bankIfscCode      String?
-  bankName          String?
-
-  serviceAreaLat      Float?
-  serviceAreaLng      Float?
-  serviceAreaRadiusKm Float?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([verificationStatus])
-  @@map("seller_profiles")
-}
-
-enum PayoutStatus {
-  PAID
-  REVERSED
-}
-
-enum PayoutMethod {
-  BANK_TRANSFER
-  UPI
+enum FpoOrganizationType {
+  FPO
+  FPC
+  COOPERATIVE
   OTHER
 }
 
-// A manually-recorded payment to a seller (bank transfer/UPI done outside
-// the app — see the SellerProfile comment above re: Razorpay Route for a
-// real automated alternative). Balance = delivered-order revenue for that
-// seller's items minus the sum of their non-reversed payouts; computed on
-// the fly in admin.service.ts rather than stored, so it's never stale.
-model Payout {
-  id       String       @id @default(uuid())
-  sellerId String
-  seller   User         @relation("PayoutSeller", fields: [sellerId], references: [id], onDelete: Cascade)
-  amount   Decimal      @db.Decimal(12, 2)
-  method   PayoutMethod @default(BANK_TRANSFER)
-  status   PayoutStatus @default(PAID)
-  reference String?
-  note      String?
-  paidById String
-  paidBy   User     @relation("PayoutRecordedBy", fields: [paidById], references: [id], onDelete: Restrict)
+// Deliberately its own enum rather than reusing Module 1's VerificationStatus
+// (User.phoneVerificationStatus etc.): that enum's PENDING/VERIFIED/REJECTED/
+// EXPIRED already carries a specific identity-verification meaning, and an
+// FPO's registration-review workflow needs an extra UNDER_REVIEW step plus a
+// SUSPENDED value the User verification concept has no equivalent for.
+// Coupling the two would make a future change to one silently affect the
+// other for no shared benefit.
+enum FpoVerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  SUSPENDED
+  EXPIRED
+}
+
+// Operational status of the FPO account itself (can it be used at all right
+// now), distinct from verificationStatus (has the org been vetted). A
+// SUSPENDED/DEACTIVATED FPO blocks normal member-management/aggregation
+// operations regardless of how "verified" it is on paper.
+enum FpoAccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum FpoAdminRole {
+  PRIMARY_ADMIN
+  ADMIN
+}
+
+enum FpoAdminStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// Lifecycle of a single farmer's membership *request/record* at one FPO.
+// Named distinctly from the existing FpoMembershipStatus enum above (which
+// is Module 2's much simpler farmer-self-declared NOT_A_MEMBER/MEMBER/
+// PENDING answer on FarmerProfile) — the two are intentionally not merged;
+// see FarmerProfile's fpoMembershipStatus field comment and
+// modules/fpo/README for how they relate.
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  SUSPENDED
+  REMOVED
+}
+
+enum AggregationGroupStatus {
+  DRAFT
+  OPEN
+  READY
+  CLOSED
+  CANCELLED
+}
+
+// Internal normalization unit is KG (see modules/fpo/unit-conversion.ts);
+// this enum is what callers/API responses are allowed to request/display in.
+enum QuantityUnit {
+  KG
+  QTL
+  TONNE
+}
+
+// ---------------------------------------------------------------------------
+// Module 4 enums — Crop / Lot Management
+// ---------------------------------------------------------------------------
+
+// Build spec section 8/27: a controlled state machine — clients never set
+// this string directly (see lots.schemas.ts); every transition goes through
+// LotStatusService/CropLotRepository.transition().
+enum CropLotStatus {
+  DRAFT
+  AVAILABLE
+  PARTIALLY_COMMITTED
+  COMMITTED
+  STORED
+  IN_TRANSACTION
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+// Build spec section 6/32: who the lot's produce belongs to right now.
+// Deliberately its own enum rather than reusing FpoMembershipStatus/
+// FpoAdminRole/etc. — "who owns this lot" has nothing to do with either of
+// those lifecycles.
+enum LotOwnerType {
+  FARMER
+  FPO
+}
+
+// Build spec section 16/54: how the lot came to exist, kept distinct from
+// ownerType — an FPO-owned lot is always FPO_AGGREGATED today, but the two
+// concepts are recorded separately so a future per-member-contribution lot
+// type doesn't have to overload ownerType to express it.
+enum LotSourceType {
+  FARMER_CREATED
+  FPO_AGGREGATED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  fullName     String
+  mobile       String        @unique
+  email        String?       @unique
+  buyerProfile BuyerProfile?
+  passwordHash String
+
+  role          UserRole
+  accountStatus AccountStatus @default(PENDING_VERIFICATION)
+
+  phoneVerificationStatus    VerificationStatus @default(PENDING)
+  emailVerificationStatus    VerificationStatus @default(PENDING)
+  identityVerificationStatus VerificationStatus @default(PENDING)
+
+  preferredLanguage Language @default(en)
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sessions            Session[]
+  auditLogs           AuditLog[]
+  passwordResetTokens PasswordResetToken[]
+  otpChallenges       OtpChallenge[]
+
+  // Module 2. One-to-one; a FARMER gets at most one FarmerProfile. Every
+  // other Module 1 field/relation above this line is unchanged.
+  farmerProfile FarmerProfile?
+
+  // Module 3. A user with role FPO_ADMIN can administer zero or more FPOs
+  // (and in principle a non-FPO_ADMIN user could hold a legacy/former
+  // FpoAdmin row too — role alone is never trusted for authorization, see
+  // modules/fpo/fpo.authorization.ts) — kept as its own join model rather
+  // than a single fpoId on User because an admin may manage more than one
+  // FPO and an FPO may have more than one admin.
+  fpoAdminRoles FpoAdmin[]
+
+  // Module 4. Who changed a lot's status — purely for LotStatusHistory
+  // display ("changed by Ramesh Patil"); never required, never a second
+  // source of truth for identity.
+  lotStatusChanges LotStatusHistory[]
+
+  // Module 8
+  sellStoreDecisions SellStoreDecision[]
+
+  // Module 9 — a WAREHOUSE_OPERATOR (or any user acting individually,
+  // never trusted from role alone — see WarehouseOwnerType) may own zero
+  // or more warehouses directly, as opposed to warehouses owned by an Fpo.
+  ownedWarehouses Warehouse[]
+
+  // Module 14 — every Net Realization calculation ever requested by this
+  // user (SetNull on delete, same reasoning as SellStoreDecision above: a
+  // deleted/deactivated user must never take a historical, already-shown
+  // calculation down with them).
+  netRealizationCalculations NetRealizationCalculation[]
+
+  // Module 15 — a TRANSPORTER gets at most one TransporterProfile (same
+  // one-to-one shape as farmerProfile/buyerProfile above). No other
+  // Module 1 field/relation changes.
+  transporterProfile TransporterProfile?
+
+  // Module 16 — every logistics request this user personally raised
+  // (FARMER/FPO_ADMIN/ADMIN — see logistics.authorization.ts). Restrict:
+  // a historical logistics request must never disappear out from under
+  // a deleted/deactivated user, same reasoning as every other Restrict
+  // relation on this model.
+  logisticsRequestsRaised LogisticsRequest[]
+
+  // Module 19 — every payment ever recorded by this user (BUYER reporting
+  // their own payment, or ADMIN/FARMER/FPO_ADMIN confirming receipt).
+  // Restrict, same reasoning as every other historical-record relation on
+  // this model: a deleted/deactivated user must never take a payment
+  // record's history down with them.
+  paymentsRecorded PaymentRecord[]
+
+  // WhatsApp Farmer Assistant — at most one linked WhatsApp number per user
+  // (see WhatsAppLink). Additive back-relation only; no Module 1 column changes.
+  whatsAppLink WhatsAppLink?
+
+  @@index([mobile])
+  @@index([email])
+  @@index([publicId])
+  @@index([role])
+  @@index([accountStatus])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Session {
+  id     String @id @default(uuid())
+  userId String
+
+  // Hash of the long-lived refresh token secret. Raw secret is never stored.
+  tokenHash String
+
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+
+  userAgent String?
+  ipAddress String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id     String @id @default(uuid())
+  userId String
+
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// Future-ready OTP challenge storage. Backs the OtpProvider abstraction
+// (MockOtpProvider today, FutureSmsOtpProvider later) without committing to
+// a real SMS vendor yet.
+model OtpChallenge {
+  id     String  @id @default(uuid())
+  userId String?
+
+  destination String // mobile number or email the OTP was issued for
+  purpose     String // e.g. "PHONE_VERIFICATION", "LOGIN_2FA"
+  codeHash    String
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([destination, purpose])
+  @@map("otp_challenges")
+}
+
+model AuditLog {
+  id          String  @id @default(uuid())
+  actorUserId String?
+
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Module 2 — Farmer & Farm Profile Management
+//
+// Relationship shape (see build spec section 43):
+//
+//   User (Module 1, unchanged)
+//     └── FarmerProfile (1:1)
+//           ├── Farm[]        — a farmer may have multiple farms
+//           │     └── FarmerCrop[]
+//           └── Fpo (optional reference)
+//
+//   Crop
+//     ├── CropTranslation[]   — en/hi/mr display names, not duplicate crops
+//     └── FarmerCrop[]
+//
+//   State → District → Taluka — normalized location reference data,
+//   seeded for Maharashtra only for the current SIH scope but shaped so
+//   any other state can be added later without a schema change.
+//
+// Selling preferences (fpoMembershipStatus, liquidityPreference,
+// willingToStore, communicationPreference) live directly on FarmerProfile
+// rather than a separate FarmerPreferences table — they are 1:1 with the
+// farmer with no independent lifecycle of their own, so a second table
+// would only add a join every future module (Sell/Store, Market
+// Intelligence) would have to repeat for no benefit.
+//
+// profileCompletionPercentage is deliberately NOT a stored column. It is
+// computed on every read from the current farms/crops/preferences state
+// (see modules/farmers/completion.ts). Storing it would require every
+// farm/crop/preference mutation to remember to recompute and persist it;
+// computing on read makes staleness impossible by construction, which is
+// what the spec's "frontend must never send this as authoritative" rule
+// is ultimately protecting against.
+// ---------------------------------------------------------------------------
+
+model State {
+  id   String @id @default(uuid())
+  name String @unique
+
+  createdAt DateTime @default(now())
+
+  districts District[]
+  farms     Farm[]
+  fpos      Fpo[]
+
+  @@map("states")
+}
+
+model District {
+  id      String @id @default(uuid())
+  stateId String
+  name    String
+
+  createdAt DateTime @default(now())
+
+  state   State    @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  talukas Taluka[]
+  farms   Farm[]
+  fpos    Fpo[]
+
+  @@unique([stateId, name])
+  @@index([stateId])
+  @@map("districts")
+}
+
+model Taluka {
+  id         String @id @default(uuid())
+  districtId String
+  name       String
+
+  createdAt DateTime @default(now())
+
+  district District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  farms    Farm[]
+  fpos     Fpo[]
+
+  @@unique([districtId, name])
+  @@index([districtId])
+  @@map("talukas")
+}
+
+// Module 3 — FPO Management & Farmer Aggregation.
+//
+// Originally a minimal, reference-compatible stub added by Module 2 (build
+// spec section 21 there: "only create the relationship required for future
+// integration"). Module 3 extends this same model in place — rather than
+// creating a second FPO table — with full registration/verification/account
+// fields. `id`, `name`, `districtId` and `active` are untouched in meaning;
+// every Module 2 query that reads them (reference-data.repository.ts,
+// farmers.service.ts's assertFpoExists/getFpoById) keeps working unmodified.
+model Fpo {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  name               String
+  legalName          String?
+  registrationNumber String?
+  organizationType   FpoOrganizationType @default(OTHER)
+
+  phone String?
+  email String?
+
+  village    String?
+  pincode    String?
+  latitude   Float?
+  longitude  Float?
+  stateId    String
+  districtId String
+  talukaId   String?
+
+  verificationStatus FpoVerificationStatus @default(PENDING)
+  accountStatus      FpoAccountStatus      @default(ACTIVE)
+
+  // Legacy Module 2 flag, kept for backward compatibility: Module 2's
+  // reference-data listing/selection queries (GET /api/reference/fpos,
+  // assertFpoExists, getFpoById) filter on this column directly and must
+  // keep working unmodified. Module 3 never writes to it directly — the FPO
+  // verification/suspension service methods keep it in sync with
+  // `accountStatus === ACTIVE` in the same update (see
+  // fpo-verification.service.ts) so both the old and new call sites agree
+  // on what "usable" means.
+  active Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([sellerId])
-  @@index([status])
-  @@map("payouts")
-}
+  state    State    @relation(fields: [stateId], references: [id])
+  district District @relation(fields: [districtId], references: [id])
+  taluka   Taluka?  @relation(fields: [talukaId], references: [id])
 
-// ---------------------------------------------------------------------------
-// 3.12 Notifications & Feedback
-// ---------------------------------------------------------------------------
+  // Module 2's self-declared farmer<->FPO answer (FarmerProfile.fpoId) —
+  // unchanged, see that field's own comment for why it is deliberately not
+  // merged into Module 3's `memberships` below.
+  farmerProfiles FarmerProfile[]
 
-model Notification {
-  id                String           @id @default(uuid())
-  userId            String
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type              NotificationType
-  title             String
-  message           String
-  isRead            Boolean          @default(false)
-  relatedEntityType String? // e.g. "ORDER", "SELLER_PROFILE"
-  relatedEntityId   String?
-  createdAt         DateTime         @default(now())
+  // Module 3
+  admins            FpoAdmin[]
+  memberships       FpoMembership[]
+  aggregationGroups AggregationGroup[]
 
-  @@index([userId, isRead])
-  @@map("notifications")
-}
+  // Module 4 — FPO-admin-created aggregated lots (build spec section 14/
+  // 35). Never auto-created from AggregationGroup data — see CropLot's
+  // own comment.
+  cropLots CropLot[]
 
-model NotificationPreference {
-  id           String             @id @default(uuid())
-  userId       String             @unique
-  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailEnabled Boolean            @default(true)
-  inAppEnabled Boolean            @default(true)
-  mutedTypes   NotificationType[] @default([])
-  updatedAt    DateTime           @updatedAt
+  // Module 9 — warehouses owned by this FPO (mirrors User.ownedWarehouses;
+  // see WarehouseOwnerType for why exactly one of the two is ever set).
+  ownedWarehouses Warehouse[]
 
-  @@map("notification_preferences")
-}
+  // Module 19 — payment obligations where this FPO is the seller (mirrors
+  // FarmerProfile.paymentObligations; see PaymentObligation's own
+  // sellerFarmerId/sellerFpoId comment for why exactly one of the two is
+  // ever set on a given obligation).
+  paymentObligations PaymentObligation[]
 
-model Feedback {
-  id            String           @id @default(uuid())
-  userId        String?
-  user          User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  category      FeedbackCategory @default(GENERAL)
-  subject       String
-  message       String
-  status        FeedbackStatus   @default(OPEN)
-  adminResponse String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-
-  @@index([status])
-  @@map("feedback")
-}
-
-// ---------------------------------------------------------------------------
-// 3.8 Mandi Price Intelligence
-// ---------------------------------------------------------------------------
-
-model Mandi {
-  id        String   @id @default(uuid())
-  name      String
-  state     String
-  district  String
-  latitude  Float?
-  longitude Float?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  prices      MandiPrice[]
-  favoritedBy FavoriteMandi[]
-  priceAlerts MandiPriceAlert[]
-
-  @@unique([name, state, district])
-  @@index([state, district])
-  @@map("mandis")
+  @@index([stateId])
+  @@index([districtId])
+  @@index([talukaId])
+  @@index([verificationStatus])
+  @@index([accountStatus])
+  @@map("fpos")
 }
 
 model Crop {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  category  String? // e.g. "Cereals", "Vegetables", "Pulses", "Spices"
-  unit      String   @default("Quintal")
+  id       String  @id @default(uuid())
+  // Canonical English name — the stable key other modules and the crop
+  // reference API key off. Localized display names live in
+  // CropTranslation, never as duplicate Crop rows per language.
+  name     String  @unique
+  category String?
+  active   Boolean @default(true)
+  // Module 16 — additive back-relation only (LogisticsRequest.cropId
+  // mirrors CropLot.cropId's own reuse of this model).
+  logisticsRequests LogisticsRequest[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  prices      MandiPrice[]
-  priceAlerts MandiPriceAlert[]
+  translations      CropTranslation[]
+  farmerCrops       FarmerCrop[]
+  aggregationGroups AggregationGroup[]
+
+  // Module 4. Restrict, not Cascade: a crop reference row must never
+  // disappear out from under a historical lot (mirrors FarmerCrop.crop).
+  cropLots CropLot[]
+
+  // Module 5 — per-crop grading rules (build spec section 14/48).
+  qualityStandards QualityStandard[]
+
+  mandiPrices   MandiPrice[]
+  marketAliases CropAlias[]
+  buyerDemands  BuyerDemand[]
+
+  // Module 8
+  sellStoreDecisions SellStoreDecision[]
+
+  // Module 7 (Price Forecasting)
+  priceForecasts PriceForecast[]
+
+  // Module 9 — configured warehouse storage capabilities/rates for this
+  // crop. Never AI-generated facts about the crop itself — see
+  // WarehouseCropCapability's own comment.
+  warehouseCapabilities WarehouseCropCapability[]
+  storageRates          StorageRate[]
+
+  // Module 9 Part 3 — at most one explicitly configured storage
+  // requirement set per crop (see CropStorageRequirement's own comment
+  // for why this is never auto-created). Optional 1:1, mirroring
+  // FarmerProfile's own optional-relation convention.
+  storageRequirement CropStorageRequirement?
+
+  // Module 14
+  netRealizationCalculations NetRealizationCalculation[]
 
   @@map("crops")
 }
 
-model MandiPrice {
-  id         String           @id @default(uuid())
-  mandiId    String
-  mandi      Mandi            @relation(fields: [mandiId], references: [id], onDelete: Cascade)
-  cropId     String
-  crop       Crop             @relation(fields: [cropId], references: [id], onDelete: Cascade)
-  variety    String? // Agmarknet-style variety label, e.g. "Local", "Basmati"
-  minPrice   Decimal          @db.Decimal(10, 2)
-  maxPrice   Decimal          @db.Decimal(10, 2)
-  modalPrice Decimal          @db.Decimal(10, 2) // the "typical" price — what most alerts/charts key off
-  priceDate  DateTime         @db.Date // the market date this record is FOR, not when it was entered
-  source     MandiPriceSource @default(ADMIN)
-  createdAt  DateTime         @default(now())
+model CropTranslation {
+  id            String   @id @default(uuid())
+  cropId        String
+  language      Language
+  localizedName String
 
-  @@unique([mandiId, cropId, variety, priceDate])
-  @@index([cropId, mandiId, priceDate])
-  @@index([priceDate])
+  crop Crop @relation(fields: [cropId], references: [id], onDelete: Cascade)
+
+  @@unique([cropId, language])
+  @@index([cropId])
+  @@map("crop_translations")
+}
+
+model FarmerProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  // Null = the farmer has not yet answered this question (distinct from
+  // an explicit "No" / NOT_A_MEMBER), which is what lets the completion
+  // calculator and the "missing" list tell "unanswered" apart from
+  // "answered in the negative".
+  //
+  // Module 3 note: this pair remains the farmer's own self-declared answer
+  // used only for onboarding/profile-completion (Module 2). It is NOT
+  // updated by the FpoMembership approval workflow below and can disagree
+  // with it (e.g. a farmer who ticks "MEMBER" here without ever going
+  // through FPO admin approval, or an admin-approved member who hasn't
+  // touched their profile form). `fpoMemberships` is the authoritative,
+  // audited record of admin-approved FPO membership; this pair is not
+  // migrated into it so existing profile-completion behavior/tests are
+  // left exactly as Module 2 built them (see build spec section 87).
+  fpoMembershipStatus FpoMembershipStatus?
+  fpoId               String?
+
+  liquidityPreference     LiquidityPreference?
+  willingToStore          Boolean?
+  communicationPreference CommunicationPreference @default(IN_APP)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fpo         Fpo?         @relation(fields: [fpoId], references: [id], onDelete: SetNull)
+  farms       Farm[]
+  farmerCrops FarmerCrop[]
+
+  // Module 3 — admin-approved membership history/requests. See the
+  // fpoMembershipStatus/fpoId comment above for how this relates to the
+  // legacy self-declared fields.
+  fpoMemberships FpoMembership[]
+
+  // Module 4 — actual declared produce (never a duplicate of estimated
+  // FarmerCrop/aggregation figures, see CropLot's own comment).
+  cropLots CropLot[]
+
+  // Module 19 — payment obligations where this farmer is the seller
+  // (mutually exclusive with Fpo.paymentObligations — see
+  // PaymentObligation's own sellerFarmerId/sellerFpoId comment).
+  paymentObligations PaymentObligation[]
+
+  @@index([userId])
+  @@index([fpoId])
+  @@map("farmer_profiles")
+}
+
+model Farm {
+  id              String  @id @default(uuid())
+  farmerProfileId String
+  name            String?
+
+  // Structured location (build spec section 6/13): village is free text,
+  // state/district/taluka are normalized FKs so future market-intel and
+  // logistics modules can query/aggregate by region reliably. Coordinates
+  // are optional and, per section 49, never exposed to buyers or PostHog
+  // by this module — only the owning farmer's own requests can read them.
+  village    String
+  pincode    String?
+  latitude   Float?
+  longitude  Float?
+  stateId    String
+  districtId String
+  talukaId   String
+
+  area           Float
+  areaUnit       AreaUnit
+  irrigationType IrrigationType @default(NOT_SPECIFIED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farmerProfile FarmerProfile @relation(fields: [farmerProfileId], references: [id], onDelete: Cascade)
+  state         State         @relation(fields: [stateId], references: [id])
+  district      District      @relation(fields: [districtId], references: [id])
+  taluka        Taluka        @relation(fields: [talukaId], references: [id])
+  farmerCrops   FarmerCrop[]
+
+  // Module 4 — a farmer-created lot always references the farm it came
+  // from (build spec section 17/33). Restrict, not Cascade, on CropLot's
+  // side: a farm must never disappear out from under a historical lot.
+  cropLots CropLot[]
+
+  @@index([farmerProfileId])
+  @@index([stateId])
+  @@index([districtId])
+  @@index([talukaId])
+  @@map("farms")
+}
+
+model FarmerCrop {
+  id              String @id @default(uuid())
+  farmerProfileId String
+  farmId          String
+  cropId          String
+
+  area      Float
+  areaUnit  AreaUnit
+  isPrimary Boolean  @default(false)
+
+  // Optional for MVP (build spec section 18).
+  typicalYield Float?
+  yieldUnit    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farmerProfile FarmerProfile @relation(fields: [farmerProfileId], references: [id], onDelete: Cascade)
+  farm          Farm          @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  // Restrict, not Cascade: a crop reference row must never disappear
+  // silently out from under a farmer's records just because an admin
+  // deactivates/removes a crop from the catalog.
+  crop          Crop          @relation(fields: [cropId], references: [id], onDelete: Restrict)
+
+  // One farmer-crop row per (farm, crop) pair — "add Onion to this farm
+  // twice" is an edit of the existing row, not a new one (section 44).
+  @@unique([farmId, cropId])
+  @@index([farmerProfileId])
+  @@index([farmId])
+  @@index([cropId])
+  @@map("farmer_crops")
+}
+
+// ---------------------------------------------------------------------------
+// Module 3 — FPO Management & Farmer Aggregation
+//
+// Relationship shape (build spec section 4/101):
+//
+//   User -> FarmerProfile -> Farm -> FarmerCrop -> FpoMembership -> Fpo
+//                                                                     |
+//                                                    +----------------+----------------+
+//                                                    v                                 v
+//                                            Member management                  Aggregation
+//                                                                                     |
+//                                                                                     v
+//                                                                          AggregationGroup (planning
+//                                                                          object only — never a sale,
+//                                                                          order, contract, lot or
+//                                                                          shipment; see section 75)
+// ---------------------------------------------------------------------------
+
+// An authorization grant: "this user administers this FPO". FPO_ADMIN alone
+// (the User.role) never grants access to a specific FPO — every FPO-scoped
+// admin operation must find an ACTIVE row here for (userId, fpoId) first.
+// See modules/fpo/fpo.authorization.ts.
+model FpoAdmin {
+  id     String @id @default(uuid())
+  fpoId  String
+  userId String
+
+  role   FpoAdminRole
+  status FpoAdminStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fpo  Fpo  @relation(fields: [fpoId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([fpoId, userId])
+  @@index([userId])
+  @@index([fpoId])
+  @@map("fpo_admins")
+}
+
+// A single farmer's membership request/record at one FPO. Historical rows
+// (REJECTED/REMOVED) are never deleted — see build spec section 19/93.
+//
+// Build spec section 14: a farmer may hold only one ACTIVE primary FPO
+// membership at a time. This is enforced server-side in
+// membership.service.ts (checked inside the same operation that creates/
+// approves a membership). PostgreSQL can additionally enforce it at the
+// database level with a *partial* unique index, which Prisma's schema DSL
+// cannot express declaratively:
+//
+//   CREATE UNIQUE INDEX fpo_memberships_one_active_per_farmer
+//     ON fpo_memberships (farmer_id)
+//     WHERE status = 'ACTIVE';
+//
+// Apply this by hand in a follow-up migration (`prisma migrate dev
+// --create-only`, then add the statement above) once a real database is
+// available — the plain @@index below only supports lookups, not the
+// uniqueness constraint.
+model FpoMembership {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  fpoId    String
+  farmerId String
+
+  status MembershipStatus @default(PENDING)
+
+  requestedAt DateTime  @default(now())
+  joinedAt    DateTime?
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  removedAt   DateTime?
+
+  // Optional admin-facing note captured on reject (build spec section 18).
+  // Never returned to the farmer as "internal notes" — only a plain
+  // rejection reason string is surfaced, see membership.types.ts.
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fpo    Fpo           @relation(fields: [fpoId], references: [id], onDelete: Cascade)
+  farmer FarmerProfile @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@index([fpoId, status])
+  @@index([farmerId, status])
+  @@map("fpo_memberships")
+}
+
+// A planning target for one crop at one FPO (build spec section 34/75/94:
+// "not a sale, order, contract, lot, or shipment"). Future Module 4 will
+// hang actual Lot rows off this via aggregationGroupId; none of that exists
+// yet (section 40/96 — no fake lotId).
+model AggregationGroup {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  fpoId  String
+  cropId String
+
+  targetQuantity    Float?
+  // Snapshot of the estimated member supply *at creation/last recompute
+  // time* — the live figure always comes from FpoAggregationService at read
+  // time (build spec section 73: data freshness); this column exists so a
+  // closed/cancelled group still shows what supply looked like when it was
+  // open, without depending on farmer data that may since have changed.
+  estimatedQuantity Float?
+  unit              QuantityUnit @default(QTL)
+
+  status AggregationGroupStatus @default(DRAFT)
+
+  targetDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fpo  Fpo  @relation(fields: [fpoId], references: [id], onDelete: Cascade)
+  crop Crop @relation(fields: [cropId], references: [id], onDelete: Restrict)
+
+  @@index([fpoId, status])
+  @@index([cropId])
+  @@index([status])
+  @@map("aggregation_groups")
+}
+
+// ---------------------------------------------------------------------------
+// Module 4 — Crop / Lot Management
+//
+// Relationship shape (build spec section 33/87):
+//
+//   FarmerProfile -> Farm -> FarmerCrop -> CropLot
+//   Fpo -> CropLot (FPO-owned/aggregated lot, admin-created only)
+//
+// Core distinction this module exists to enforce (build spec section 54/
+// 88/102): FarmerCrop is "I grow onion" (Module 2), AggregationGroup/
+// crop-aggregation is "our members are estimated to have N QTL" (Module 3,
+// a planning target, never inventory), and CropLot is "I have created this
+// actual N QTL lot for downstream use" — the first real transactional
+// object in the system. A lot is never auto-created from FarmerCrop or
+// AggregationGroup data; the farmer/FPO admin must explicitly create it
+// (section 15/36/88).
+// ---------------------------------------------------------------------------
+
+// A real, farmer/FPO-declared quantity of produce (build spec section 5/6).
+// Quantities are stored as Decimal (not Float, unlike Module 2/3's
+// area/estimatedQuantity columns) because a lot is the actual transactional
+// record future Sell/Store, Warehouse and Payment modules will do
+// arithmetic against — see build spec section 65/83 and lots.repository.ts'
+// own comment on why the KG/QTL/TONNE conversion service still exposes
+// plain `number` to the rest of the application above the repository
+// boundary.
+model CropLot {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  // Human-facing reference (build spec section 10), e.g. "LOT-2026-000123".
+  // Server-generated only — see lots/lot-number.ts — never accepted from
+  // the client, stable for the lifetime of the lot. publicId above remains
+  // the API identity used in URLs (build spec section 48).
+  lotNumber String @unique
+
+  ownerType  LotOwnerType
+  sourceType LotSourceType
+
+  // Exactly one of farmerId/fpoId is set, matching ownerType — enforced in
+  // lots.service.ts, never trusted from request body (build spec section
+  // 13/49/50). Restrict (not Cascade/SetNull): a farmer/FPO record must
+  // never disappear out from under a historical transactional lot.
+  farmerId String?
+  fpoId    String?
+
+  cropId String
+  // Only set for a farmer-created lot (build spec section 6/17) — an
+  // FPO-owned lot has no single owning Farm.
+  farmId String?
+
+  variety String?
+
+  // Internal source of truth, always KG (build spec section 11/65).
+  // `unit` below is only the unit the lot was originally created/displayed
+  // in — never re-derived arithmetic.
+  unit                QuantityUnit @default(KG)
+  quantityKg          Decimal      @db.Decimal(14, 2)
+  availableQuantityKg Decimal      @db.Decimal(14, 2)
+
+  harvestDate      DateTime?
+  availabilityDate DateTime
+
+  // Origin snapshot (build spec section 17/18/55): copied from the farm
+  // (or, for an FPO-owned lot, the FPO's own registered location) at
+  // creation time and never re-derived — so a later edit to the farm/FPO's
+  // profile can't silently rewrite a historical lot's recorded origin.
+  originVillage  String?
+  originTaluka   String?
+  originDistrict String
+  originState    String
+
+  status CropLotStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farmer FarmerProfile? @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  fpo    Fpo?           @relation(fields: [fpoId], references: [id], onDelete: Restrict)
+  crop   Crop           @relation(fields: [cropId], references: [id], onDelete: Restrict)
+  farm   Farm?          @relation(fields: [farmId], references: [id], onDelete: Restrict)
+
+  statusHistory LotStatusHistory[]
+
+  // Module 5 — every quality assessment ever created for this lot,
+  // oldest first by createdAt; never deleted when superseded (build spec
+  // section 31/32/70: historical assessments must survive for future
+  qualityAssessments QualityAssessment[]
+  tradeOffers        TradeOffer[]
+
+  // Module 8
+  sellStoreDecisions SellStoreDecision[]
+
+  // Module 9 — every storage reservation ever created against this lot
+  // (foundation only in Part 1: no reservation actually adjusts
+  // availableQuantityKg yet — see StorageReservation's own comment).
+  storageReservations StorageReservation[]
+
+  // Module 14 — every Net Realization calculation ever run against this
+  // lot. Restrict, matching sellStoreDecisions/storageReservations above:
+  // a lot must never disappear out from under a historical calculation.
+  netRealizationCalculations NetRealizationCalculation[]
+
+  // Module 16 — every logistics (transport quote) request ever raised
+  // against this lot. Restrict is enforced at the LogisticsRequest side
+  // (never Cascade), matching every other historical-transaction relation
+  // on this model above.
+  logisticsRequests LogisticsRequest[]
+  // Module 17 — every shipment ever created for a logistics request raised
+  // against this lot.
+  shipments          Shipment[]
+  // Module 18 — deliveries reconciled against this lot.
+  deliveries         Delivery[]
+
+  @@index([farmerId, status])
+  @@index([fpoId, status])
+  @@index([cropId, status])
+  @@index([farmId])
+  @@index([status])
+  @@index([availabilityDate])
+  @@index([createdAt])
+  @@map("crop_lots")
+}
+
+// Append-only transition log (build spec section 37/38/69) — kept
+// alongside CropLot.status rather than relied on instead of it, so "what is
+// this lot's status right now" is always a single indexed column read, and
+// "how did it get there" is a separate, never-mutated history.
+model LotStatusHistory {
+  id    String @id @default(uuid())
+  lotId String
+
+  // Null fromStatus represents the initial DRAFT row created alongside the
+  // lot itself (build spec section 69 example: `"from": null, "to": "DRAFT"`).
+  fromStatus CropLotStatus?
+  toStatus   CropLotStatus
+
+  changedBy String?
+  reason    String?
+
+  createdAt DateTime @default(now())
+
+  lot           CropLot @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  changedByUser User?   @relation(fields: [changedBy], references: [id], onDelete: SetNull)
+
+  @@index([lotId])
+  @@index([createdAt])
+  @@map("lot_status_history")
+}
+
+// ---------------------------------------------------------------------------
+// Module 5 — Quality Grading & Produce Assessment
+//
+// Core product principle (build spec section 82): "how good is this lot,
+// and how confidently do we know that?" A farmer's self-report, an AI
+// estimate, an inspector's manual verification and a lab result are never
+// merged into one number — each is its own QualityAssessment row, kept
+// forever (build spec section 31/32/70: quality data must be historical
+// and immutable after verification, for future dispute-resolution
+// modules). AI output is never the source of truth on its own (build spec
+// section 6/72): it starts as AI_ESTIMATED and only becomes VERIFIED
+// through an explicit human verification step.
+// ---------------------------------------------------------------------------
+
+enum QualityAssessmentSource {
+  MANUAL
+  AI
+  LAB
+  HYBRID
+}
+
+// Build spec section 9 plus FAILED (section 21/67 explicitly requires a
+// PROCESSING -> FAILED edge for a failed AI provider call, which the
+// suggested enum in section 9 omitted).
+enum QualityAssessmentStatus {
+  DRAFT
+  PENDING_IMAGES
+  PROCESSING
+  AI_COMPLETED
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+  SUPERSEDED
+  FAILED
+}
+
+// Build spec section 10: general grades; crop-specific grading rules live
+// in QualityStandard below rather than in this enum.
+enum QualityGrade {
+  A
+  B
+  C
+  D
+  REJECTED
+}
+
+enum QualityMetricSource {
+  MANUAL
+  AI
+  LAB
+}
+
+enum QualityImageType {
+  OVERVIEW
+  TOP_VIEW
+  SIDE_VIEW
+  CLOSE_UP
+  DEFECT
+  OTHER
+}
+
+// Build spec section 28/49: how much trust a grade carries — never
+// conflated with QualityAssessmentStatus (a status tracks *workflow*
+// position; this tracks *trust level*, and only this is safe to surface to
+// a buyer as "how certain is this").
+enum QualityVerificationStatus {
+  SELF_REPORTED
+  AI_ESTIMATED
+  VERIFIED
+  LAB_VERIFIED
+}
+
+enum QualityDefectSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// Build spec section 38: one row per AI attempt (including retries, build
+// spec section 39) rather than one mutable job — see QualityAIAnalysis's
+// own comment.
+enum QualityAIAnalysisStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+//
+// The record of one assessment event (build spec section 7). A lot can
+// have many of these over time — see the model-level comment above this
+// section. `qualityScore` (0-100, produce condition) and `confidenceScore`
+// (0-1, AI certainty) are deliberately separate columns (build spec
+// section 46) — a manual/lab assessment has no confidenceScore at all.
+// /
+model QualityAssessment {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  lotId String
+
+  // Human-facing reference, e.g. "QA-2026-000001" (build spec section 57)
+  // — server-generated, immutable, never accepted from the client. Mirrors
+  // CropLot.lotNumber (see lots/lot-number.ts) — see quality/assessment-number.ts.
+  assessmentNumber String @unique
+
+  source             QualityAssessmentSource
+  status             QualityAssessmentStatus   @default(DRAFT)
+  verificationStatus QualityVerificationStatus @default(SELF_REPORTED)
+
+  overallGrade    QualityGrade?
+  qualityScore    Decimal?      @db.Decimal(5, 2)
+  confidenceScore Decimal?      @db.Decimal(4, 3)
+
+  // Who submitted (for MANUAL/HYBRID) or most recently verified this
+  // assessment — informational/audit-trail only, deliberately a plain
+  // column rather than a Prisma relation (build spec section 27's
+  // multi-role actor set — farmer, FPO admin, admin, future inspector —
+  // isn't worth three more User back-relations for a field nothing in
+  // this module joins against).
+  assessedByUserId String?
+  assessedAt       DateTime?
+
+  // Build spec section 33: when a later assessment supersedes this one,
+  // point forward to it. The superseding assessment is never itself
+  // deleted or mutated to "become" this one — both rows persist.
+  supersededByAssessmentId String?            @unique
+  supersededBy             QualityAssessment? @relation("AssessmentSupersession", fields: [supersededByAssessmentId], references: [id], onDelete: SetNull)
+  supersedes               QualityAssessment? @relation("AssessmentSupersession")
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lot        CropLot             @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  metrics    QualityMetric[]
+  images     QualityImage[]
+  defects    QualityDefect[]
+  aiAnalyses QualityAIAnalysis[]
+
+  @@index([lotId, createdAt])
+  @@index([lotId, status])
+  @@index([status])
+  @@index([source])
+  @@index([overallGrade])
+  @@map("quality_assessments")
+}
+
+//
+// Flexible per-crop metrics (build spec section 11-13) — never columns
+// like `moisture`/`damage`/`color` directly on QualityAssessment, so a new
+// metric for a new crop never needs a migration.
+// /
+model QualityMetric {
+  id           String @id @default(uuid())
+  assessmentId String
+
+  metricCode String
+  metricName String
+
+  value Decimal @db.Decimal(10, 2)
+  unit  String?
+
+  minAllowed Decimal? @db.Decimal(10, 2)
+  maxAllowed Decimal? @db.Decimal(10, 2)
+
+  source QualityMetricSource
+
+  createdAt DateTime @default(now())
+
+  assessment QualityAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@index([metricCode])
+  @@map("quality_metrics")
+}
+
+//
+// Image metadata only (build spec section 15: "Do not store binary image
+// data in PostgreSQL"). `storageProvider`/`externalId` are deliberately
+// generic rather than Cloudinary-specific columns — this codebase has no
+// Cloudinary (or any) file-storage integration yet (see
+// images/quality-image.service.ts's own comment on why), so the schema is
+// written to accept whichever provider is wired in first without another
+// migration.
+// /
+model QualityImage {
+  id           String @id @default(uuid())
+  assessmentId String
+
+  storageProvider String
+  externalId      String
+  secureUrl       String
+  // Build spec section 41: optional foundation for future same-image
+  // analysis-result caching — not used for any dedup logic yet.
+  checksum        String?
+
+  imageType        QualityImageType @default(OTHER)
+  uploadedByUserId String?
+
+  uploadedAt DateTime @default(now())
+
+  assessment QualityAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@map("quality_images")
+}
+
+//
+// Build spec section 44-45: defects are their own flexible rows for the
+// same reason metrics are — never crop-specific columns.
+// /
+model QualityDefect {
+  id           String @id @default(uuid())
+  assessmentId String
+
+  code String
+  name String
+
+  severity QualityDefectSeverity
+
+  affectedPercentage Decimal? @db.Decimal(5, 2)
+  confidence         Decimal? @db.Decimal(4, 3)
+
+  createdAt DateTime @default(now())
+
+  assessment QualityAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@map("quality_defects")
+}
+
+//
+// One row per AI analysis *attempt* (build spec section 38-39/42-43) —
+// including retries — rather than a single mutable "the AI result" field,
+// so a retry after a FAILED attempt never destroys the failure record.
+// `rawResultJson` only ever holds the sanitized, normalized
+// QualityAnalysisResult shape (see ai/quality-ai.types.ts) — never a raw
+// provider payload (build spec section 22/43: "Do not expose
+// provider-specific raw JSON directly").
+// /
+model QualityAIAnalysis {
+  id           String @id @default(uuid())
+  assessmentId String
+
+  provider     String
+  modelVersion String
+
+  status QualityAIAnalysisStatus @default(QUEUED)
+
+  confidenceScore Decimal? @db.Decimal(4, 3)
+  rawResultJson   Json?
+
+  requestedByUserId String?
+  requestedAt       DateTime  @default(now())
+  processedAt       DateTime?
+
+  errorCode    String?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assessment QualityAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId, createdAt])
+  @@index([status])
+  @@map("quality_ai_analyses")
+}
+
+//
+// Build spec section 14/48: a clean, additive per-crop grading foundation
+// — deliberately NOT a full rules engine (boolean expressions, AND/OR
+// trees, etc.), just "for this crop, this grade requires this metric to
+// fall in this range". QualityGradingService reads these rows to turn a
+// set of QualityMetric values into a QualityGrade; if no QualityStandard
+// rows exist for a crop, grading falls back to whatever grade was
+// supplied directly (manual/AI-suggested) — see that service's comment.
+// /
+model QualityStandard {
+  id     String @id @default(uuid())
+  cropId String
+
+  grade      QualityGrade
+  metricCode String
+
+  minValue Decimal? @db.Decimal(10, 2)
+  maxValue Decimal? @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  crop Crop @relation(fields: [cropId], references: [id], onDelete: Cascade)
+
+  @@unique([cropId, grade, metricCode])
+  @@index([cropId])
+  @@map("quality_standards")
+}
+
+// ---------------------------------------------------------------------------
+// Module 6 — Market data & price discovery
+// ---------------------------------------------------------------------------
+
+enum MarketImportOperation {
+  HISTORICAL_IMPORT
+  INCREMENTAL_SYNC
+}
+
+enum MarketImportStatus {
+  RUNNING
+  SUCCEEDED
+  PARTIAL_SUCCESS
+  FAILED
+  SKIPPED
+}
+
+// A source market. Location is deliberately optional: it is never guessed.
+model Mandi {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  source         String
+  sourceMarketId String?
+  name           String
+  normalizedName String
+  state          String
+  district       String
+  latitude       Float?
+  longitude      Float?
+  sourceMetadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prices MandiPrice[]
+
+  // Module 7 (Price Forecasting) — only set for MANDI-scoped forecasts.
+  priceForecasts PriceForecast[]
+
+  @@unique([source, sourceMarketId])
+  @@unique([source, normalizedName, district, state])
+  @@index([state, district])
+  @@index([latitude, longitude])
+  @@map("mandis")
+}
+
+// Canonical, date-wise historical price data. Monetary values are INR/QTL.
+model MandiPrice {
+  id             String   @id @default(uuid())
+  cropId         String
+  mandiId        String
+  source         String
+  sourceRecordId String?
+  observedDate   DateTime @db.Date
+
+  minPrice        Decimal       @db.Decimal(14, 2)
+  maxPrice        Decimal       @db.Decimal(14, 2)
+  modalPrice      Decimal       @db.Decimal(14, 2)
+  arrivalQuantity Decimal?      @db.Decimal(14, 2)
+  arrivalUnit     QuantityUnit?
+  sourceMetadata  Json?
+  retrievedAt     DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  crop  Crop  @relation(fields: [cropId], references: [id], onDelete: Restrict)
+  mandi Mandi @relation(fields: [mandiId], references: [id], onDelete: Restrict)
+
+  @@unique([cropId, mandiId, observedDate, source])
+  @@unique([source, sourceRecordId])
+  @@index([cropId, observedDate])
+  @@index([mandiId, observedDate])
+  @@index([cropId, mandiId, observedDate])
   @@map("mandi_prices")
 }
 
-model FavoriteMandi {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mandiId   String
-  mandi     Mandi    @relation(fields: [mandiId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, mandiId])
-  @@index([userId])
-  @@map("favorite_mandis")
-}
-
-model MandiPriceAlert {
-  id              String              @id @default(uuid())
-  userId          String
-  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+// Explicit aliases prevent an importer from inventing a Crop record.
+model CropAlias {
+  id              String   @id @default(uuid())
   cropId          String
-  crop            Crop                @relation(fields: [cropId], references: [id], onDelete: Cascade)
-  mandiId         String? // null = alert across any mandi
-  mandi           Mandi?              @relation(fields: [mandiId], references: [id], onDelete: Cascade)
-  priceType       MandiPriceType      @default(MODAL)
-  condition       PriceAlertCondition
-  thresholdPrice  Decimal             @db.Decimal(10, 2)
-  isActive        Boolean             @default(true)
-  lastTriggeredAt DateTime?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  source          String
+  alias           String
+  normalizedAlias String
+  createdAt       DateTime @default(now())
 
-  @@index([cropId, mandiId, isActive])
-  @@index([userId])
-  @@map("mandi_price_alerts")
+  crop Crop @relation(fields: [cropId], references: [id], onDelete: Cascade)
+
+  @@unique([source, normalizedAlias])
+  @@index([cropId])
+  @@map("crop_aliases")
+}
+
+// Durable, non-sensitive operational record for import and sync attempts.
+model MarketDataImportRun {
+  id                 String                @id @default(uuid())
+  source             String
+  operation          MarketImportOperation
+  status             MarketImportStatus    @default(RUNNING)
+  recordsRead        Int                   @default(0)
+  recordsImported    Int                   @default(0)
+  recordsUpdated     Int                   @default(0)
+  recordsSkipped     Int                   @default(0)
+  recordsRejected    Int                   @default(0)
+  validationFailures Int                   @default(0)
+  partialFailures    Int                   @default(0)
+  diagnostics        Json?
+  metadata           Json?
+  startedAt          DateTime              @default(now())
+  completedAt        DateTime?
+  createdAt          DateTime              @default(now())
+
+  @@index([source, operation, startedAt])
+  @@map("market_data_import_runs")
+}
+
+// Progress is advanced only after a page/range was persisted successfully.
+model MarketDataSyncCheckpoint {
+  id                         String    @id @default(uuid())
+  source                     String    @unique
+  lastSuccessfulObservedDate DateTime? @db.Date
+  cursor                     String?
+  metadata                   Json?
+  lastSuccessfulSyncAt       DateTime?
+  updatedAt                  DateTime  @updatedAt
+
+  @@map("market_data_sync_checkpoints")
+}
+
+// Module 7 — buyer discovery, matching and immutable digital offers.
+enum BuyerBusinessType {
+  PROCESSOR
+  WHOLESALER
+  RETAILER
+  EXPORTER
+  INSTITUTIONAL_BUYER
+  TRADER
+  OTHER
+}
+
+enum BuyerVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum BuyerDemandStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  FULFILLED
+  EXPIRED
+  CANCELLED
+}
+
+enum TradeOfferStatus {
+  DRAFT
+  SENT
+  COUNTERED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+  CANCELLED
+}
+
+model BuyerProfile {
+  id                 String                  @id @default(uuid())
+  publicId           String                  @unique @default(uuid())
+  userId             String                  @unique
+  organizationName   String
+  businessType       BuyerBusinessType
+  description        String?
+  contactPerson      String
+  phone              String
+  email              String?
+  address            String?
+  state              String
+  district           String
+  latitude           Float?
+  longitude          Float?
+  website            String?
+  verificationStatus BuyerVerificationStatus @default(PENDING)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  demands            BuyerDemand[]
+  buyerOffers        TradeOffer[]            @relation("OfferBuyer")
+  // Module 18 — every delivery ever recorded against this buyer.
+  deliveries         Delivery[]
+  // Module 19 — every payment obligation ever created against this buyer.
+  paymentObligations PaymentObligation[]
+
+  @@index([verificationStatus])
+  @@index([state, district])
+  @@map("buyer_profiles")
+}
+
+model BuyerDemand {
+  id                  String            @id @default(uuid())
+  publicId            String            @unique @default(uuid())
+  buyerId             String
+  cropId              String
+  title               String
+  description         String?
+  requiredQuantity    Decimal           @db.Decimal(14, 2)
+  minimumQuantity     Decimal?          @db.Decimal(14, 2)
+  quantityUnit        QuantityUnit
+  targetPrice         Decimal?          @db.Decimal(14, 2)
+  minimumPrice        Decimal?          @db.Decimal(14, 2)
+  maximumPrice        Decimal?          @db.Decimal(14, 2)
+  qualityRequirements Json?
+  grade               QualityGrade?
+  state               String
+  district            String
+  latitude            Float?
+  longitude           Float?
+  deliveryLocation    String?
+  deliveryStartDate   DateTime?
+  deliveryEndDate     DateTime?
+  status              BuyerDemandStatus @default(DRAFT)
+  committedQuantity   Decimal           @default(0) @db.Decimal(14, 2)
+  expiresAt           DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  buyer               BuyerProfile      @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  crop                Crop              @relation(fields: [cropId], references: [id], onDelete: Restrict)
+  offers              TradeOffer[]
+
+  @@index([buyerId, status])
+  @@index([cropId, status])
+  @@index([status, expiresAt])
+  @@map("buyer_demands")
+}
+
+model TradeOffer {
+  id            String               @id @default(uuid())
+  publicId      String               @unique @default(uuid())
+  lotId         String
+  buyerDemandId String?
+  buyerId       String
+  sellerId      String
+  initiatorId   String
+  quantity      Decimal              @db.Decimal(14, 2)
+  quantityUnit  QuantityUnit
+  offeredPrice  Decimal              @db.Decimal(14, 2)
+  priceUnit     String               @default("INR_PER_QUINTAL")
+  totalValue    Decimal              @db.Decimal(16, 2)
+  deliveryTerms String?
+  message       String?
+  status        TradeOfferStatus     @default(DRAFT)
+  expiresAt     DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  lot           CropLot              @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  demand        BuyerDemand?         @relation(fields: [buyerDemandId], references: [id], onDelete: SetNull)
+  buyer         BuyerProfile         @relation("OfferBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+  revisions     TradeOfferRevision[]
+
+  // Module 14 — Net Realization calculations that resolved their sale
+  // price from this specific offer (whether ACCEPTED or still SENT/
+  // COUNTERED — see net-realization-input-resolver.service.ts's own price
+  // priority comment for why a non-accepted offer can still be used for an
+  // explicit "what if I take this offer" calculation).
+  netRealizationCalculations NetRealizationCalculation[]
+
+  // Module 18 — the delivery(ies) recorded against a shipment for this
+  // accepted trade (there is no separate Order model in this codebase —
+  // see Module 16/17's own comment — so an accepted TradeOffer is the
+  // commercial transaction Module 18 reconciles delivery against).
+  deliveries Delivery[]
+
+  // Module 19 — payment obligations whose commercial terms (price,
+  // quantity) were resolved from this offer at the time its delivery was
+  // reconciled. See PaymentObligation.tradeOfferId's own comment for why
+  // this stays nullable, mirroring Delivery.tradeOfferId.
+  paymentObligations PaymentObligation[]
+
+  @@index([lotId, status])
+  @@index([buyerId, status])
+  @@index([buyerDemandId, status])
+  @@map("trade_offers")
+}
+
+model TradeOfferRevision {
+  id             String     @id @default(uuid())
+  offerId        String
+  revisionNumber Int
+  initiatedBy    String
+  quantity       Decimal    @db.Decimal(14, 2)
+  offeredPrice   Decimal    @db.Decimal(14, 2)
+  priceUnit      String     @default("INR_PER_QUINTAL")
+  deliveryTerms  String?
+  message        String?
+  createdAt      DateTime   @default(now())
+  offer          TradeOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, revisionNumber])
+  @@index([offerId, createdAt])
+  @@map("trade_offer_revisions")
 }
 
 // ---------------------------------------------------------------------------
-// 3.10 Weather Intelligence
+// Module 8 — Sell vs Store Decision Engine
 // ---------------------------------------------------------------------------
 
-model WeatherCache {
-  id          String   @id @default(uuid())
-  locationKey String   @unique // rounded "lat,lng" — see weather.service.ts
-  latitude    Float
-  longitude   Float
-  currentData Json
-  dailyData   Json
-  fetchedAt   DateTime @default(now())
-  expiresAt   DateTime
+enum SellStoreDecisionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
 
+enum SellStoreDecisionResult {
+  SELL_NOW
+  STORE
+  INSUFFICIENT_DATA
+}
+
+model SellStoreDecision {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  lotId  String
+  cropId String
+
+  requestedByUserId String?
+
+  status SellStoreDecisionStatus  @default(PENDING)
+  result SellStoreDecisionResult?
+
+  confidenceScore Decimal? @db.Decimal(5, 4)
+
+  // Immutable snapshot of inputs used during the decision (Market, Lot, Storage context).
+  inputSnapshot Json?
+
+  // Metadata explaining the decision (engine version, scores, factors used, reasons).
+  decisionMetadata Json?
+
+  marketDataTimestamp  DateTime?
+  storageDataTimestamp DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lot             CropLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  crop            Crop    @relation(fields: [cropId], references: [id], onDelete: Restrict)
+  requestedByUser User?   @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([lotId, status])
+  @@index([requestedByUserId])
+  @@map("sell_store_decisions")
+}
+
+// ---------------------------------------------------------------------------
+// Module 7 — Price Forecasting: foundation & data model (Part 1)
+//
+// This part deliberately persists forecasts only — it does not generate
+// them. MandiPrice (Module 6) remains the single authoritative source of
+// historical price observations; PriceForecast never copies or duplicates
+// that history, it only records what a (future) forecasting run predicted
+// from it. See docs/modules/module-07-price-forecasting.md.
+// ---------------------------------------------------------------------------
+
+// What a forecast is predicting a price *for*. A forecast is always
+// generated for a single crop, plus exactly one of:
+//   MANDI      — one specific market (mandiId is set)
+//   REGIONAL   — a state, optionally narrowed to a district (regionState /
+//                regionDistrict are set, mandiId is null)
+//   CROP_WIDE  — the crop everywhere (no mandi/region set at all)
+// scopeType is stored explicitly (rather than only inferred from which
+// columns are null) so queries/branches never have to reverse-engineer
+// scope from null-checks, and so the meaning of "null mandiId" can never
+// silently drift.
+enum PriceForecastScopeType {
+  MANDI
+  REGIONAL
+  CROP_WIDE
+}
+
+// Deliberately its own enum rather than reusing SellStoreDecisionStatus
+// (Module 8) — that one has no GENERATING/INSUFFICIENT_DATA distinction a
+// forecast run needs, and the two lifecycles have nothing in common beyond
+// both being "did this computation finish OK".
+enum PriceForecastStatus {
+  GENERATING
+  COMPLETED
+  FAILED
+  INSUFFICIENT_DATA
+}
+
+// A single generated price prediction, persisted for reuse. Money fields
+// use Decimal (matching MandiPrice's INR/QTL convention, see that model's
+// comment) — never Float, so downstream arithmetic (Sell vs Store, future
+// UI) never inherits floating-point rounding error.
+//
+// Idempotency: a duplicate forecast for the same crop + scope + target
+// date + model version must not create a conflicting second row (build
+// spec requirement). A nullable mandiId/regionState/regionDistrict cannot
+// enforce that alone — Postgres unique indexes treat NULL as distinct from
+// NULL, so two CROP_WIDE rows (mandiId = NULL for both) would not collide.
+// `scopeKey` is a deterministic, NULL-free string encoding of scopeType +
+// its scope columns (built by modules/price-forecasting's scope helpers,
+// e.g. "MANDI:<mandiId>", "REGIONAL:<state>:<district|*>", "CROP_WIDE"),
+// and the unique constraint is keyed on it instead.
+model PriceForecast {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  cropId String
+  crop   Crop   @relation(fields: [cropId], references: [id], onDelete: Restrict)
+
+  scopeType PriceForecastScopeType
+
+  // Set only when scopeType = MANDI. Restrict: a mandi reference row must
+  // never disappear out from under a historical forecast.
+  mandiId String?
+  mandi   Mandi?  @relation(fields: [mandiId], references: [id], onDelete: Restrict)
+
+  // Set only when scopeType = REGIONAL. regionDistrict is optional even
+  // within REGIONAL scope (a state-wide forecast has no district).
+  regionState    String?
+  regionDistrict String?
+
+  // See model comment — the collision-safe encoding of the three fields
+  // above, and what idempotency is actually enforced against.
+  scopeKey String
+
+  targetDate  DateTime @db.Date
+  horizonDays Int
+
+  predictedPrice  Decimal  @db.Decimal(14, 2)
+  lowerBound      Decimal? @db.Decimal(14, 2)
+  upperBound      Decimal? @db.Decimal(14, 2)
+  // 0-1 scale, matching Module 8's confidenceScore convention.
+  confidenceScore Decimal? @db.Decimal(4, 3)
+
+  status PriceForecastStatus @default(GENERATING)
+
+  // Free-text identifiers (not an enum) so a new model/provider never
+  // needs a migration — mirrors MandiPrice.source being a plain string for
+  // the same reason.
+  modelProvider String
+  modelVersion  String
+
+  // The historical window the (future) forecasting run actually read from
+  // MandiPrice to produce this prediction — an audit trail, never a second
+  // copy of the prices themselves.
+  inputDataStartDate DateTime? @db.Date
+  inputDataEndDate   DateTime? @db.Date
+  sampleCount        Int?
+
+  generatedAt DateTime  @default(now())
+  // A forecast past this timestamp is stale and should not be served as
+  // "latest valid" (see PriceForecastRepository.findLatestValid) — never
+  // auto-deleted, just excluded from that query.
+  expiresAt   DateTime?
+
+  // Safe, technical-only metadata (e.g. algorithm parameters, feature
+  // flags used) — never raw provider payloads or PII, mirroring
+  // QualityAIAnalysis.rawResultJson's own "sanitized, normalized shape
+  // only" rule.
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cropId, scopeKey, targetDate, modelVersion])
+  @@index([cropId, targetDate])
+  @@index([cropId, mandiId, targetDate])
+  @@index([status])
   @@index([expiresAt])
-  @@map("weather_cache")
+  @@map("price_forecasts")
 }
 
 // ---------------------------------------------------------------------------
-// 3.5 Seed Store — a genuinely independent sub-marketplace: its own catalog,
-// cart, checkout, orders, payments, reviews, and wishlist, mirroring the
-// main commerce system's shape rather than reusing Product/Order/Payment.
-// Reuses OrderStatus/PaymentStatus (identical semantics, no reason to fork
-// those enums too). The AI seed advisor mentioned alongside this in the
-// original spec is deliberately NOT part of this — it belongs with the
-// AI Farm Advisory module (3.9), which needs its own provider decision.
+// Module 9 — Warehouse Intelligence
+// Part 1: Foundation & Data Model
+//
+// Scope of this part: the domain model + repository layer only. No APIs,
+// controllers, routes, capacity-allocation logic, cost calculation, or
+// integration with Module 8 (Sell vs Store) yet — see the repository
+// interfaces in warehouse-intelligence/ for exactly which operations
+// exist today.
+//
+// Relationship shape:
+//
+//   User / Fpo (exactly one, see WarehouseOwnerType)
+//     └── Warehouse
+//           ├── WarehouseStorageUnit[]      — chambers/sections
+//           ├── WarehouseCropCapability[]   — configured, not AI-derived
+//           ├── StorageReservation[]        — foundation only, no capacity
+//           │                                 math yet (see model comment)
+//           └── StorageRate[]               — configured pricing, no cost
+//                                              calculation yet
+//
+//   CropLot ── StorageReservation[]
+//   Crop    ── WarehouseCropCapability[], StorageRate[]
 // ---------------------------------------------------------------------------
 
-model SeedCategory {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  slug          String   @unique
-  description   String?
-  imageUrl      String?
-  imagePublicId String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  seeds Seed[]
-
-  @@map("seed_categories")
+enum WarehouseStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
 }
 
-model Seed {
-  id             String       @id @default(uuid())
-  sellerId       String
-  seller         User         @relation("SellerSeeds", fields: [sellerId], references: [id], onDelete: Cascade)
-  seedCategoryId String
-  seedCategory   SeedCategory @relation(fields: [seedCategoryId], references: [id])
+// Who owns this warehouse — deliberately its own enum, mirroring
+// LotOwnerType's rationale: "who owns this warehouse" is unrelated to any
+// other lifecycle enum, and exactly one of ownerUserId/ownerFpoId is set
+// to match. Not enforced at the database level (Postgres has no portable
+// XOR-on-two-nullable-columns constraint that matches the rest of this
+// project's conventions) — enforced in the future service layer the same
+// way CropLot's farmerId/fpoId pairing is, never trusted from the request
+// body.
+enum WarehouseOwnerType {
+  USER
+  FPO
+  // Module 9 Warehouse Ecosystem Ingestion Layer — a warehouse ingested
+  // from an external data source with no FarmLink user/FPO behind it.
+  // ownerUserId/ownerFpoId stay null for these rows; "owner" here means
+  // "who this record's data is attributed to", not "who legally operates
+  // it in FarmLink" (see WarehouseSourceReference for the actual
+  // provenance/idempotency record — this enum value only has to make the
+  // existing required, non-null Warehouse.ownerType column meaningful for
+  // a row nobody in FarmLink owns).
+  GOVERNMENT
+  PRIVATE_PARTNER
+}
 
-  name                   String
-  slug                   String  @unique
-  description            String?
-  brand                  String?
-  variety                String? // e.g. "JS-9560" — supports the spec's "seed variety comparison"
-  sowingSeason           String? // e.g. "Kharif", "Rabi", "Zaid"
-  germinationRatePercent Int?
+// Shared between Warehouse.warehouseType (what kind of facility this is
+// overall) and WarehouseStorageUnit.storageType (what kind of storage a
+// specific chamber/section provides) — one enum rather than two near-
+// identical ones, per the "do not create redundant enums" instruction.
+enum StorageType {
+  AMBIENT
+  COLD_STORAGE
+  CONTROLLED_ATMOSPHERE
+  SILO
+  WAREHOUSE_GODOWN
+  OTHER
+}
 
-  price          Decimal  @db.Decimal(12, 2)
-  discountPrice  Decimal? @db.Decimal(12, 2)
-  stock          Int      @default(0)
-  unit           String   @default("kg")
-  specifications Json?
-  latitude       Float?
-  longitude      Float?
-  isActive       Boolean  @default(true)
-  avgRating      Float    @default(0)
-  reviewCount    Int      @default(0)
-  viewCount      Int      @default(0)
+// Configured compatibility, not a computed/AI-derived fact (build spec for
+// this part: "represent configured capabilities, not AI-generated facts").
+enum CropStorageCompatibility {
+  COMPATIBLE
+  NOT_RECOMMENDED
+  INCOMPATIBLE
+}
+
+enum StorageReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+  COMPLETED
+}
+
+enum StorageRateType {
+  PER_DAY
+  PER_WEEK
+  PER_MONTH
+  PER_QUANTITY_PER_DAY
+}
+
+model Warehouse {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  ownerType   WarehouseOwnerType
+  ownerUserId String?
+  ownerFpoId  String?
+
+  name          String
+  warehouseType StorageType @default(AMBIENT)
+
+  state   String
+  district String
+  address String?
+  // Additive, nullable — populated when a source (FarmLink form or an
+  // external provider) actually supplies one; never backfilled/guessed
+  // for existing rows. Used only as a conservative duplicate-detection
+  // signal by the ingestion layer (see warehouse-duplicate-detection.
+  // service.ts), never required by anything pre-existing.
+  pincode String?
+
+  latitude  Float?
+  longitude Float?
+
+  // Reuses Module 1's VerificationStatus (PENDING/VERIFIED/REJECTED/
+  // EXPIRED) rather than a bespoke warehouse enum — "verification should
+  // not be fabricated if a reusable enum already exists".
+  verificationStatus VerificationStatus @default(PENDING)
+
+  // status is the lifecycle enum (ACTIVE/INACTIVE/SUSPENDED — the only
+  // one of the two that can express "an admin suspended this warehouse").
+  // isActive is a fast, denormalized listing/filter flag in the same
+  // spirit as Fpo.active — kept in sync with status by the future service
+  // layer, never derived automatically inside this repository layer.
+  status   WarehouseStatus @default(ACTIVE)
+  isActive Boolean         @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  images       SeedImage[]
-  variants     SeedVariant[]
-  reviews      SeedReview[]
-  wishlistedBy SeedWishlist[]
-  cartItems    SeedCartItem[]
-  orderItems   SeedOrderItem[]
+  // Restrict, not Cascade/SetNull: an owning user/FPO record must never
+  // disappear out from under a warehouse record, mirroring CropLot's
+  // farmer/fpo relations.
+  ownerUser User? @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  ownerFpo  Fpo?  @relation(fields: [ownerFpoId], references: [id], onDelete: Restrict)
 
-  @@index([seedCategoryId])
-  @@index([sellerId])
+  storageUnits WarehouseStorageUnit[]
+  capabilities WarehouseCropCapability[]
+  reservations StorageReservation[]
+  rates        StorageRate[]
+  // Warehouse Ecosystem Ingestion Layer — zero or more external-source
+  // identities this warehouse is known under (see WarehouseSourceReference).
+  // A FarmLink-created warehouse (ownerType USER/FPO) normally has none;
+  // its identity is its own id/publicId, never an artificial external ID
+  // (Part 12 of the ingestion spec). A row may accumulate more than one
+  // reference over time (e.g. matched to both a government registry entry
+  // and a private partner entry), which is exactly why this is a separate
+  // table rather than columns on Warehouse itself.
+  sourceReferences WarehouseSourceReference[]
+
+  @@index([ownerUserId])
+  @@index([ownerFpoId])
+  @@index([state, district])
+  @@index([status])
+  @@index([verificationStatus])
+  @@index([createdAt])
+  // Module 9 Part 2 — supports the nearby-warehouse bounding-box query
+  // (WarehouseRepository.findNearbyCandidates) the same way Mandi never
+  // needed one: Module 6 never bounded its candidate set in SQL (it loads
+  // every market row — see market-intelligence.repository.ts's own
+  // comment trail), but this part's explicit "avoid loading every
+  // warehouse in the database" requirement means the box filter runs in
+  // the WHERE clause here, so it needs an index to stay a seek rather
+  // than a scan as the warehouses table grows.
+  @@index([latitude, longitude])
+  @@map("warehouses")
+}
+
+// ---------------------------------------------------------------------------
+// Warehouse Ecosystem Ingestion Layer — external data-source provenance.
+//
+// Deliberately a separate model rather than columns bolted onto Warehouse
+// (Part 32 of the ingestion spec): a single warehouse can legitimately be
+// known to more than one external source at once (e.g. it shows up in a
+// government registry AND a private partner feed), and a FarmLink-created
+// warehouse should never be forced to carry an artificial external ID just
+// because this table exists (Part 12). One Warehouse -> many
+// WarehouseSourceReference rows; FarmLink-owned warehouses simply have
+// zero rows here, which is itself the "sourceType = FARMLINK" fact — no
+// backfill needed or wanted (Part 33: existing warehouses keep working
+// completely untouched).
+// ---------------------------------------------------------------------------
+enum WarehouseSourceType {
+  FARMLINK
+  GOVERNMENT
+  PRIVATE_PARTNER
+}
+
+model WarehouseSourceReference {
+  id          String @id @default(uuid())
+  warehouseId String
+
+  sourceType WarehouseSourceType
+  // Stable identifier for the concrete provider instance, e.g.
+  // "GOVERNMENT_WDRA" or "PRIVATE_PARTNER_ABC" — not the same as
+  // sourceType, since more than one provider can share a sourceType.
+  providerId String
+  // The provider's own stable identifier for this warehouse. Combined
+  // with providerId this is the idempotency key the sync service upserts
+  // against (Part 12) — running a sync twice must never create a second
+  // Warehouse row for the same external record.
+  externalId String
+
+  // When the source itself last reports having updated this record
+  // (nullable — many providers won't say). lastSyncedAt is FarmLink's own
+  // clock: the last time this reference was successfully written/refreshed
+  // by a sync run, regardless of what the source claims.
+  sourceUpdatedAt DateTime?
+  lastSyncedAt    DateTime?
+
+  // Non-sensitive provider payload fragments worth keeping for
+  // troubleshooting/audit (never credentials, never a full raw payload
+  // dump — see warehouse-sync.service.ts's own comment on what it stores
+  // here).
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Cascade: a source reference has no independent lifecycle of its own —
+  // it only ever exists to annotate a warehouse's provenance, mirroring
+  // WarehouseStorageUnit's own Cascade rationale above.
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, externalId])
+  @@index([warehouseId])
+  @@index([sourceType])
+  @@map("warehouse_source_references")
+}
+
+model WarehouseStorageUnit {
+  id          String @id @default(uuid())
+  publicId    String @unique @default(uuid())
+  warehouseId String
+
+  // Short human-facing section/chamber label, e.g. "Chamber A" or "CS-1" —
+  // unique per warehouse, not globally (a farmer/buyer only ever sees it
+  // in the context of its warehouse).
+  code        String
+  storageType StorageType @default(AMBIENT)
+
+  // Capacity is Decimal, never floating-point (this part's explicit data
+  // integrity requirement) — mirrors CropLot.quantityKg/
+  // availableQuantityKg's own Decimal(14,2) convention.
+  totalCapacity     Decimal      @db.Decimal(14, 2)
+  availableCapacity Decimal      @db.Decimal(14, 2)
+  capacityUnit      QuantityUnit @default(KG)
+
+  temperatureControlled Boolean  @default(false)
+  minTemperature        Decimal? @db.Decimal(5, 2)
+  maxTemperature        Decimal? @db.Decimal(5, 2)
+
+  humidityControlled Boolean  @default(false)
+  minHumidity        Decimal? @db.Decimal(5, 2)
+  maxHumidity        Decimal? @db.Decimal(5, 2)
+
+  // Module 9 Part 3 — declared/configured storage capabilities, not
+  // real-time IoT telemetry (this part's explicit scope limit: "these are
+  // declared/configured storage capabilities, not real-time IoT
+  // telemetry"). Nullable rather than defaulted to false: a warehouse
+  // operator who has never been asked about pest control has *unknown*
+  // pest control, which is not the same fact as "confirmed absent" — the
+  // suitability engine (storage-suitability.engine.ts) treats null as
+  // UNKNOWN, never as false. coldStorageAvailable is deliberately its own
+  // column rather than only inferred from storageType === COLD_STORAGE:
+  // a unit can be an AMBIENT-typed chamber that additionally has cold
+  // storage capability configured (or vice versa, a COLD_STORAGE-typed
+  // unit temporarily without working refrigeration) — collapsing the two
+  // would silently discard whichever fact wasn't the "primary" type.
+  ventilationAvailable          Boolean?
+  coldStorageAvailable          Boolean?
+  controlledAtmosphereAvailable Boolean?
+  pestControlAvailable          Boolean?
+  moistureControlAvailable      Boolean?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Cascade here (unlike the Restrict used for reservations/rates below):
+  // a storage unit is a physical sub-component of its warehouse with no
+  // independent lifecycle, whereas reservations and rates are
+  // transactional/historical records that must never silently vanish.
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  capabilities WarehouseCropCapability[]
+  reservations StorageReservation[]
+  rates        StorageRate[]
+
+  @@unique([warehouseId, code])
+  @@index([warehouseId])
+  @@index([storageType])
+  @@map("warehouse_storage_units")
+}
+
+// Configured "can crop X be stored here" capability — a plain join/config
+// table (no publicId, matching FarmerCrop's convention for this kind of
+// row) rather than a computed or AI-inferred fact.
+model WarehouseCropCapability {
+  id String @id @default(uuid())
+
+  warehouseId String
+  // Optional narrower scope: null means "applies warehouse-wide", a set
+  // value means "applies only to this specific storage unit". Note:
+  // Postgres composite unique indexes do not deduplicate across NULLs, so
+  // @@unique below only prevents duplicates for a given concrete
+  // storageUnitId — preventing a duplicate warehouse-wide (storageUnitId
+  // null) row for the same crop is left to the future service layer, the
+  // same way ownerType/ownerUserId/ownerFpoId pairing is.
+  storageUnitId String?
+  cropId        String
+
+  compatibility CropStorageCompatibility @default(COMPATIBLE)
+
+  // Optional configured guidance, never computed here (this part's
+  // explicit "do not invent scientific storage conditions" instruction).
+  maxStorageDurationDays       Int?
+  storageConditions            String?
+  estimatedSpoilageRatePercent Decimal? @db.Decimal(5, 2)
+
+  metadata Json?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  warehouse   Warehouse             @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  storageUnit WarehouseStorageUnit? @relation(fields: [storageUnitId], references: [id], onDelete: Cascade)
+  // Restrict: a crop reference row must never disappear out from under a
+  // configured capability, mirroring FarmerCrop.crop/CropLot.crop.
+  crop        Crop                  @relation(fields: [cropId], references: [id], onDelete: Restrict)
+
+  @@unique([warehouseId, storageUnitId, cropId])
+  @@index([warehouseId])
+  @@index([storageUnitId])
+  @@index([cropId])
+  @@map("warehouse_crop_capabilities")
+}
+
+// Foundation only (this part's explicit scope limit): a record that
+// capacity is intended to be reserved, not an atomic capacity-allocation
+// mechanism. Nothing decrements WarehouseStorageUnit.availableCapacity in
+// Part 1 — that concurrency-safe transaction is future work, mirroring how
+// CropLot.adjustAvailableQuantity() was itself built as a guarded atomic
+// primitive only once it was actually wired to a caller.
+model StorageReservation {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  warehouseId    String
+  storageUnitId  String?
+  lotId          String
+
+  quantity Decimal      @db.Decimal(14, 2)
+  unit     QuantityUnit @default(KG)
+
+  status StorageReservationStatus @default(PENDING)
+
+  reservedFrom  DateTime
+  reservedUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Restrict throughout: a reservation is a transactional record that must
+  // never disappear out from under its warehouse, storage unit, or lot.
+  warehouse   Warehouse             @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  storageUnit WarehouseStorageUnit? @relation(fields: [storageUnitId], references: [id], onDelete: Restrict)
+  lot         CropLot               @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  @@index([warehouseId, status])
+  @@index([storageUnitId, status])
+  @@index([lotId])
+  @@index([status])
+  @@index([reservedFrom])
+  @@index([reservedUntil])
+  @@map("storage_reservations")
+}
+
+// Foundation only: configured pricing data. No cost calculation happens
+// here or anywhere in Part 1 — that reads these rows in a future part.
+model StorageRate {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  warehouseId   String
+  storageUnitId String?
+  // Null means "applies to any crop at this warehouse/unit" — a specific
+  // crop row overrides it (resolution order is future-part logic; this
+  // part only stores the rows).
+  cropId        String?
+
+  rateType   StorageRateType
+  rateAmount Decimal         @db.Decimal(10, 2)
+  // No other model in this schema carries a currency column (the project
+  // is INR-only) — kept here anyway since the spec for this part calls
+  // for it explicitly; defaults to "INR" so every existing/future query
+  // can still assume INR without reading this column.
+  currency   String          @default("INR")
+  billingUnit QuantityUnit   @default(KG)
+
+  effectiveFrom  DateTime
+  effectiveUntil DateTime?
+  isActive       Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  warehouse   Warehouse             @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  storageUnit WarehouseStorageUnit? @relation(fields: [storageUnitId], references: [id], onDelete: Restrict)
+  crop        Crop?                 @relation(fields: [cropId], references: [id], onDelete: Restrict)
+
+  @@index([warehouseId, isActive])
+  @@index([storageUnitId])
+  @@index([cropId])
+  @@index([effectiveFrom, effectiveUntil])
+  @@map("storage_rates")
+}
+
+// ---------------------------------------------------------------------------
+// Module 9 Part 3 — Storage Conditions, Crop Suitability & Storage
+// Constraints.
+//
+// This part deliberately does NOT introduce a new "storage conditions"
+// model for the warehouse side — WarehouseStorageUnit (Part 1) already
+// persists exactly that (temperature/humidity range + the five boolean
+// capability columns added just above). What was missing, and what this
+// part adds, is the *crop* side: explicit, never-auto-generated storage
+// requirements to compare those warehouse facts against. See
+// storage-suitability.engine.ts for the deterministic, non-AI comparison
+// this feeds.
+// ---------------------------------------------------------------------------
+
+// Explicit, admin/operator-configured crop storage requirements — the
+// deliberate crop-side counterpart to WarehouseStorageUnit's conditions.
+// Never auto-created for every crop (this part's explicit "do not
+// automatically create requirements for every crop" instruction): a crop
+// with no row here means the suitability engine honestly reports
+// UNKNOWN/INSUFFICIENT_DATA rather than falling back to generic
+// agricultural assumptions. One row per crop (cropId unique) — this part
+// does not need requirement versioning/history, mirroring
+// QualityStandard's own "plain config row" simplicity rather than
+// QualityAssessment's append-only-history pattern.
+model CropStorageRequirement {
+  id     String @id @default(uuid())
+  cropId String @unique
+
+  preferredTemperatureMin Decimal? @db.Decimal(5, 2)
+  preferredTemperatureMax Decimal? @db.Decimal(5, 2)
+  preferredHumidityMin    Decimal? @db.Decimal(5, 2)
+  preferredHumidityMax    Decimal? @db.Decimal(5, 2)
+
+  // Same "null = unknown, never assumed false" discipline as
+  // WarehouseStorageUnit's new boolean columns — a null here means this
+  // requirement was never explicitly configured, which the engine treats
+  // as OMITTED/NOT_REQUIRED, never as "false = not needed" by coincidence
+  // of a default.
+  requiresVentilation          Boolean?
+  requiresColdStorage          Boolean?
+  requiresControlledAtmosphere Boolean?
+  requiresPestControl          Boolean?
+  requiresMoistureControl      Boolean?
+
+  // Empty array = no storage-type restriction explicitly configured
+  // (OMITTED factor), never "compatible with nothing". Reuses the
+  // existing StorageType enum rather than inventing a second one (this
+  // part's explicit "do not blindly add new storage types" instruction).
+  compatibleStorageTypes StorageType[] @default([])
+
+  // Only ever compared/displayed, never used to predict spoilage (this
+  // part's explicit non-goal) — a configured guidance figure, mirroring
+  // WarehouseCropCapability.maxStorageDurationDays's own "configured, not
+  // computed" discipline.
+  maximumRecommendedStorageDays Int?
+
+  notes String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Restrict: a crop reference row must never disappear out from under a
+  // configured requirement, mirroring every other Crop relation's Restrict
+  // convention in this schema.
+  crop Crop @relation(fields: [cropId], references: [id], onDelete: Restrict)
+
+  @@index([cropId])
+  @@map("crop_storage_requirements")
+}
+
+// ---------------------------------------------------------------------------
+// Module 14 — Net Realization Calculator
+//
+// Answers "if the farmer sells through a particular buyer/market/offer,
+// approximately how much will they actually realize after known costs and
+// deductions?" Deterministic only — no AI/ML/forecasting is used anywhere
+// in this module (see net-realization-calculator.service.ts).
+//
+// This module never fabricates a cost or a price. A calculation's whole
+// point is to be honest about what is and is not actually known:
+//   - grossRevenue/totalKnownCosts/totalEstimatedCosts/netRealization are
+//     nullable because a calculation that never resolved a sale price
+//     never even attempts arithmetic on it (see COMPLETENESS below).
+//   - A cost category with no real data (ACTUAL/ESTIMATED/USER_PROVIDED)
+//     behind it is never subtracted as if it were zero — it is recorded in
+//     calculationMetadata.omittedComponents instead.
+//   - inputSnapshot/calculationMetadata are immutable once persisted
+//     (Part H/Part T): a later engine version must never rewrite what an
+//     already-shown historical calculation said, mirroring
+//     SellStoreDecision's own inputSnapshot/decisionMetadata pattern.
+//
+// No Transport/Logistics, Payment, or Transaction Ledger module exists yet
+// in this schema (see PROJECT_CONTEXT.md's "Next planned business
+// modules"), so TRANSPORT/LOADING/UNLOADING/PACKAGING/COMMISSION/
+// MARKET_FEE/TAX/INSURANCE can only ever be resolved from a value the
+// caller explicitly supplies (USER_PROVIDED) today — never invented as a
+// per-km rate or a guessed percentage. STORAGE is the one category with a
+// real, non-fabricated ESTIMATED source already available: Module 9 Part
+// 6's StorageIntelligenceProvider (see net-realization-input-resolver.
+// service.ts). Every other category's automatic resolution is left for
+// the future logistics/payment/ledger modules Part T describes — adding
+// them later only means implementing another CostResolver, never touching
+// the calculation engine itself.
+// ---------------------------------------------------------------------------
+
+enum NetRealizationStatus {
+  PENDING
+  COMPLETED
+  INSUFFICIENT_DATA
+  FAILED
+}
+
+// How much a given number can be trusted. Never conflated with AI
+// confidence (this module has none) — this only ever describes where a
+// figure came from.
+enum RealizationValueSource {
+  ACTUAL
+  ESTIMATED
+  USER_PROVIDED
+  MARKET_REFERENCE
+  UNKNOWN
+}
+
+// Where the sale price used for grossRevenue actually came from. Kept
+// separate from RealizationValueSource (every one of these types still
+// carries its own RealizationValueSource) so the DTO can say *both*
+// "this came from an accepted trade offer" *and* "that makes it ACTUAL"
+// without conflating the two questions.
+enum NetRealizationPriceSourceType {
+  ACCEPTED_OFFER
+  OFFER
+  USER_PROVIDED
+  MARKET_REFERENCE
+  UNAVAILABLE
+}
+
+enum NetRealizationCostCategory {
+  TRANSPORT
+  LOADING
+  UNLOADING
+  PACKAGING
+  STORAGE
+  COMMISSION
+  MARKET_FEE
+  TAX
+  INSURANCE
+  OTHER
+}
+
+enum RealizationCompleteness {
+  COMPLETE
+  PARTIAL
+  INSUFFICIENT
+}
+
+// Immutable per-calculation record (Part H: historical calculations are
+// never recomputed or rewritten in place — a pricing-logic change only
+// ever affects the next fresh calculation, tracked via
+// calculationMetadata.calculationVersion).
+model NetRealizationCalculation {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  lotId  String
+  cropId String
+
+  requestedByUserId String?
+
+  status NetRealizationStatus @default(PENDING)
+
+  currency String @default("INR")
+
+  // The specific offer (if any) the resolved sale price came from —
+  // ACCEPTED_OFFER or an explicit OFFER request (see
+  // NetRealizationPriceSourceType above). Null whenever the price came
+  // from USER_PROVIDED or MARKET_REFERENCE instead.
+  priceSourceOfferId String?
+  priceSourceType    NetRealizationPriceSourceType?
+  salePricePerUnit   Decimal?                        @db.Decimal(14, 2)
+  saleQuantityKg     Decimal?                        @db.Decimal(14, 2)
+
+  grossRevenue           Decimal? @db.Decimal(16, 2)
+  totalKnownCosts        Decimal? @db.Decimal(16, 2)
+  totalEstimatedCosts    Decimal? @db.Decimal(16, 2)
+  totalUserProvidedCosts Decimal? @db.Decimal(16, 2)
+  totalDeductions        Decimal? @db.Decimal(16, 2)
+
+  netRealization Decimal? @db.Decimal(16, 2)
+
+  completeness          RealizationCompleteness?
+  dataCompletenessScore Decimal?                  @db.Decimal(5, 4)
+
+  // Immutable snapshot of every input actually resolved/used (the
+  // NetRealizationInput contract — see net-realization.types.ts).
+  inputSnapshot Json?
+
+  // Included/omitted cost components, warnings, assumptions, engine
+  // version — the DecisionMetadata-equivalent for this module (see
+  // net-realization-orchestration.service.ts's NetRealizationMetadata).
+  calculationMetadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lot             CropLot     @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  crop            Crop        @relation(fields: [cropId], references: [id], onDelete: Restrict)
+  requestedByUser User?       @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  priceSourceOffer TradeOffer? @relation(fields: [priceSourceOfferId], references: [id], onDelete: SetNull)
+
+  @@index([lotId, createdAt])
+  @@index([requestedByUserId])
+  @@index([status])
+  @@map("net_realization_calculations")
+}
+
+// ---------------------------------------------------------------------------
+// Module 15 — Transporter & Vehicle Network
+//
+// This is a *registry* layer only: transporter profiles, the vehicles they
+// operate, declared service areas, a manually-set availability flag, and an
+// administrative verification workflow. It deliberately stores nothing that
+// would belong to Module 16 (Logistics Quote & Optimization), Module 17
+// (Shipment & GPS Tracking), Module 18 (Delivery & Quality Reconciliation),
+// or Module 19 (Payment Status Tracking) — no rates, distances, ETAs, GPS
+// coordinates, or route data. See docs/modules/module-15-transporter-vehicle-network.md.
+// ---------------------------------------------------------------------------
+
+enum TransporterVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+// Clarifies what a TransporterProfile row *represents* (Part A/architecture
+// correction): the same TransporterProfile -> Vehicle[] shape already
+// covers everything from a single owner-operator to a 100-truck logistics
+// company — this enum only labels which kind of entity a given profile is,
+// it does not change the ownership model. Defaults to INDIVIDUAL because
+// that was the only case existing rows could represent before this field
+// existed.
+enum TransportProviderType {
+  INDIVIDUAL
+  BUSINESS
+  COMPANY
+  COOPERATIVE
+  LOGISTICS_PROVIDER
+}
+
+enum VehicleType {
+  MINI_TRUCK
+  PICKUP
+  LIGHT_TRUCK
+  MEDIUM_TRUCK
+  HEAVY_TRUCK
+  TRACTOR_TROLLEY
+  REFRIGERATED_TRUCK
+  OTHER
+}
+
+enum VehicleStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  SUSPENDED
+}
+
+enum VehicleVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// AVAILABLE/UNAVAILABLE are the only values ever set by a transporter today
+// (Part G). RESERVED/IN_TRANSIT exist so the column and index are already
+// in place for Module 16/17 to set programmatically later — nothing in
+// this module ever writes those two values.
+enum VehicleAvailabilityStatus {
+  AVAILABLE
+  UNAVAILABLE
+  RESERVED
+  IN_TRANSIT
+}
+
+enum ServiceAreaType {
+  STATE
+  DISTRICT
+  CITY
+  PINCODE
+}
+
+// Controlled, queryable capability list (Part D — deliberately not
+// free-text). "Refrigerated" is intentionally NOT in this enum: it is
+// already its own indexed boolean (Vehicle.isRefrigerated) since it is by
+// far the most common discovery filter (Part N); this enum covers the
+// remaining, less-frequently-filtered capabilities.
+enum VehicleCapability {
+  COVERED
+  OPEN_BODY
+  TEMPERATURE_CONTROLLED
+  BULK_TRANSPORT
+  SMALL_LOAD_SUITABLE
+  LARGE_LOAD_SUITABLE
+}
+
+// One transporter profile per user (Part A). Verification here means
+// "verified per FarmLink's own administrative workflow" — never a claim of
+// government/RTO verification (Part J's documentation rule applies equally
+// here).
+model TransporterProfile {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  userId String @unique
+
+  // What kind of transport provider this profile represents — an
+  // individual owner-operator through to a logistics company. Does not
+  // change the underlying relation: every provider, regardless of type,
+  // owns/manages its `vehicles` the same way (one TransporterProfile ->
+  // many Vehicle rows already supported multi-vehicle fleets before this
+  // field existed; this only makes the entity type explicit and
+  // queryable instead of implied by businessName being null/non-null).
+  providerType TransportProviderType @default(INDIVIDUAL)
+
+  businessName String?
+  // Optional registered/legal name, distinct from the trading name in
+  // businessName (e.g. businessName "ABC Logistics", legalName "ABC
+  // Logistics Private Limited"). Never required — many INDIVIDUAL
+  // providers will never set this.
+  legalName    String?
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+
+  verificationStatus TransporterVerificationStatus @default(PENDING)
+  phoneVerified      Boolean                        @default(false)
+  isActive           Boolean                        @default(true)
+
+  // Free-form, non-queried extra fields (Part A's conceptual model) — never
+  // used for authorization or discovery filtering.
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicles     Vehicle[]
+  serviceAreas TransporterServiceArea[]
+  // Module 16 — Logistics Quote & Optimization. Additive back-relation
+  // only (Prisma requires both sides of an explicit relation); nothing
+  // about Module 15's own profile/vehicle/service-area behavior changes.
+  logisticsQuotes LogisticsQuote[]
+  // Module 17 — additive back-relation only.
+  shipments       Shipment[]
+
+  @@index([verificationStatus])
   @@index([isActive])
-  @@map("seeds")
+  @@index([providerType])
+  @@map("transporter_profiles")
 }
 
-model SeedImage {
-  id        String   @id @default(uuid())
-  seedId    String
-  seed      Seed     @relation(fields: [seedId], references: [id], onDelete: Cascade)
-  url       String
-  publicId  String?
-  isPrimary Boolean  @default(false)
-  sortOrder Int      @default(0)
+// A vehicle belongs to exactly one transporter (Part 3 — no fleet-sharing
+// in this module). Capacity is stored the same way CropLot/Warehouse
+// quantities are (Part E, reusing modules/fpo/unit-conversion.ts): the
+// unit the transporter declared, plus a canonical KG value so
+// minimumCapacity discovery filtering (Part N) is a single indexed
+// comparison rather than a per-row unit conversion.
+model Vehicle {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  transporterId String
+
+  // registrationNumber is exactly as entered (for display); uniqueness is
+  // enforced on normalizedRegistrationNumber instead so "MH12AB1234" and
+  // "mh-12-ab-1234" cannot both be registered (Part M).
+  registrationNumber           String
+  normalizedRegistrationNumber String @unique
+
+  vehicleType VehicleType
+
+  capacityUnit QuantityUnit @default(KG)
+  capacityKg   Decimal      @db.Decimal(12, 2)
+
+  capabilities   VehicleCapability[] @default([])
+  isRefrigerated Boolean             @default(false)
+
+  status             VehicleStatus              @default(ACTIVE)
+  verificationStatus VehicleVerificationStatus  @default(PENDING)
+
+  // Never defaults to AVAILABLE — availability is only ever true because a
+  // transporter explicitly said so (Part 2: never fabricate availability).
+  availabilityStatus    VehicleAvailabilityStatus @default(UNAVAILABLE)
+  availabilityUpdatedAt DateTime?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transporter TransporterProfile @relation(fields: [transporterId], references: [id], onDelete: Cascade)
+  driver      VehicleDriver?
+  // Module 16 — additive back-relation only, same reasoning as
+  // TransporterProfile.logisticsQuotes above.
+  logisticsQuotes LogisticsQuote[]
+  // Module 17 — additive back-relation only.
+  shipments       Shipment[]
+
+  @@index([transporterId])
+  @@index([vehicleType])
+  @@index([status])
+  @@index([verificationStatus])
+  @@index([availabilityStatus])
+  @@index([capacityKg])
+  @@map("vehicles")
+}
+
+// Administrative/geographic service areas (Part F) — never a route or a
+// GPS radius. Uniqueness is enforced by the service layer (nullable
+// columns make a DB-level composite unique unreliable across the four
+// area types), but this index keeps the common per-transporter lookup and
+// state/district filters (Part N discovery) efficient.
+model TransporterServiceArea {
+  id String @id @default(uuid())
+
+  transporterId String
+
+  areaType ServiceAreaType
+
+  state    String?
+  district String?
+  city     String?
+  pincode  String?
+
   createdAt DateTime @default(now())
 
-  @@index([seedId])
-  @@map("seed_images")
+  transporter TransporterProfile @relation(fields: [transporterId], references: [id], onDelete: Cascade)
+
+  @@index([transporterId])
+  @@index([state])
+  @@index([district])
+  @@map("transporter_service_areas")
 }
 
-model SeedVariant {
-  id         String   @id @default(uuid())
-  seedId     String
-  seed       Seed     @relation(fields: [seedId], references: [id], onDelete: Cascade)
-  name       String // e.g. "5kg pack"
-  sku        String?  @unique
-  price      Decimal  @db.Decimal(12, 2)
-  stock      Int      @default(0)
-  attributes Json?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+// Deliberately minimal (Part H): a vehicle may optionally have one
+// assigned driver record. No driver authentication, no driver-facing API
+// in this module — this is schema-only foundation for later modules.
+// phone/licenseNumber are PII and are never returned by any public or
+// discovery DTO (Part S).
+model VehicleDriver {
+  id String @id @default(uuid())
 
-  cartItems  SeedCartItem[]
-  orderItems SeedOrderItem[]
+  vehicleId     String @unique
+  transporterId String
 
-  @@index([seedId])
-  @@map("seed_variants")
-}
+  name          String
+  phone         String?
+  licenseNumber String?
+  isActive      Boolean @default(true)
 
-model SeedReview {
-  id         String   @id @default(uuid())
-  seedId     String
-  seed       Seed     @relation(fields: [seedId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating     Int
-  comment    String?
-  isApproved Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([seedId, userId])
-  @@index([seedId])
-  @@map("seed_reviews")
-}
-
-model SeedWishlist {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  seedId    String
-  seed      Seed     @relation(fields: [seedId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, seedId])
-  @@index([userId])
-  @@map("seed_wishlist")
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  // Module 17 — additive back-relation only (driver assignment is optional).
+  shipments Shipment[]
+
+  @@index([transporterId])
+  @@map("vehicle_drivers")
 }
 
-model SeedCart {
-  id        String         @id @default(uuid())
-  userId    String         @unique
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     SeedCartItem[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+// ---------------------------------------------------------------------------
+// Module 16 — Logistics Quote & Optimization
+//
+// Consumes Module 15 (TransporterProfile/Vehicle) as-is — no duplicate
+// transport/provider/vehicle models are introduced here. A LogisticsRequest
+// hangs off the existing CropLot (there is no separate "Order" model in
+// this codebase — see Step 1 of the build spec: reuse exact existing
+// names). Three concerns are kept as three separate models rather than
+// folded together, mirroring every other module's own "one row per
+// distinct fact" convention:
+//   - LogisticsRequest: the transport requirement itself (one per lot per
+//     transport need), plus FarmLink's own best-effort estimate.
+//   - LogisticsQuote: a transport provider's own submitted number for a
+//     specific request — deliberately never merged with the estimate
+//     above, so "what FarmLink guessed" and "what a provider actually
+//     offered" and "what was finally accepted" always stay three distinct,
+//     independently-inspectable values (build spec Step 10).
+//   - LogisticsOptimizationResult: one immutable row per optimize() run,
+//     kept for audit/explainability rather than overwritten in place.
+// ---------------------------------------------------------------------------
 
-  @@map("seed_carts")
+// Deliberately minimal (Step 24: do not overengineer). OPEN covers
+// "created, awaiting/estimating/collecting quotes" as one state — there is
+// no separate DRAFT for the request itself (unlike LogisticsQuote below)
+// because build spec Step 12 expects estimate() to be callable immediately
+// after creation, with no separate publish step.
+enum LogisticsRequestStatus {
+  OPEN
+  QUOTE_ACCEPTED
+  CANCELLED
 }
 
-model SeedCartItem {
-  id        String       @id @default(uuid())
-  cartId    String
-  cart      SeedCart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  seedId    String
-  seed      Seed         @relation(fields: [seedId], references: [id], onDelete: Cascade)
-  variantId String?
-  variant   SeedVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  quantity  Int          @default(1)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-
-  @@unique([cartId, seedId, variantId])
-  @@index([cartId])
-  @@map("seed_cart_items")
+// Exactly the state machine in build spec Step 8. DRAFT exists for
+// forward-compatibility with a future "save as draft before submitting"
+// flow but is not reachable through the current API — POST creates a
+// quote directly in SUBMITTED (see logistics-quote.service.ts's own
+// comment) — so DRAFT -> SUBMITTED never actually fires today; it is kept
+// in the enum/state machine rather than omitted so adding that flow later
+// never requires a migration.
+enum LogisticsQuoteStatus {
+  DRAFT
+  SUBMITTED
+  EXPIRED
+  WITHDRAWN
+  ACCEPTED
+  REJECTED
 }
 
-model SeedOrder {
-  id          String      @id @default(uuid())
-  orderNumber String      @unique
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  addressId   String
-  address     Address     @relation(fields: [addressId], references: [id])
-  status      OrderStatus @default(PENDING)
+// A transport requirement for one lot. Pickup/destination are stored
+// directly on this row (Step 3's minimal location model) rather than
+// joined from CropLot/BuyerDemand — CropLot has no lat/lng today, and a
+// logistics request must remain meaningful even for a buyer/destination
+// that exists outside this codebase's own buyer-matching flow. This is a
+// deliberate decoupling, not a duplication: originDistrict/originState
+// already live on CropLot as the lot's origin snapshot (build spec
+// section 17/18/55 in Module 4) — pickup* here is the *transport* origin
+// for this specific request, which the requester may confirm or override
+// (e.g. a different loading point than the farm's registered village).
+model LogisticsRequest {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
 
-  subtotal    Decimal @db.Decimal(12, 2)
-  shippingFee Decimal @default(0) @db.Decimal(12, 2)
-  tax         Decimal @default(0) @db.Decimal(12, 2)
-  discount    Decimal @default(0) @db.Decimal(12, 2)
-  totalAmount Decimal @db.Decimal(12, 2)
+  lotId           String
+  requesterUserId String
 
-  notes        String?
+  cropId String
+
+  // Canonical KG value, same convention as CropLot.quantityKg /
+  // Vehicle.capacityKg — `quantityUnit` is only the unit the requester
+  // declared/display unit, never re-derived arithmetic.
+  requiredQuantityKg Decimal      @db.Decimal(14, 2)
+  quantityUnit       QuantityUnit @default(KG)
+
+  pickupAddress   String?
+  pickupVillage   String?
+  pickupDistrict  String
+  pickupState     String
+  pickupPincode   String?
+  pickupLatitude  Float?
+  pickupLongitude Float?
+
+  destinationAddress   String?
+  destinationDistrict  String
+  destinationState     String
+  destinationPincode   String?
+  destinationLatitude  Float?
+  destinationLongitude Float?
+
+  requestedPickupAt DateTime?
+  deliveryDeadline  DateTime?
+
+  // Reuses Module 15's own VehicleCapability enum (Step 5/15: "required
+  // special handling is supported") instead of inventing a parallel one.
+  // isRefrigerated mirrors Vehicle.isRefrigerated's own dedicated boolean
+  // for the same "by far the most common filter" reasoning noted there.
+  requiredCapabilities  VehicleCapability[] @default([])
+  requiresRefrigeration Boolean             @default(false)
+  specialInstructions   String?
+
+  status LogisticsRequestStatus @default(OPEN)
+
+  // Step 12 — FarmLink's own best-effort estimate, calculated by
+  // LogisticsCostEstimator/HaversineRouteDistanceProvider. Always kept
+  // distinct from any LogisticsQuote.quotedAmount (Step 10).
+  estimatedDistanceKm      Decimal? @db.Decimal(10, 2)
+  estimatedDurationMinutes Int?
+  estimatedCost            Decimal? @db.Decimal(12, 2)
+  estimatedCostCurrency    String   @default("INR")
+  estimateCalculatedAt     DateTime?
+
+  // Set only by the optimization engine (Step 9) / acceptance flow
+  // (Step 11) respectively — never accepted from the client (Step 15).
+  recommendedQuoteId String? @unique
+  acceptedQuoteId    String? @unique
+
+  cancelledAt DateTime?
   cancelReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items         SeedOrderItem[]
-  statusHistory SeedOrderStatusHistory[]
-  payment       SeedPayment?
+  lot       CropLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  crop      Crop    @relation(fields: [cropId], references: [id], onDelete: Restrict)
+  requester User    @relation(fields: [requesterUserId], references: [id], onDelete: Restrict)
 
-  @@index([userId])
+  quotes            LogisticsQuote[]               @relation("RequestQuotes")
+  shipment          Shipment?
+  acceptedQuote      LogisticsQuote?                @relation("AcceptedQuote", fields: [acceptedQuoteId], references: [id])
+  recommendedQuote   LogisticsQuote?                @relation("RecommendedQuote", fields: [recommendedQuoteId], references: [id])
+  optimizationResults LogisticsOptimizationResult[]
+
+  @@index([requesterUserId, status])
+  @@index([lotId])
   @@index([status])
-  @@map("seed_orders")
+  @@index([createdAt])
+  @@map("logistics_requests")
 }
 
-model SeedOrderItem {
-  id         String       @id @default(uuid())
-  orderId    String
-  order      SeedOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  seedId     String
-  seed       Seed         @relation(fields: [seedId], references: [id])
-  variantId  String?
-  variant    SeedVariant? @relation(fields: [variantId], references: [id])
-  seedName   String // snapshot at time of order
-  quantity   Int
-  unitPrice  Decimal      @db.Decimal(12, 2)
-  totalPrice Decimal      @db.Decimal(12, 2)
+// A transport provider's own submitted number against one
+// LogisticsRequest, for one of their own Vehicles. Ownership of both
+// transportProviderId and vehicleId is re-validated server-side on every
+// write (Step 7/15) — never trusted from the request body.
+model LogisticsQuote {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
 
-  @@index([orderId])
-  @@map("seed_order_items")
-}
+  logisticsRequestId  String
+  transportProviderId String
+  vehicleId           String
 
-model SeedOrderStatusHistory {
-  id          String      @id @default(uuid())
-  orderId     String
-  order       SeedOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status      OrderStatus
-  note        String?
-  changedById String?
-  changedBy   User?       @relation("SeedStatusChangedBy", fields: [changedById], references: [id])
-  changedAt   DateTime    @default(now())
+  quotedAmount Decimal @db.Decimal(12, 2)
+  currency     String  @default("INR")
 
-  @@index([orderId])
-  @@map("seed_order_status_history")
-}
+  estimatedPickupTime      DateTime?
+  estimatedDeliveryTime    DateTime?
+  estimatedDistanceKm      Decimal? @db.Decimal(10, 2)
+  estimatedDurationMinutes Int?
 
-model SeedPayment {
-  id      String    @id @default(uuid())
-  orderId String    @unique
-  order   SeedOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  userId  String
-  user    User      @relation(fields: [userId], references: [id])
+  notes String?
 
-  razorpayOrderId   String  @unique
-  razorpayPaymentId String?
-  razorpaySignature String?
+  status     LogisticsQuoteStatus @default(SUBMITTED)
+  validUntil DateTime?
 
-  amount        Decimal       @db.Decimal(12, 2)
-  currency      String        @default("INR")
-  status        PaymentStatus @default(CREATED)
-  method        String?
-  failureReason String?
+  submittedAt DateTime?
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
+  withdrawnAt DateTime?
+  expiredAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  request            LogisticsRequest  @relation("RequestQuotes", fields: [logisticsRequestId], references: [id], onDelete: Cascade)
+  transportProvider  TransporterProfile @relation(fields: [transportProviderId], references: [id], onDelete: Restrict)
+  vehicle            Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  // Back-relations for LogisticsRequest.acceptedQuoteId/recommendedQuoteId
+  // above — singular (not `[]`) because those FK columns are @unique, so
+  // at most one LogisticsRequest can ever point at a given quote as its
+  // accepted/recommended choice.
+  acceptedForRequest    LogisticsRequest? @relation("AcceptedQuote")
+  recommendedForRequest LogisticsRequest? @relation("RecommendedQuote")
+  shipment              Shipment?
+
+  @@index([logisticsRequestId, status])
+  @@index([transportProviderId, status])
+  @@index([vehicleId])
+  @@index([status, validUntil])
+  @@map("logistics_quotes")
+}
+
+// One immutable row per optimize() run (Step 9/13) — never overwritten in
+// place, so a later recalculation never erases the explanation behind an
+// earlier recommendation that a farmer may have already acted on.
+model LogisticsOptimizationResult {
+  id String @id @default(uuid())
+
+  logisticsRequestId String
+  recommendedQuoteId String?
+  algorithmVersion   String
+  calculatedAt       DateTime @default(now())
+
+  // { priceWeight, distanceWeight, timeWeight, capacityWeight, reliabilityWeight }
+  weights Json
+  // Array of { quoteId, rank, score, componentScores, reasons } — the full
+  // ranked list, not just the winner (Step 13: "Do not hide the ranking
+  // logic").
+  rankings Json
+
+  createdAt DateTime @default(now())
+
+  request LogisticsRequest @relation(fields: [logisticsRequestId], references: [id], onDelete: Cascade)
+
+  @@index([logisticsRequestId, calculatedAt])
+  @@map("logistics_optimization_results")
+}
+
+// ---------------------------------------------------------------------------
+// Module 17 — Shipment & GPS Tracking
+//
+// Consumes Module 16's accepted LogisticsQuote as-is (acceptedQuoteId is
+// @unique on LogisticsRequest, so at most one Shipment can ever be created
+// per request — enforced again here with Shipment.logisticsRequestId being
+// @unique for the same "only one active shipment per request" guarantee).
+// There is no separate Order model in this codebase (see Module 16's own
+// comment) — a Shipment hangs off the same CropLot as its LogisticsRequest.
+// Provider/vehicle/driver are the exact Module 15 models; nothing is
+// duplicated here.
+// ---------------------------------------------------------------------------
+
+enum ShipmentStatus {
+  CREATED
+  CONFIRMED
+  ASSIGNED
+  READY_FOR_PICKUP
+  PICKED_UP
+  IN_TRANSIT
+  ARRIVED
+  DELIVERED
+  CANCELLED
+}
+
+// Step 13 — provider-agnostic ingestion source for a GPS/location update.
+enum LocationUpdateSource {
+  DRIVER_APP
+  GPS_DEVICE
+  IOT_DEVICE
+  ADMIN
+  SYSTEM
+}
+
+enum ShipmentEventType {
+  SHIPMENT_CREATED
+  SHIPMENT_CONFIRMED
+  VEHICLE_ASSIGNED
+  DRIVER_ASSIGNED
+  READY_FOR_PICKUP
+  PICKED_UP
+  TRANSIT_STARTED
+  LOCATION_UPDATED
+  ARRIVED
+  DELIVERED
+  CANCELLED
+}
+
+// One row per accepted logistics quote (Step 4/28: duplicate creation is
+// prevented at the DB level via the @unique constraints below, not just in
+// application code — two concurrent create attempts against the same
+// accepted quote can never both succeed).
+model Shipment {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  logisticsRequestId String @unique
+  acceptedQuoteId     String @unique
+
+  lotId String
+
+  transportProviderId String
+  vehicleId           String
+  driverId             String?
+
+  commodity    String
+  quantityKg   Decimal      @db.Decimal(14, 2)
+  quantityUnit QuantityUnit @default(KG)
+
+  pickupAddress   String?
+  pickupDistrict  String
+  pickupState     String
+  pickupLatitude  Float?
+  pickupLongitude Float?
+
+  destinationAddress   String?
+  destinationDistrict  String
+  destinationState     String
+  destinationLatitude  Float?
+  destinationLongitude Float?
+
+  // Step 32 — snapshot of the accepted quote's own agreed transport amount,
+  // never recalculated here (Module 17 does not own transport pricing).
+  agreedAmount Decimal @db.Decimal(12, 2)
+  currency     String  @default("INR")
+
+  // Step 16 — INITIAL_ESTIMATE, sourced from Module 16's own
+  // estimatedDistanceKm/estimatedDurationMinutes on the accepted quote (or
+  // the parent request when the quote itself didn't carry one).
+  estimatedDistanceKm      Decimal? @db.Decimal(10, 2)
+  estimatedDurationMinutes Int?
+
+  scheduledPickupAt    DateTime?
+  estimatedDeliveryAt  DateTime?
+  actualPickupAt       DateTime?
+  actualDeliveryAt     DateTime?
+
+  status ShipmentStatus @default(CREATED)
+
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logisticsRequest  LogisticsRequest   @relation(fields: [logisticsRequestId], references: [id], onDelete: Restrict)
+  acceptedQuote     LogisticsQuote     @relation(fields: [acceptedQuoteId], references: [id], onDelete: Restrict)
+  lot               CropLot            @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  transportProvider TransporterProfile @relation(fields: [transportProviderId], references: [id], onDelete: Restrict)
+  vehicle           Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  driver            VehicleDriver?     @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  locations ShipmentLocation[]
+  events    ShipmentEvent[]
+  // Module 18 — at most one delivery because Delivery.shipmentId is unique.
+  delivery  Delivery?
+
+  @@index([status])
+  @@index([transportProviderId, status])
+  @@index([vehicleId, status])
+  @@index([lotId])
+  @@index([createdAt])
+  @@map("shipments")
+}
+
+// Step 9/29 — one row per GPS/location ping. Never stored on Vehicle
+// (a vehicle can carry many shipments over its lifetime; location belongs
+// to the trip). Indexed for both "history of this shipment" and "history
+// in this time range" (Step 29).
+model ShipmentLocation {
+  id String @id @default(uuid())
+
+  shipmentId String
+
+  latitude  Float
+  longitude Float
+
+  accuracyMeters  Float?
+  speedKmh        Float?
+  headingDegrees  Float?
+
+  recordedAt DateTime
+  source     LocationUpdateSource @default(DRIVER_APP)
+
+  createdAt DateTime @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([recordedAt])
+  @@index([shipmentId, recordedAt])
+  @@map("shipment_locations")
+}
+
+// Step 22/23 — append-only, auditable lifecycle history. Kept alongside
+// Shipment.status (never relied on instead of it), same convention as
+// LotStatusHistory/CropLot.status.
+model ShipmentEvent {
+  id String @id @default(uuid())
+
+  shipmentId String
+
+  eventType      ShipmentEventType
+  previousStatus ShipmentStatus?
+  newStatus      ShipmentStatus?
+
+  actorUserId String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId, createdAt])
+  @@map("shipment_events")
+}
+
+// ---------------------------------------------------------------------------
+// Module 18 — Delivery & Quality Reconciliation
+//
+// Records and reconciles what was EXPECTED vs ACTUALLY DELIVERED vs
+// ACTUALLY ACCEPTED, for both quantity and quality, for a completed
+// Module 17 Shipment. Never recreates Module 5's quality grading system
+// (QualityAssessment/QualityMetric/QualityStandard) — a delivery's own
+// inspection is its own DeliveryQualityAssessment, but the *thresholds* an
+// observation is judged against are resolved from the commercial
+// transaction's own agreed quality (BuyerDemand.qualityRequirements/grade
+// when the accepted TradeOffer came from one) and, as a fallback, Module
+// 5's existing QualityStandard rows for the lot's crop — never redefined
+// or duplicated here (see delivery-quality-reconciliation.engine.ts).
+// Module 18 does not perform GPS tracking (Module 17), buyer matching
+// (Module 12), transport optimization (Module 16), payment execution
+// (Module 19), ledger settlement (Module 20), or dispute resolution.
+// ---------------------------------------------------------------------------
+
+enum DeliveryStatus {
+  PENDING
+  RECEIVED
+  UNDER_INSPECTION
+  PARTIALLY_ACCEPTED
+  ACCEPTED
+  REJECTED
+  RECONCILED
+  CANCELLED
+}
+
+// Step 8 — SHORT/EXACT/EXCESS is always relative to the configured
+// tolerance band (see delivery.config.ts), never a raw delivered==expected
+// equality check: a variance inside tolerance is EXACT even if the two
+// numbers differ by a few kg.
+enum DeliveryQuantityResult {
+  SHORT
+  EXACT
+  EXCESS
+}
+
+// Step 5 — mirrors QualityAssessmentStatus's PASS/PARTIAL/FAIL shape but is
+// its own enum: a delivery quality *result* is a reconciliation outcome
+// (agreed vs actual), never a workflow-position status like Module 5's.
+enum DeliveryQualityResult {
+  PASS
+  PARTIAL
+  FAIL
+  PENDING
+}
+
+enum WeighingMethod {
+  WEIGHBRIDGE
+  ELECTRONIC_SCALE
+  MANUAL
+  OTHER
+}
+
+// Step 15 — metadata-only references, same convention as QualityImage
+// (build spec section 15 equivalent): never a place binary files are
+// stored, and never a second, separate file-storage system from Module 5's
+// own storageProvider/externalId/secureUrl shape.
+enum DeliveryEvidenceType {
+  WEIGHMENT_SLIP
+  DELIVERY_RECEIPT
+  QUALITY_CERTIFICATE
+  INSPECTION_DOCUMENT
+  PHOTOGRAPH
+  OTHER
+}
+
+// One row per completed Shipment (Step 11: a delivery must originate from
+// a valid shipment, never created disconnected from one) — shipmentId is
+// @unique below, so a shipment can never have more than one Delivery
+// record; this codebase's shipments are single-drop only (Module 17 has no
+// partial/multi-delivery shipment concept — see Shipment's own schema
+// comment), so Step 2's "model partial deliveries explicitly if the
+// existing order/lot design requires it" does not apply here. Partial
+// *acceptance* of a single delivery (Step 18) is fully supported without
+// needing multiple Delivery rows.
+model Delivery {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  // Human-facing reference, e.g. "DEL-2026-000123" — server-generated,
+  // immutable, mirrors CropLot.lotNumber / QualityAssessment.assessmentNumber
+  // (see delivery-number.ts).
+  deliveryNumber String @unique
+
+  shipmentId String @unique
+  lotId      String
+  // The accepted TradeOffer this delivery is reconciled against, resolved
+  // server-side from the lot's ACCEPTED offer for this buyer at delivery
+  // creation time — never accepted from the client (Step 6: "Do not let
+  // the frontend redefine the agreed quality during reconciliation").
+  // Nullable only because a lot can theoretically have an ACCEPTED offer
+  // later withdrawn/re-negotiated after the shipment/delivery already
+  // exist; the snapshot already resolved is what reconciliation uses.
+  tradeOfferId String?
+  buyerId      String
+
+  expectedQuantityKg  Decimal      @db.Decimal(14, 2)
+  deliveredQuantityKg Decimal?     @db.Decimal(14, 2)
+  acceptedQuantityKg  Decimal?     @db.Decimal(14, 2)
+  rejectedQuantityKg  Decimal?     @db.Decimal(14, 2)
+  quantityUnit        QuantityUnit @default(KG)
+
+  status DeliveryStatus @default(PENDING)
+
+  receivedAt      DateTime?
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  reconciledAt    DateTime?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shipment   Shipment     @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  lot        CropLot      @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  tradeOffer TradeOffer?  @relation(fields: [tradeOfferId], references: [id], onDelete: SetNull)
+  buyer      BuyerProfile @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+
+  weighments         DeliveryWeighment[]
+  qualityAssessments DeliveryQualityAssessment[]
+  reconciliations    DeliveryReconciliation[]
+  evidence           DeliveryEvidence[]
+
+  // Module 19 — the single payment obligation created from this delivery's
+  // finalized reconciliation (Step 26: only a RECONCILED delivery may ever
+  // have one — see payment.service.ts's createObligation()). One-to-one:
+  // a delivery is reconciled exactly once and never spawns a second
+  // obligation.
+  paymentObligation PaymentObligation?
+
+  @@index([lotId])
+  @@index([buyerId, status])
+  @@index([status])
+  @@index([createdAt])
+  @@map("deliveries")
+}
+
+// Step 3 — one row per weighing event (never a single mutable row), so a
+// re-weigh after a dispute never destroys the original reading. Net weight
+// is always calculated server-side (grossWeightKg - tareWeightKg) — the
+// service layer never trusts a client-supplied net figure (see
+// delivery.service.ts's recordWeighment()).
+model DeliveryWeighment {
+  id         String @id @default(uuid())
+  deliveryId String
+
+  grossWeightKg Decimal      @db.Decimal(14, 2)
+  tareWeightKg  Decimal      @db.Decimal(14, 2)
+  netWeightKg   Decimal      @db.Decimal(14, 2)
+  weightUnit    QuantityUnit @default(KG)
+
+  weighingMethod    WeighingMethod @default(WEIGHBRIDGE)
+  weighingTimestamp DateTime
+  scaleReference    String?
+  recordedByUserId  String?
+  notes             String?
+
+  createdAt DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId, createdAt])
+  @@map("delivery_weighments")
+}
+
+// Step 4/5 — the delivery-time quality inspection. Deliberately does not
+// duplicate QualityAssessment's own metrics/images/defects sub-models;
+// DeliveryQualityObservation below is a minimal, delivery-reconciliation-
+// specific shape (an observed value plus the resolved agreed range and the
+// computed pass/fail — Step 7's engine output persisted, not recomputed on
+// every read).
+model DeliveryQualityAssessment {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  deliveryId String
+
+  inspectorUserId  String?
+  overallGrade     QualityGrade?
+  overallResult    DeliveryQualityResult @default(PENDING)
+  algorithmVersion String                @default("v1")
+  assessedAt       DateTime              @default(now())
+  notes            String?
+
+  createdAt DateTime @default(now())
+
+  delivery     Delivery                     @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  observations DeliveryQualityObservation[]
+
+  @@index([deliveryId, createdAt])
+  @@map("delivery_quality_assessments")
+}
+
+model DeliveryQualityObservation {
+  id           String @id @default(uuid())
+  assessmentId String
+
+  metricCode String
+  metricName String
+  value      Decimal @db.Decimal(10, 2)
+  unit       String?
+
+  expectedMin Decimal? @db.Decimal(10, 2)
+  expectedMax Decimal? @db.Decimal(10, 2)
+  passed      Boolean
+  variance    Decimal? @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  assessment DeliveryQualityAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@map("delivery_quality_observations")
+}
+
+// Step 16 — the single authoritative reconciliation result. One immutable
+// row per calculation run (never overwritten in place — same "append,
+// don't mutate" convention as LogisticsOptimizationResult), so a later
+// recalculation never erases an earlier result a decision may have already
+// been based on. `explanation` holds the full DeliveryQuantityReconciliationEngine
+// / DeliveryQualityReconciliationEngine output (passed/failed parameters,
+// variances) — Step 7: "make comparison deterministic and explainable".
+model DeliveryReconciliation {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  deliveryId String
+
+  expectedQuantityKg       Decimal                @db.Decimal(14, 2)
+  deliveredQuantityKg      Decimal                @db.Decimal(14, 2)
+  acceptedQuantityKg       Decimal                @db.Decimal(14, 2)
+  quantityVarianceKg       Decimal                @db.Decimal(14, 2)
+  quantityTolerancePercent Decimal                @db.Decimal(5, 2)
+  quantityResult           DeliveryQuantityResult
+
+  qualityResult DeliveryQualityResult
+
+  overallStatus DeliveryStatus
+
+  explanation Json
+
+  algorithmVersion String   @default("v1")
+  calculatedAt     DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId, calculatedAt])
+  @@map("delivery_reconciliations")
+}
+
+// Step 15 — metadata/reference only (never binary storage in Postgres),
+// same shape as Module 5's QualityImage.
+model DeliveryEvidence {
+  id         String @id @default(uuid())
+  deliveryId String
+
+  evidenceType    DeliveryEvidenceType
+  storageProvider String
+  externalId      String
+  secureUrl       String
+
+  uploadedByUserId String?
+  uploadedAt       DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId])
+  @@map("delivery_evidence")
+}
+
+// ---------------------------------------------------------------------------
+// Module 19 — Payment Status Tracking
+//
+// A PAYMENT STATUS system, not a payment gateway (Step 36): no bank
+// transfer, UPI, or card execution ever happens here. PaymentObligation is
+// the authoritative financial obligation created once a Module 18 Delivery
+// reaches RECONCILED; PaymentRecord is an append-only log of externally
+// made/reported payments against it. See payment.service.ts's own comment
+// for the full lifecycle and Module 20 handoff contract.
+// ---------------------------------------------------------------------------
+
+enum PaymentObligationStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERPAID
+  OVERDUE
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  UPI
+  NEFT
+  RTGS
+  IMPS
+  CASH
+  CHEQUE
+  OTHER
+}
+
+// Step 15 — PAYMENT_RECORDED vs PAYMENT_CONFIRMED: a buyer-submitted
+// payment claim starts as RECORDED and never silently becomes an
+// unquestioned financial fact. CONFIRMED is set only by an authorized
+// counterparty confirmation (see payment.authorization.ts). REVERSED is
+// the explicit correction/reversal path (Step 23) — a PaymentRecord is
+// never deleted or edited in place once created.
+enum PaymentRecordStatus {
+  RECORDED
+  CONFIRMED
+  REVERSED
+}
+
+// One row per completed Module 18 delivery (Step 3). expectedQuantity x
+// agreedUnitPrice + adjustments = finalPayableAmount, always calculated
+// server-side from Module 18's handoff — never accepted as authoritative
+// from the client (Step 2/8). currency is a plain default-"INR" String,
+// same convention as Shipment.currency/LogisticsQuote.currency — no
+// dedicated Currency enum exists anywhere else in this schema either.
+model PaymentObligation {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  // One obligation per delivery (Step 7: never created from an arbitrary
+  // shipment) — enforced by @unique below.
+  deliveryId String @unique
+
+  // The commercial terms this obligation's amount was resolved from.
+  // Nullable for the same reason Delivery.tradeOfferId is nullable (an
+  // accepted offer withdrawn/renegotiated after delivery already exists);
+  // the amount already resolved and stored below is what matters once set.
+  tradeOfferId String?
+
+  buyerId String
+  // Exactly one of sellerFarmerId/sellerFpoId is set, mirroring
+  // CropLot.farmerId/fpoId and LotOwnerType — never both, never neither.
+  sellerFarmerId String?
+  sellerFpoId    String?
+
+  currency String @default("INR")
+
+  grossAmount        Decimal @db.Decimal(16, 2)
+  adjustments        Decimal @default(0) @db.Decimal(16, 2)
+  finalPayableAmount Decimal @db.Decimal(16, 2)
+
+  // Server-calculated only (Step 10/13) — never trusted from the client.
+  amountPaid Decimal @default(0) @db.Decimal(16, 2)
+  amountDue  Decimal @db.Decimal(16, 2)
+
+  status PaymentObligationStatus @default(PENDING)
+
+  // Step 17 — derived from accepted commercial terms where available;
+  // null when no due date exists. A null dueAt can never become OVERDUE
+  // (see payment-status.calculator.ts).
+  dueAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  delivery   Delivery     @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  tradeOffer TradeOffer?  @relation(fields: [tradeOfferId], references: [id], onDelete: SetNull)
+  buyer      BuyerProfile @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  sellerFarmer FarmerProfile? @relation(fields: [sellerFarmerId], references: [id], onDelete: SetNull)
+  sellerFpo    Fpo?           @relation(fields: [sellerFpoId], references: [id], onDelete: SetNull)
+
+  payments PaymentRecord[]
+
+  @@index([buyerId, status])
+  @@index([sellerFarmerId, status])
+  @@index([sellerFpoId, status])
+  @@index([status])
+  @@index([dueAt])
+  @@index([createdAt])
+  @@map("payment_obligations")
+}
+
+// Step 5 — a payment that has been externally made and is being reported/
+// tracked here; this module never initiates it (Step 36). Append-only
+// (Step 23): a correction never overwrites amount/paidAt in place, it is
+// recorded as a REVERSED row plus a fresh RECORDED row — same "append,
+// don't mutate" convention as DeliveryReconciliation/LogisticsOptimizationResult.
+model PaymentRecord {
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+
+  paymentObligationId String
+
+  amount        Decimal       @db.Decimal(16, 2)
+  currency      String        @default("INR")
+  paymentMethod PaymentMethod
+
+  // Step 21 — the idempotency key a client must supply so a network
+  // retry/duplicate submission can never create a second PaymentRecord
+  // for the same intended payment. Distinct from externalReference (a
+  // UTR/cheque number/bank reference kept purely for display — Step 16),
+  // which may be reused across otherwise-unrelated fields and is never
+  // itself trusted as a dedupe key. Unique per obligation, not globally.
+  idempotencyKey String
+
+  // Step 16 — reference only, never a banking-API identifier. Explicitly
+  // never: card numbers, CVV, PIN, passwords, bank login credentials, UPI
+  // PIN (Step 16's own prohibition — enforced in payment.schemas.ts).
+  externalReference String?
+
+  paidAt DateTime
+  status PaymentRecordStatus @default(RECORDED)
+
+  recordedByUserId String
+  notes            String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  obligation PaymentObligation @relation(fields: [paymentObligationId], references: [id], onDelete: Restrict)
+  recordedBy User              @relation(fields: [recordedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentObligationId, idempotencyKey])
+  @@index([paymentObligationId, createdAt])
+  @@index([status])
+  @@map("payment_records")
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp Farmer Assistant
+//
+// Three additive tables. Everything else the assistant needs (farmers, lots,
+// buyers, demands, offers, payments, shipments, mandi prices, audit, OTP
+// challenges) is reused from the existing modules — nothing is duplicated.
+// Link codes reuse the existing OtpChallenge table (purpose =
+// "WHATSAPP_LINK") instead of adding a fourth table.
+// ---------------------------------------------------------------------------
+
+// Verified binding between a FarmLink user and a WhatsApp number. A row exists
+// only after the farmer proved control of BOTH the FarmLink account (they were
+// logged in on the website when the one-time code was issued) and the WhatsApp
+// number (they sent that code from it). Phone-number equality alone is never
+// treated as proof of identity — User.mobile is not OTP-verified today.
+model WhatsAppLink {
+  id String @id @default(uuid())
+
+  userId String @unique
+  // Digits only, with country code, exactly as Meta reports it in `wa_id`
+  // (e.g. "919876543210").
+  phoneNumber String @unique
+
+  linkedAt      DateTime  @default(now())
+  lastInboundAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_links")
+}
+
+enum WhatsAppConversationState {
+  IDLE
+  COLLECTING_CROP
+  COLLECTING_QUANTITY
+  COLLECTING_LOCATION
+  COLLECTING_QUALITY
+  COLLECTING_FARM
+  COLLECTING_PRICE
+  AWAITING_CONFIRMATION
+  MATCHING
+  SHOWING_BUYERS
+  SHOWING_OFFERS
+  SHOWING_LOTS
+  SHOWING_PAYMENT
+  SHOWING_SHIPMENT
+}
+
+// One row per WhatsApp number (reset in place when it expires). `userId` is
+// null until the number is linked. `collectedEntities` holds what the farmer
+// has told us so far; `context` holds server-side option maps (e.g. "reply 2
+// = this buyer") so button/list replies never carry — or trust — database ids.
+model WhatsAppConversation {
+  id String @id @default(uuid())
+
+  phoneNumber String  @unique
+  userId      String?
+
+  state  WhatsAppConversationState @default(IDLE)
+  intent String?
+
+  collectedEntities Json @default("{}")
+  context           Json @default("{}")
+
+  // "en" | "hi" | "hinglish"
+  language String @default("hinglish")
+
+  lastInboundAt DateTime?
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  messages WhatsAppMessage[]
 
   @@index([userId])
-  @@index([razorpayOrderId])
-  @@map("seed_payments")
+  @@index([expiresAt])
+  @@map("whatsapp_conversations")
 }
 
-// ---------------------------------------------------------------------------
-// 3.7 Machinery & Equipment Rental
-//
-// Fundamentally different shape from the product/seed catalogs: a listing's
-// "stock" (totalUnits) isn't a running counter you decrement — availability
-// is a function of DATE RANGE, computed by summing quantities from bookings
-// that overlap the requested range (including a mandatory buffer period
-// after each booking, before the same units can be booked again). See
-// machineryAvailability.service.ts for the overlap math and why booking
-// creation runs in a Serializable transaction rather than a plain one.
-// ---------------------------------------------------------------------------
-
-model MachineryCategory {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  slug          String   @unique
-  description   String?
-  imageUrl      String?
-  imagePublicId String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  machinery Machinery[]
-
-  @@map("machinery_categories")
+enum WhatsAppMessageDirection {
+  INBOUND
+  OUTBOUND
 }
 
-model Machinery {
-  id         String            @id @default(uuid())
-  sellerId   String
-  seller     User              @relation("SellerMachinery", fields: [sellerId], references: [id], onDelete: Cascade)
-  categoryId String
-  category   MachineryCategory @relation(fields: [categoryId], references: [id])
-
-  name        String
-  slug        String  @unique
-  description String?
-  brand       String?
-  model       String?
-
-  totalUnits     Int     @default(1) // fleet size — how many identical units the seller owns
-  pricePerDay    Decimal @db.Decimal(12, 2)
-  bufferDays     Int     @default(1) // recovery days required between bookings of the same unit(s)
-  specifications Json?
-  latitude       Float?
-  longitude      Float?
-  isActive       Boolean @default(true)
-  avgRating      Float   @default(0)
-  reviewCount    Int     @default(0)
-  viewCount      Int     @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  images        MachineryImage[]
-  discountTiers MachineryDiscountTier[]
-  bookings      MachineryBooking[]
-  reviews       MachineryReview[]
-
-  @@index([categoryId])
-  @@index([sellerId])
-  @@index([isActive])
-  @@map("machinery")
+enum WhatsAppMessageStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  IGNORED
+  FAILED
+  QUEUED
+  SENT
+  DELIVERED
+  READ
 }
 
-model MachineryImage {
-  id          String    @id @default(uuid())
-  machineryId String
-  machinery   Machinery @relation(fields: [machineryId], references: [id], onDelete: Cascade)
-  url         String
-  publicId    String?
-  isPrimary   Boolean   @default(false)
-  sortOrder   Int       @default(0)
+// Inbound rows use Meta's message id (wamid) as externalMessageId, so the
+// UNIQUE constraint is the idempotency guard for webhook retries. Outbound
+// rows use a deterministic "out:<inbound id>:<n>" key created BEFORE sending,
+// so re-processing the same inbound event can never re-send a reply.
+// Outbound bodies are deliberately NOT stored (they can contain payment and
+// offer details) — only their kind.
+model WhatsAppMessage {
+  id String @id @default(uuid())
+
+  externalMessageId String  @unique
+  providerMessageId String?
+
+  conversationId String?
+  userId         String?
+  phoneNumber    String
+
+  direction   WhatsAppMessageDirection
+  messageType String
+  // Inbound text only, truncated to 1000 chars. Null for outbound.
+  text        String?
+  payload     Json?
+  status      WhatsAppMessageStatus
+
+  attempts  Int     @default(0)
+  errorCode String?
+
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  @@index([machineryId])
-  @@map("machinery_images")
-}
+  conversation WhatsAppConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
-/// "Book this many units, get this % off" — the highest tier whose
-/// minQuantity the booking meets or exceeds applies (best discount you
-/// qualify for, not a stack of every tier crossed).
-model MachineryDiscountTier {
-  id              String    @id @default(uuid())
-  machineryId     String
-  machinery       Machinery @relation(fields: [machineryId], references: [id], onDelete: Cascade)
-  minQuantity     Int
-  discountPercent Decimal   @db.Decimal(5, 2)
-  createdAt       DateTime  @default(now())
-
-  @@unique([machineryId, minQuantity])
-  @@map("machinery_discount_tiers")
-}
-
-model MachineryBooking {
-  id            String    @id @default(uuid())
-  bookingNumber String    @unique
-  machineryId   String
-  machinery     Machinery @relation(fields: [machineryId], references: [id])
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  addressId     String? // delivery address; omitted if the renter picks up
-  address       Address?  @relation(fields: [addressId], references: [id])
-
-  quantity  Int
-  startDate DateTime @db.Date
-  endDate   DateTime @db.Date
-
-  pricePerDaySnapshot    Decimal @db.Decimal(12, 2)
-  discountPercentApplied Decimal @default(0) @db.Decimal(5, 2)
-  subtotal               Decimal @db.Decimal(12, 2)
-  tax                    Decimal @default(0) @db.Decimal(12, 2)
-  totalAmount            Decimal @db.Decimal(12, 2)
-
-  status       MachineryBookingStatus @default(PENDING)
-  notes        String?
-  cancelReason String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  statusHistory MachineryBookingStatusHistory[]
-  payment       MachineryPayment?
-  review        MachineryReview?
-
-  // Every availability/conflict check filters by machineryId and scans
-  // date ranges — this index is what makes that scan cheap instead of a
-  // full table scan per lookup.
-  @@index([machineryId, startDate, endDate])
+  @@index([conversationId])
   @@index([userId])
-  @@index([status])
-  @@map("machinery_bookings")
+  @@index([phoneNumber])
+  @@index([status, receivedAt])
+  @@index([createdAt])
+  @@map("whatsapp_messages")
 }
 
-model MachineryBookingStatusHistory {
-  id          String                 @id @default(uuid())
-  bookingId   String
-  booking     MachineryBooking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  status      MachineryBookingStatus
-  note        String?
-  changedById String?
-  changedBy   User?                  @relation("MachineryStatusChangedBy", fields: [changedById], references: [id])
-  changedAt   DateTime               @default(now())
-
-  @@index([bookingId])
-  @@map("machinery_booking_status_history")
-}
-
-model MachineryPayment {
-  id        String           @id @default(uuid())
-  bookingId String           @unique
-  booking   MachineryBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User             @relation(fields: [userId], references: [id])
-
-  razorpayOrderId   String  @unique
-  razorpayPaymentId String?
-  razorpaySignature String?
-
-  amount        Decimal       @db.Decimal(12, 2)
-  currency      String        @default("INR")
-  status        PaymentStatus @default(CREATED)
-  method        String?
-  failureReason String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([razorpayOrderId])
-  @@map("machinery_payments")
-}
-
-model MachineryReview {
-  id          String            @id @default(uuid())
-  machineryId String
-  machinery   Machinery         @relation(fields: [machineryId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bookingId   String?           @unique // optional link proving they actually rented it
-  booking     MachineryBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  rating      Int
-  comment     String?
-  isApproved  Boolean           @default(true)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  @@unique([machineryId, userId])
-  @@index([machineryId])
-  @@map("machinery_reviews")
-}
-// ---------------------------------------------------------------------------
-// 3.6 Land Marketplace
-//
-// Listing + site-visit workflow, not a cart/order flow — there is nothing to
-// "buy now" here. A seller lists land (with images and a map-pin location);
-// a buyer requests a physical visit for a date/time, and the seller accepts,
-// rejects, or later marks it completed. `LandVisitRequest.status` carries
-// the whole lifecycle; no separate history table, mirroring how lightweight
-// the frontend's own VisitRequest model already is (LandContext.tsx).
-// ---------------------------------------------------------------------------
-
-model Land {
-  id          String       @id @default(uuid())
-  sellerId    String
-  seller      User         @relation("SellerLand", fields: [sellerId], references: [id], onDelete: Cascade)
-
-  title       String
-  slug        String       @unique
-  description String?
-  areaAcres   Decimal      @db.Decimal(10, 2)
-  dealType    LandDealType
-  price       Decimal      @db.Decimal(14, 2)
-
-  location    String       // free-text place name shown on cards, e.g. "Bahoriband, Katni"
-  city        String?
-  state       String?
-  latitude    Float?
-  longitude   Float?
-
-  soilType    String?
-  waterSource String?
-
-  isActive    Boolean      @default(true)
-  viewCount   Int          @default(0)
-
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  images        LandImage[]
-  visitRequests LandVisitRequest[]
-
-  @@index([sellerId])
-  @@index([isActive])
-  @@map("land_listings")
-}
-
-model LandImage {
-  id        String   @id @default(uuid())
-  landId    String
-  land      Land     @relation(fields: [landId], references: [id], onDelete: Cascade)
-  url       String
-  publicId  String?
-  isPrimary Boolean  @default(false)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-
-  @@index([landId])
-  @@map("land_images")
-}
-
-model LandVisitRequest {
-  id       String          @id @default(uuid())
-  landId   String
-  land     Land            @relation(fields: [landId], references: [id], onDelete: Cascade)
-  buyerId  String
-  buyer    User            @relation("LandVisitBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
-
-  visitDate    DateTime    @db.Date
-  visitTime    String      // free-text slot, e.g. "10:00 AM" — matches the frontend's plain string field
-  message      String?
-  status       LandVisitStatus @default(PENDING)
-  responseNote String?     // seller's note when accepting/rejecting
-
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-
-  // One buyer only needs one live request per listing at a time — same
-  // "replace the previous request" behaviour the frontend's LandContext
-  // already implements client-side (requestVisit filters out the old one).
-  @@unique([landId, buyerId])
-  @@index([landId])
-  @@index([buyerId])
-  @@index([status])
-  @@map("land_visit_requests")
-}
-
-// ---------------------------------------------------------------------------
-// 3.9 AI Farm Advisory Suite
-//
-// The spec names three history entities (ChatHistory, CropAnalysis,
-// SoilReport). ChatHistory is modeled as a Session + Message pair (the
-// standard shape for a threaded conversation — a single flat table doesn't
-// group turns into conversations). CropAnalysis is a single table covering
-// six of the advisory types (crop advisor, disease detection, fertilizer,
-// irrigation, crop rotation, weather advice) with a `type` discriminator and
-// a flexible Json result — these all share the same shape (submit inputs,
-// get a structured recommendation back) so six near-identical tables would
-// just be duplication. SoilReport stays separate because soil data has
-// distinct structured fields worth modeling explicitly rather than burying
-// in Json (pH, N/P/K levels, etc).
-// ---------------------------------------------------------------------------
-
-model AiChatSession {
-  id        String          @id @default(uuid())
-  userId    String
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String?         // derived from the first message, or left null until one exists
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-
-  messages  AiChatMessage[]
-
-  @@index([userId])
-  @@map("ai_chat_sessions")
-}
-
-model AiChatMessage {
-  id        String        @id @default(uuid())
-  sessionId String
-  session   AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role      AiChatRole
-  content   String
-  createdAt DateTime      @default(now())
-
-  @@index([sessionId])
-  @@map("ai_chat_messages")
-}
-
-model CropAnalysis {
-  id            String           @id @default(uuid())
-  userId        String
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          CropAnalysisType
-  inputData     Json             // whatever the user submitted (crop, location, season, form fields...)
-  imageUrl      String?          // DISEASE_DETECTION only
-  imagePublicId String?
-  resultSummary String           // short human-readable line, for a history list without opening each item
-  resultData    Json             // full structured AI response
-  createdAt     DateTime         @default(now())
-
-  @@index([userId, type])
-  @@map("crop_analyses")
-}
-
-model SoilReport {
-  id                   String   @id @default(uuid())
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  soilPh               Float?
-  nitrogenLevel        String?  // "Low" / "Medium" / "High", or a numeric ppm as text — kept flexible
-  phosphorusLevel      String?
-  potassiumLevel       String?
-  organicCarbonPercent Float?
-  soilType             String?  // e.g. "Loamy", "Clay", "Sandy"
-  location             String?
-  latitude             Float?
-  longitude            Float?
-  rawInput             Json?    // anything beyond the typed fields above
-  recommendationSummary String
-  recommendationData   Json
-  createdAt            DateTime @default(now())
-
-  @@index([userId])
-  @@map("soil_reports")
-}

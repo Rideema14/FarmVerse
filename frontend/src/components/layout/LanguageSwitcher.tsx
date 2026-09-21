@@ -1,102 +1,107 @@
-import { useEffect, useRef, useState } from 'react'
-import { Check, Globe } from 'lucide-react'
-import { useLanguage } from '@/context/LanguageContext'
-import { cn } from '@/utils/cn'
+"use client";
 
-export function LanguageSwitcher({
-  className,
-  compact = false,
-}: {
-  className?: string
-  compact?: boolean
-}) {
-  const { language, setLanguage, supportedLanguages, plannedLanguages, t } = useLanguage()
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+import * as React from "react";
+import { Globe, ChevronDown, Search, Loader2 } from "lucide-react";
+import { useI18n } from "@/i18n/I18nProvider";
+import { LANGUAGE_OPTIONS } from "@/i18n/languages";
+import { cn } from "@/lib/utils";
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false)
+export function LanguageSwitcher({ className }: { className?: string }) {
+  const { language, setLanguage, isTranslating } = useI18n();
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const ref = React.useRef<HTMLDivElement>(null);
+  const searchRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
 
-  const current = supportedLanguages.find((l) => l.code === language)
+  React.useEffect(() => {
+    if (open) searchRef.current?.focus();
+  }, [open]);
+
+  const current = LANGUAGE_OPTIONS.find((l) => l.code === language) ?? {
+    code: language,
+    englishName: language.toUpperCase(),
+    nativeName: language.toUpperCase(),
+  };
+
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return LANGUAGE_OPTIONS;
+    return LANGUAGE_OPTIONS.filter(
+      (l) =>
+        l.englishName.toLowerCase().includes(q) ||
+        l.nativeName.toLowerCase().includes(q) ||
+        l.code.toLowerCase().includes(q),
+    );
+  }, [query]);
 
   return (
-    <div className={cn('relative', className)} ref={ref}>
-      {compact ? (
-        <button
-          type="button"
-          onClick={() => setOpen((prev) => !prev)}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          aria-label={t('common.language')}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#57564F] transition-all duration-200 hover:bg-[#EEECE5] hover:text-[#3F4935] active:scale-90"
-        >
-          <Globe className="h-[19px] w-[19px]" aria-hidden="true" />
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen((prev) => !prev)}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          aria-label={t('common.language')}
-          className="flex h-10 items-center gap-1.5 rounded-full border border-ink-100 bg-surface px-3 text-sm font-medium text-ink-700 hover:border-brand-300 hover:text-brand-700"
-        >
-          <Globe className="h-4 w-4" aria-hidden="true" />
-          <span>{current?.nativeLabel ?? 'English'}</span>
-        </button>
-      )}
-
+    <div ref={ref} className={cn("relative inline-block", className)} translate="no">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="language-switcher-trigger flex h-10 items-center gap-1.5 rounded-full border px-3 text-xs font-bold uppercase tracking-wider transition-all duration-200"
+      >
+        {isTranslating ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        ) : (
+          <Globe className="h-3.5 w-3.5" aria-hidden />
+        )}
+        {current.code}
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} aria-hidden />
+      </button>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-2xl border border-ink-100 bg-surface py-1 shadow-float"
+          className="language-switcher-menu absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-xl border shadow-2xl"
         >
-          <p className="px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">
-            {t('common.language')}
-          </p>
-          {supportedLanguages.map((option) => (
-            <button
-              key={option.code}
-              type="button"
-              role="menuitemradio"
-              aria-checked={option.code === language}
-              onClick={() => {
-                setLanguage(option.code)
-                setOpen(false)
-              }}
-              className="flex w-full items-center justify-between px-3 py-2 text-sm text-ink-700 hover:bg-surface-sunk"
-            >
-              <span>
-                {option.nativeLabel}
-                {option.nativeLabel !== option.label && (
-                  <span className="ml-1.5 text-ink-400">· {option.label}</span>
+          <div className="language-switcher-search flex items-center gap-2 border-b px-3 py-2">
+            <Search className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search language…"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <div className="px-3.5 py-3 text-sm opacity-60">No language found.</div>
+            )}
+            {filtered.map((l) => (
+              <button
+                key={l.code}
+                role="menuitem"
+                onClick={() => {
+                  setLanguage(l.code);
+                  setOpen(false);
+                  setQuery("");
+                }}
+                className={cn(
+                  "language-option flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left text-sm transition-colors",
+                  l.code === language ? "font-semibold" : "font-normal",
                 )}
-              </span>
-              {option.code === language && <Check className="h-4 w-4 text-brand-600" aria-hidden="true" />}
-            </button>
-          ))}
-          <div className="my-1 border-t border-ink-100" />
-          <p className="px-3 pt-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">
-            {t('common.comingSoon')}
-          </p>
-          {plannedLanguages.map((option) => (
-            <div
-              key={option.code}
-              aria-disabled="true"
-              className="flex w-full cursor-not-allowed items-center justify-between px-3 py-1.5 text-sm text-ink-300"
-            >
-              <span>{option.nativeLabel}</span>
-            </div>
-          ))}
+              >
+                <span>{l.nativeName}</span>
+                <span className="text-xs opacity-60">{l.englishName}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
-  )
+  );
 }

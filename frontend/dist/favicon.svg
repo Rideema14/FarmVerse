@@ -1,0 +1,44 @@
+<svg
+  width="512"
+  height="512"
+  viewBox="0 0 512 512"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <rect
+    x="16"
+    y="16"
+    width="480"
+    height="480"
+    rx="240"
+    fill="#022C22"
+  />
+
+  <rect
+    x="16"
+    y="16"
+    width="480"
+    height="480"
+    rx="240"
+    stroke="rgba(255,255,255,0.3)"
+    stroke-width="8"
+  />
+
+  <!-- Sprout -->
+  <path
+    d="M256 350V220"
+    stroke="white"
+    stroke-width="18"
+    stroke-linecap="round"
+  />
+
+  <path
+    d="M256 270C214 270 180 242 180 202C222 202 256 225 256 270Z"
+    fill="white"
+  />
+
+  <path
+    d="M256 245C256 202 290 168 332 168C332 210 299 245 256 245Z"
+    fill="white"
+  />
+</svg>

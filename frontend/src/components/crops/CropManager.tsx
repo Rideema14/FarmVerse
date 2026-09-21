@@ -1,0 +1,265 @@
+"use client";
+
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Star, Trash2 } from "lucide-react";
+import { CropVisual } from "@/components/crops/CropVisual";
+import { useI18n } from "@/i18n/I18nProvider";
+import { Card, Label, FieldError, FieldHint, Alert } from "@/components/ui/primitives";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { EmptyState } from "@/components/EmptyState";
+import { FeatureTour } from "@/components/FeatureTour";
+import { useCropsQuery } from "@/hooks/useReferenceData";
+import { useAddFarmerCrop, useDeleteFarmerCrop, useUpdateFarmerCrop } from "@/hooks/useFarmerProfile";
+import { cropFormSchema, CropFormValues } from "@/features/farms/farm.schemas";
+import { Farm, FarmerCrop } from "@/types/farmer";
+import { ApiRequestError } from "@/types/api";
+import { applyServerFieldErrors } from "@/lib/formErrors";
+
+// Crop names can only be pre-translated in the languages the backend
+// stores (en/hi/mr today, via crop.translations). The UI's own language
+// switcher now supports arbitrary languages via live translation, but that
+// dynamic layer only covers app copy, not this domain data — so for any
+// other selected language we simply fall back to the English crop name
+// rather than guessing at an unavailable translation.
+function localizedCropName(crop: FarmerCrop["crop"], language: string) {
+  if (language === "en") return crop.name;
+  const translations = crop.translations as Partial<Record<string, string>>;
+  return translations[language] ?? crop.name;
+}
+
+function CropRow({ crop, farms }: { crop: FarmerCrop; farms: Farm[] }) {
+  const { t, language } = useI18n();
+  const [error, setError] = React.useState<string | null>(null);
+  const updateCrop = useUpdateFarmerCrop();
+  const deleteCrop = useDeleteFarmerCrop();
+  const farm = farms.find((f) => f.id === crop.farmId);
+
+  async function handleSetPrimary() {
+    setError(null);
+    try {
+      await updateCrop.mutateAsync({ id: crop.id, input: { isPrimary: true } });
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : t("common.networkError"));
+    }
+  }
+
+  async function handleRemove() {
+    setError(null);
+    try {
+      await deleteCrop.mutateAsync(crop.id);
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : t("common.networkError"));
+    }
+  }
+
+  return (
+    <div className="item-tile has-cover">
+      <div className="item-tile-cover">
+        <CropVisual name={crop.crop.name} category={crop.crop.category} imageUrl={crop.imageUrl} variant="cover" />
+      </div>
+      <div className="item-tile-body">
+        <h3>{localizedCropName(crop.crop, language)}</h3>
+        {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+        <div className="item-tile-chips">
+          <span className="item-chip gold">
+            {crop.area} {crop.areaUnit === "ACRE" ? t("farm.areaUnit.acre") : t("farm.areaUnit.hectare")}
+          </span>
+          {farm && farms.length > 1 && <span className="item-chip">{farm.name || t("farm.myFarm")}</span>}
+          {crop.isPrimary && (
+            <span className="item-chip gold">
+              <Star className="h-3 w-3" aria-hidden />
+              {t("crop.primary")}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="item-tile-actions">
+        {!crop.isPrimary && (
+          <button
+            type="button"
+            aria-label={t("crop.setPrimary")}
+            disabled={updateCrop.isPending}
+            onClick={handleSetPrimary}
+          >
+            <Star className="h-4 w-4" aria-hidden />
+          </button>
+        )}
+        <button
+          type="button"
+          className="danger"
+          aria-label={t("common.delete")}
+          disabled={deleteCrop.isPending}
+          onClick={handleRemove}
+        >
+          <Trash2 className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AddCropForm({ farms }: { farms: Farm[] }) {
+  const { t, language } = useI18n();
+  const [serverError, setServerError] = React.useState<string | null>(null);
+  const cropsQuery = useCropsQuery();
+  const addCrop = useAddFarmerCrop();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<CropFormValues>({
+    resolver: zodResolver(cropFormSchema),
+    defaultValues: { farmId: farms.length === 1 ? farms[0].id : "", areaUnit: "ACRE" },
+  });
+
+  async function onSubmit(values: CropFormValues) {
+    setServerError(null);
+    try {
+      await addCrop.mutateAsync({
+        farmId: values.farmId,
+        cropId: values.cropId,
+        area: values.area,
+        areaUnit: values.areaUnit,
+        typicalYield: values.typicalYield && !Number.isNaN(values.typicalYield) ? values.typicalYield : undefined,
+        yieldUnit: values.yieldUnit || undefined,
+        isPrimary: values.isPrimary,
+      });
+      reset({ farmId: farms.length === 1 ? farms[0].id : "", areaUnit: "ACRE" });
+    } catch (err) {
+      const message = applyServerFieldErrors(err, setError, [
+        "farmId",
+        "cropId",
+        "area",
+        "areaUnit",
+        "typicalYield",
+        "yieldUnit",
+        "isPrimary",
+      ] as const);
+      setServerError(message ?? (err instanceof ApiRequestError ? null : t("common.networkError")));
+    }
+  }
+
+  return (
+    <form className="mt-4 space-y-4 border-t border-border pt-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+      {serverError && <Alert variant="error">{serverError}</Alert>}
+
+      {farms.length > 1 && (
+        <div>
+          <Label htmlFor="crop-farm">{t("crop.farm")}</Label>
+          <Select id="crop-farm" hasError={!!errors.farmId} {...register("farmId")}>
+            <option value="">{t("common.selectPlaceholder")}</option>
+            {farms.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name || t("farm.myFarm")} — {f.village}
+              </option>
+            ))}
+          </Select>
+          <FieldError>{errors.farmId && t(errors.farmId.message!)}</FieldError>
+        </div>
+      )}
+
+      <div>
+        <Label htmlFor="crop-crop">{t("crop.select")}</Label>
+        <Select id="crop-crop" data-tour="crop-select-field" hasError={!!errors.cropId} {...register("cropId")}>
+          <option value="">{t("common.selectPlaceholder")}</option>
+          {cropsQuery.data?.map((c) => (
+            <option key={c.id} value={c.id}>
+              {localizedCropName(c, language)}
+            </option>
+          ))}
+        </Select>
+        <FieldError>{errors.cropId && t(errors.cropId.message!)}</FieldError>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="crop-area">{t("crop.area")}</Label>
+          <Input id="crop-area" data-tour="crop-area-field" type="number" step="0.01" inputMode="decimal" hasError={!!errors.area} {...register("area")} />
+          {errors.area ? (
+            <FieldError>{t(errors.area.message!)}</FieldError>
+          ) : (
+            <FieldHint>{t("farm.areaHint")}</FieldHint>
+          )}
+        </div>
+        <div>
+          <Label htmlFor="crop-area-unit">{t("farm.areaUnit")}</Label>
+          <Select id="crop-area-unit" {...register("areaUnit")}>
+            <option value="ACRE">{t("farm.areaUnit.acre")}</option>
+            <option value="HECTARE">{t("farm.areaUnit.hectare")}</option>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="crop-yield">{t("crop.typicalYield")}</Label>
+        <Input id="crop-yield" type="number" step="0.01" inputMode="decimal" hasError={!!errors.typicalYield} {...register("typicalYield")} />
+        {errors.typicalYield ? (
+          <FieldError>{t(errors.typicalYield.message!)}</FieldError>
+        ) : (
+          <FieldHint>{t("validation.yield")}</FieldHint>
+        )}
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" className="h-5 w-5 rounded border-input" {...register("isPrimary")} />
+        {t("crop.setAsPrimary")}
+      </label>
+
+      <Button type="submit" data-tour="crop-submit-button" isLoading={isSubmitting} className="w-auto px-4 py-2.5 text-sm">
+        {t("crop.add")}
+      </Button>
+    </form>
+  );
+}
+
+export function CropManager({ crops, farms }: { crops: FarmerCrop[]; farms: Farm[] }) {
+  const { t } = useI18n();
+
+  if (farms.length === 0) {
+    return <EmptyState message={t("crop.needsFarmFirst")} />;
+  }
+
+  return (
+    <Card>
+      <h2 className="mb-1 section-title">{t("crop.myCrops")}</h2>
+      {crops.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">{t("crop.empty")}</p>
+      ) : (
+        <div className="mt-3 item-tile-grid">
+          {crops.map((crop) => (
+            <CropRow key={crop.id} crop={crop} farms={farms} />
+          ))}
+        </div>
+      )}
+      <AddCropForm farms={farms} />
+      <FeatureTour
+        tourId="add-crop"
+        enabled={crops.length === 0}
+        steps={[
+          {
+            target: "[data-tour='crop-select-field']",
+            title: "Choose the crop",
+            text: "Pick which crop you're growing on this farm. You can add more crops any time.",
+          },
+          {
+            target: "[data-tour='crop-area-field']",
+            title: "How much land",
+            text: "Enter how much of your farm this crop covers, in acres or hectares.",
+          },
+          {
+            target: "[data-tour='crop-submit-button']",
+            title: "Add it",
+            text: "Tap here to save. If you're growing more than one crop, mark your main one as primary.",
+          },
+        ]}
+      />
+    </Card>
+  );
+}
