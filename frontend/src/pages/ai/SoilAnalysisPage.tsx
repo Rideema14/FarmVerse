@@ -6,6 +6,7 @@ import { useAi } from '@/context/AiContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { soilService, type AdvisoryResult } from '@/services/aiService'
 import { getApiErrorMessage } from '@/services/api'
+import { formatCropName, formatNutrientLevel, formatSoilName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 type Level = 'Low' | 'Medium' | 'High'
@@ -17,6 +18,7 @@ const LEVEL_STYLES: Record<Level, string> = {
 }
 
 export default function SoilAnalysisPage() {
+  const { t, language } = useLanguage()
   const [ph, setPh] = useState('6.8')
   const [nitrogenLevel, setNitrogenLevel] = useState<Level>('Medium')
   const [phosphorusLevel, setPhosphorusLevel] = useState<Level>('Medium')
@@ -26,7 +28,6 @@ export default function SoilAnalysisPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const { refreshHistory } = useAi()
-  const { language } = useLanguage()
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -56,22 +57,28 @@ export default function SoilAnalysisPage() {
         <span className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-soil-50 text-soil-700">
           <FlaskConical className="h-7 w-7" aria-hidden="true" />
         </span>
-        <h1 className="text-xl">Soil Analysis Result</h1>
+        <h1 className="text-xl">{t('soilAnalysis.resultTitle')}</h1>
         <p className="mt-2 text-sm leading-relaxed text-ink-700">{result.summary}</p>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', LEVEL_STYLES[nitrogenLevel])}>N: {nitrogenLevel}</span>
-          <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', LEVEL_STYLES[phosphorusLevel])}>P: {phosphorusLevel}</span>
-          <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', LEVEL_STYLES[potassiumLevel])}>K: {potassiumLevel}</span>
+          <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', LEVEL_STYLES[nitrogenLevel])}>
+            N: {formatNutrientLevel(nitrogenLevel, language)}
+          </span>
+          <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', LEVEL_STYLES[phosphorusLevel])}>
+            P: {formatNutrientLevel(phosphorusLevel, language)}
+          </span>
+          <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', LEVEL_STYLES[potassiumLevel])}>
+            K: {formatNutrientLevel(potassiumLevel, language)}
+          </span>
         </div>
 
         {result.suitableCrops && result.suitableCrops.length > 0 && (
           <div className="mt-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Suitable Crops</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{t('soilAnalysis.suitableCrops')}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {result.suitableCrops.map((c) => (
                 <span key={c} className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-                  {c}
+                  {formatCropName(c, language)}
                 </span>
               ))}
             </div>
@@ -80,7 +87,7 @@ export default function SoilAnalysisPage() {
 
         {result.amendments && result.amendments.length > 0 && (
           <div className="mt-5 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Recommended Amendments</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{t('soilAnalysis.recommendedAmendments')}</p>
             {result.amendments.map((a) => (
               <div key={a} className="flex items-start gap-2 rounded-xl bg-surface-sunk p-3 text-sm text-ink-700">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
@@ -103,7 +110,7 @@ export default function SoilAnalysisPage() {
 
         <Button variant="secondary" className="mt-5" onClick={() => setResult(null)}>
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          New Analysis
+          {t('soilAnalysis.newAnalysis')}
         </Button>
       </div>
     )
@@ -111,13 +118,13 @@ export default function SoilAnalysisPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-6 md:px-6 md:py-8">
-      <h1 className="mb-1 text-xl">Soil Analysis</h1>
-      <p className="mb-5 text-sm text-ink-500">Enter your soil test values for AI-based recommendations.</p>
+      <h1 className="mb-1 text-xl">{t('soilAnalysis.title')}</h1>
+      <p className="mb-5 text-sm text-ink-500">{t('soilAnalysis.subtitle')}</p>
 
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label htmlFor="ph" className="mb-1.5 block text-xs font-medium text-ink-700">
-            pH
+            {t('soilAnalysis.phLabel')}
           </label>
           <input
             id="ph"
@@ -130,29 +137,29 @@ export default function SoilAnalysisPage() {
             className="h-11 w-full rounded-xl border border-ink-200 bg-surface px-3 text-sm"
           />
         </div>
-        <SelectField id="soilType" label="Soil Type" value={soilType} onChange={(e) => setSoilType(e.target.value)}>
+        <SelectField id="soilType" label={t('soilAnalysis.soilTypeLabel')} value={soilType} onChange={(e) => setSoilType(e.target.value)}>
           {['Black soil', 'Alluvial soil', 'Red soil', 'Loamy soil'].map((s) => (
-            <option key={s}>{s}</option>
+            <option key={s} value={s}>{formatSoilName(s, language)}</option>
           ))}
         </SelectField>
-        <SelectField id="n" label="Nitrogen (N)" value={nitrogenLevel} onChange={(e) => setNitrogenLevel(e.target.value as Level)}>
+        <SelectField id="n" label={t('soilAnalysis.nitrogenLabel')} value={nitrogenLevel} onChange={(e) => setNitrogenLevel(e.target.value as Level)}>
           {LEVELS.map((l) => (
-            <option key={l}>{l}</option>
+            <option key={l} value={l}>{formatNutrientLevel(l, language)}</option>
           ))}
         </SelectField>
-        <SelectField id="p" label="Phosphorus (P)" value={phosphorusLevel} onChange={(e) => setPhosphorusLevel(e.target.value as Level)}>
+        <SelectField id="p" label={t('soilAnalysis.phosphorusLabel')} value={phosphorusLevel} onChange={(e) => setPhosphorusLevel(e.target.value as Level)}>
           {LEVELS.map((l) => (
-            <option key={l}>{l}</option>
+            <option key={l} value={l}>{formatNutrientLevel(l, language)}</option>
           ))}
         </SelectField>
-        <SelectField id="k" label="Potassium (K)" value={potassiumLevel} onChange={(e) => setPotassiumLevel(e.target.value as Level)}>
+        <SelectField id="k" label={t('soilAnalysis.potassiumLabel')} value={potassiumLevel} onChange={(e) => setPotassiumLevel(e.target.value as Level)}>
           {LEVELS.map((l) => (
-            <option key={l}>{l}</option>
+            <option key={l} value={l}>{formatNutrientLevel(l, language)}</option>
           ))}
         </SelectField>
         {error && <p className="mb-3 text-xs font-medium text-danger-500">{error}</p>}
         <Button type="submit" fullWidth loading={isLoading} className="mt-1">
-          Analyze
+          {t('soilAnalysis.analyzeButton')}
         </Button>
       </form>
     </div>

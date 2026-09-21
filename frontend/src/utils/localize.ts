@@ -661,3 +661,440 @@ export function formatLocationName(name: string, language: string): string {
 
   return name
 }
+
+const SOIL_NAMES_MAP: Record<string, Record<string, string>> = {
+  hi: {
+    'Black soil': 'काली मिट्टी',
+    'Alluvial soil': 'जलोढ़ मिट्टी',
+    'Red soil': 'लाल मिट्टी',
+    'Loamy soil': 'दोमट मिट्टी',
+    'Sandy soil': 'बलुई / रेतीली मिट्टी',
+    'Clay soil': 'चिकनी मिट्टी',
+    'Laterite soil': 'लैटेराइट मिट्टी',
+    'Saline soil': 'लवणीय मिट्टी',
+    'Peaty soil': 'दलदली मिट्टी',
+    'Mountain soil': 'पर्वतीय मिट्टी',
+    'Forest soil': 'वन मिट्टी',
+    'Desert soil': 'मरुस्थलीय मिट्टी',
+  },
+  mr: {
+    'Black soil': 'काळी माती',
+    'Alluvial soil': 'गाळाची माती',
+    'Red soil': 'तांबडी / लाल माती',
+    'Loamy soil': 'पोयटा / दोमट माती',
+    'Sandy soil': 'वाळूची / रेताड माती',
+    'Clay soil': 'चिकण माती',
+    'Laterite soil': 'जांभी माती',
+    'Saline soil': 'खारवट माती',
+    'Peaty soil': 'दलदली माती',
+    'Mountain soil': 'पर्वतीय माती',
+    'Forest soil': 'जंगल माती',
+    'Desert soil': 'वाळवंटी माती',
+  },
+  gu: {
+    'Black soil': 'કાળી માટી',
+    'Alluvial soil': 'કાંપવાળી માટી',
+    'Red soil': 'લાલ માટી',
+    'Loamy soil': 'ગોરાડુ માટી',
+    'Sandy soil': 'રેતાળ માટી',
+    'Clay soil': 'ચીકણી માટી',
+    'Laterite soil': 'લેટેરાઇટ માટી',
+    'Saline soil': 'ક્ષારીય માટી',
+    'Peaty soil': 'પીટ માટી',
+    'Mountain soil': 'પર્વતીય માટી',
+    'Forest soil': 'જંગલ માટી',
+    'Desert soil': 'રણ માટી',
+  },
+  pa: {
+    'Black soil': 'ਕਾਲੀ ਮਿੱਟੀ',
+    'Alluvial soil': 'ਜਲੋੜ ਮਿੱਟੀ',
+    'Red soil': 'ਲਾਲ ਮਿੱਟੀ',
+    'Loamy soil': 'ਦੋਮਟ ਮਿੱਟੀ',
+    'Sandy soil': 'ਰੇਤਲੀ ਮਿੱਟੀ',
+    'Clay soil': 'ਚੀਕਣੀ ਮਿੱਟੀ',
+    'Laterite soil': 'ਲੈਟੇਰਾਈਟ ਮਿੱਟੀ',
+    'Saline soil': 'ਲੂਣੀ ਮਿੱਟੀ',
+    'Peaty soil': 'ਪੀਟ ਮਿੱਟੀ',
+    'Mountain soil': 'ਪਰਬਤੀ ਮਿੱਟੀ',
+    'Forest soil': 'ਜੰਗਲੀ ਮਿੱਟੀ',
+    'Desert soil': 'ਮਾਰੂਥਲੀ ਮਿੱਟੀ',
+  },
+}
+
+const SEASONS_MAP: Record<string, Record<string, string>> = {
+  hi: {
+    'Kharif (Jun–Oct)': 'खरीफ (जून–अक्टूबर)',
+    'Kharif (Jun-Oct)': 'खरीफ (जून–अक्टूबर)',
+    'Rabi (Nov–Mar)': 'रबी (नवंबर–मार्च)',
+    'Rabi (Nov-Mar)': 'रबी (नवंबर–मार्च)',
+    'Zaid (Mar–Jun)': 'जायद (मार्च–जून)',
+    'Zaid (Mar-Jun)': 'जायद (मार्च–जून)',
+    'Kharif': 'खरीफ',
+    'Rabi': 'रबी',
+    'Zaid': 'जायद',
+  },
+  mr: {
+    'Kharif (Jun–Oct)': 'खरीप (जून–ऑक्टोबर)',
+    'Kharif (Jun-Oct)': 'खरीप (जून–ऑक्टोबर)',
+    'Rabi (Nov–Mar)': 'रब्बी (नोव्हेंबर–मार्च)',
+    'Rabi (Nov-Mar)': 'रब्बी (नोव्हेंबर–मार्च)',
+    'Zaid (Mar–Jun)': 'उन्हाळी / झैद (मार्च–जून)',
+    'Zaid (Mar-Jun)': 'उन्हाळी / झैद (मार्च–जून)',
+    'Kharif': 'खरीप',
+    'Rabi': 'रब्बी',
+    'Zaid': 'उन्हाळी / झैद',
+  },
+  gu: {
+    'Kharif (Jun–Oct)': 'ખરીફ (જૂન–ઓક્ટોબર)',
+    'Kharif (Jun-Oct)': 'ખરીફ (જૂન–ઓક્ટોબર)',
+    'Rabi (Nov–Mar)': 'રવિ (નવેમ્બર–માર્ચ)',
+    'Rabi (Nov-Mar)': 'રવિ (નવેમ્બર–માર્ચ)',
+    'Zaid (Mar–Jun)': 'જાયદ (માર્ચ–જૂન)',
+    'Zaid (Mar-Jun)': 'જાયદ (માર્ચ–જૂન)',
+    'Kharif': 'ખરીફ',
+    'Rabi': 'રવિ',
+    'Zaid': 'જાયદ',
+  },
+  pa: {
+    'Kharif (Jun–Oct)': 'ਖਰੀਫ (ਜੂਨ–ਅਕਤੂਬਰ)',
+    'Kharif (Jun-Oct)': 'ਖਰੀਫ (ਜੂਨ–ਅਕਤੂਬਰ)',
+    'Rabi (Nov–Mar)': 'ਰਬੀ (ਨਵੰਬਰ–ਮਾਰਚ)',
+    'Rabi (Nov-Mar)': 'ਰਬੀ (ਨਵੰਬਰ–ਮਾਰਚ)',
+    'Zaid (Mar–Jun)': 'ਜ਼ਾਇਦ (ਮਾਰਚ–ਜੂਨ)',
+    'Zaid (Mar-Jun)': 'ਜ਼ਾਇਦ (ਮਾਰਚ–ਜੂਨ)',
+    'Kharif': 'ਖਰੀਫ',
+    'Rabi': 'ਰਬੀ',
+    'Zaid': 'ਜ਼ਾਇਦ',
+  },
+}
+
+const WATER_AVAILABILITY_MAP: Record<string, Record<string, string>> = {
+  hi: {
+    'Rainfed only': 'केवल वर्षा आधारित',
+    'Partial irrigation': 'आंशिक सिंचाई',
+    'Full irrigation': 'पूर्ण सिंचाई',
+  },
+  mr: {
+    'Rainfed only': 'केवळ पावसावर अवलंबून',
+    'Partial irrigation': 'अंशतः सिंचन',
+    'Full irrigation': 'पूर्ण सिंचन',
+  },
+  gu: {
+    'Rainfed only': 'માત્ર વરસાદ આધારિત',
+    'Partial irrigation': 'અંશતઃ સિંચાઈ',
+    'Full irrigation': 'સંપૂર્ણ સિંચાઈ',
+  },
+  pa: {
+    'Rainfed only': "ਸਿਰਫ਼ ਮੀਂਹ 'ਤੇ ਨਿਰਭਰ",
+    'Partial irrigation': 'ਅੰਸ਼ਕ ਸਿੰਚਾਈ',
+    'Full irrigation': 'ਪੂਰੀ ਸਿੰਚਾਈ',
+  },
+}
+
+const NUTRIENT_LEVELS_MAP: Record<string, Record<string, string>> = {
+  hi: {
+    Low: 'कम (Low)',
+    Medium: 'मध्यम (Medium)',
+    High: 'अधिक (High)',
+  },
+  mr: {
+    Low: 'कमी (Low)',
+    Medium: 'मध्यम (Medium)',
+    High: 'जास्त (High)',
+  },
+  gu: {
+    Low: 'ઓછું (Low)',
+    Medium: 'મધ્યમ (Medium)',
+    High: 'વધુ (High)',
+  },
+  pa: {
+    Low: 'ਘੱਟ (Low)',
+    Medium: 'ਦਰਮਿਆਨਾ (Medium)',
+    High: 'ਵੱਧ (High)',
+  },
+}
+
+const GROWTH_STAGES_MAP: Record<string, Record<string, string>> = {
+  hi: {
+    'Sowing': 'बुआई (Sowing)',
+    'Vegetative growth': 'वानस्पतिक वृद्धि (Vegetative growth)',
+    'Flowering': 'फूल आने का समय (Flowering)',
+    'Grain filling': 'दाना भरने का समय (Grain filling)',
+    'Harvesting': 'कटाई (Harvesting)',
+  },
+  mr: {
+    'Sowing': 'पेरणी (Sowing)',
+    'Vegetative growth': 'शाकीय वाढ (Vegetative growth)',
+    'Flowering': 'फुलोरा (Flowering)',
+    'Grain filling': 'दाणे भरणे (Grain filling)',
+    'Harvesting': 'कापणी (Harvesting)',
+  },
+  gu: {
+    'Sowing': 'વાવણી (Sowing)',
+    'Vegetative growth': 'વાનસ્પતિક વૃદ્ધિ (Vegetative growth)',
+    'Flowering': 'ફૂલ આવવાનો તબક્કો (Flowering)',
+    'Grain filling': 'દાણા ભરાવાનો તબક્કો (Grain filling)',
+    'Harvesting': 'લણણી (Harvesting)',
+  },
+  pa: {
+    'Sowing': 'ਬਿਜਾਈ (Sowing)',
+    'Vegetative growth': 'ਵਾਧੇ ਦਾ ਪੜਾਅ (Vegetative growth)',
+    'Flowering': 'ਫੁੱਲ ਪੈਣ ਦਾ ਸਮਾਂ (Flowering)',
+    'Grain filling': 'ਦਾਣਾ ਭਰਨ ਦਾ ਸਮਾਂ (Grain filling)',
+    'Harvesting': 'ਵਾਢੀ (Harvesting)',
+  },
+}
+
+const UNITS_MAP: Record<string, Record<string, string>> = {
+  hi: {
+    'kg': 'किलो',
+    'Kg': 'किलो',
+    'per kg': 'प्रति किलो',
+    'quintal': 'क्विंटल',
+    'Quintal': 'क्विंटल',
+    'per quintal': 'प्रति क्विंटल',
+    'ton': 'टन',
+    'Ton': 'टन',
+    'per ton': 'प्रति टन',
+    'acre': 'एकड़',
+    'Acre': 'एकड़',
+    'per acre': 'प्रति एकड़',
+    'packet': 'पैकेट',
+    'Packet': 'पैकेट',
+    'bag': 'बोरी',
+    'Bag': 'बोरी',
+    'day': 'दिन',
+    'Day': 'दिन',
+    'per day': '/ दिन',
+    'hour': 'घंटा',
+    'Hour': 'घंटा',
+    'per hour': '/ घंटा',
+    'year': 'वर्ष',
+    'Year': 'वर्ष',
+    'per year': '/ वर्ष',
+    'unit': 'इकाई',
+    'per unit': 'प्रति इकाई',
+  },
+  mr: {
+    'kg': 'किलो',
+    'Kg': 'किलो',
+    'per kg': 'प्रति किलो',
+    'quintal': 'क्विंटल',
+    'Quintal': 'क्विंटल',
+    'per quintal': 'प्रति क्विंटल',
+    'ton': 'टन',
+    'Ton': 'टन',
+    'per ton': 'प्रति टन',
+    'acre': 'एकर',
+    'Acre': 'एकर',
+    'per acre': 'प्रति एकर',
+    'packet': 'पॅकेट',
+    'Packet': 'पॅकेट',
+    'bag': 'पोते',
+    'Bag': 'पोते',
+    'day': 'दिवस',
+    'Day': 'दिवस',
+    'per day': '/ दिवस',
+    'hour': 'तास',
+    'Hour': 'तास',
+    'per hour': '/ तास',
+    'year': 'वर्ष',
+    'Year': 'वर्ष',
+    'per year': '/ वर्ष',
+    'unit': 'नग',
+    'per unit': 'प्रति नग',
+  },
+  gu: {
+    'kg': 'કિલો',
+    'Kg': 'કિલો',
+    'per kg': 'પ્રતિ કિલો',
+    'quintal': 'ક્વિન્ટલ',
+    'Quintal': 'ક્વિન્ટલ',
+    'per quintal': 'પ્રતિ ક્વિન્ટલ',
+    'ton': 'ટન',
+    'Ton': 'ટન',
+    'per ton': 'પ્રતિ ટન',
+    'acre': 'એકર',
+    'Acre': 'એકર',
+    'per acre': 'પ્રતિ એકર',
+    'packet': 'પેકેટ',
+    'Packet': 'પેકેટ',
+    'bag': 'થેલી',
+    'Bag': 'થેલી',
+    'day': 'દિવસ',
+    'Day': 'દિવસ',
+    'per day': '/ દિવસ',
+    'hour': 'કલાક',
+    'Hour': 'કલાક',
+    'per hour': '/ કલાક',
+    'year': 'વર્ષ',
+    'Year': 'વર્ષ',
+    'per year': '/ વર્ષ',
+    'unit': 'નંગ',
+    'per unit': 'પ્રતિ નંગ',
+  },
+  pa: {
+    'kg': 'ਕਿਲੋ',
+    'Kg': 'ਕਿਲੋ',
+    'per kg': 'ਪ੍ਰਤੀ ਕਿਲੋ',
+    'quintal': 'ਕੁਇੰਟਲ',
+    'Quintal': 'ਕੁਇੰਟਲ',
+    'per quintal': 'ਪ੍ਰਤੀ ਕੁਇੰਟਲ',
+    'ton': 'ਟਨ',
+    'Ton': 'ਟਨ',
+    'per ton': 'ਪ੍ਰਤੀ ਟਨ',
+    'acre': 'ਏਕੜ',
+    'Acre': 'ਏਕੜ',
+    'per acre': 'ਪ੍ਰਤੀ ਏਕੜ',
+    'packet': 'ਪੈਕੇਟ',
+    'Packet': 'ਪੈਕੇਟ',
+    'bag': 'ਬੋਰੀ',
+    'Bag': 'ਬੋਰੀ',
+    'day': 'ਦਿਨ',
+    'Day': 'ਦਿਨ',
+    'per day': '/ ਦਿਨ',
+    'hour': 'ਘੰਟਾ',
+    'Hour': 'ਘੰਟਾ',
+    'per hour': '/ ਘੰਟਾ',
+    'year': 'ਸਾਲ',
+    'Year': 'ਸਾਲ',
+    'per year': '/ ਸਾਲ',
+    'unit': 'ਨਗ',
+    'per unit': 'ਪ੍ਰਤੀ ਨਗ',
+  },
+}
+
+const WATER_SOURCES_MAP: Record<string, Record<string, string>> = {
+  hi: {
+    'Borewell': 'बोरवेल',
+    'Borewell (working)': 'बोरवेल (चालू)',
+    'Canal': 'नहर',
+    'Canal connection': 'नहर कनेक्शन',
+    'Well': 'कुआं',
+    'Open Well': 'खुला कुआं',
+    'River': 'नदी',
+    'Rainfed': 'वर्षा आधारित',
+    'Drip irrigation': 'ड्रिप सिंचाई',
+  },
+  mr: {
+    'Borewell': 'बोअरवेल',
+    'Borewell (working)': 'बोअरवेल (सुरू)',
+    'Canal': 'कालवा',
+    'Canal connection': 'कालवा जोडणी',
+    'Well': 'विहीर',
+    'Open Well': 'खुली विहीर',
+    'River': 'नदी',
+    'Rainfed': 'पावसावर अवलंबून',
+    'Drip irrigation': 'ठिबक सिंचन',
+  },
+  gu: {
+    'Borewell': 'બોરવેલ',
+    'Borewell (working)': 'બોરવેલ (ચાલુ)',
+    'Canal': 'કેનાલ',
+    'Canal connection': 'કેનાલ જોડાણ',
+    'Well': 'કૂવો',
+    'Open Well': 'ખુલ્લો કૂવો',
+    'River': 'નદી',
+    'Rainfed': 'વરસાદ આધારિત',
+    'Drip irrigation': 'ટપક સિંચાઈ',
+  },
+  pa: {
+    'Borewell': 'ਬੋਰਵੈੱਲ',
+    'Borewell (working)': 'ਬੋਰਵੈੱਲ (ਚਾਲੂ)',
+    'Canal': 'ਨਹਿਰ',
+    'Canal connection': 'ਨਹਿਰੀ ਕੁਨੈਕਸ਼ਨ',
+    'Well': 'ਖੂਹ',
+    'Open Well': 'ਖੁੱਲ੍ਹਾ ਖੂਹ',
+    'River': 'ਦਰਿਆ / ਨਦੀ',
+    'Rainfed': "ਮੀਂਹ 'ਤੇ ਨਿਰਭਰ",
+    'Drip irrigation': 'ਡ੍ਰਿਪ ਸਿੰਚਾਈ',
+  },
+}
+
+const CONFIDENCE_MAP: Record<string, Record<string, string>> = {
+  hi: {
+    high: 'उच्च',
+    medium: 'मध्यम',
+    low: 'कम',
+  },
+  mr: {
+    high: 'उच्च',
+    medium: 'मध्यम',
+    low: 'कमी',
+  },
+  gu: {
+    high: 'ઉચ્ચ',
+    medium: 'મધ્યમ',
+    low: 'ઓછી',
+  },
+  pa: {
+    high: 'ਉੱਚ',
+    medium: 'ਦਰਮਿਆਨਾ',
+    low: 'ਘੱਟ',
+  },
+}
+
+export function formatSoilName(name: string, language: string): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  const table = SOIL_NAMES_MAP[language]
+  if (table && table[trimmed]) return table[trimmed]
+  return name
+}
+
+export function formatSeason(name: string, language: string): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  const table = SEASONS_MAP[language]
+  if (table && table[trimmed]) return table[trimmed]
+  return name
+}
+
+export function formatWaterAvailability(name: string, language: string): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  const table = WATER_AVAILABILITY_MAP[language]
+  if (table && table[trimmed]) return table[trimmed]
+  return name
+}
+
+export function formatNutrientLevel(name: string, language: string): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  const table = NUTRIENT_LEVELS_MAP[language]
+  if (table && table[trimmed]) return table[trimmed]
+  return name
+}
+
+export function formatGrowthStage(name: string, language: string): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  const table = GROWTH_STAGES_MAP[language]
+  if (table && table[trimmed]) return table[trimmed]
+  return name
+}
+
+export function formatUnit(name: string, language: string): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  const table = UNITS_MAP[language]
+  if (table && table[trimmed]) return table[trimmed]
+  return name
+}
+
+export function formatWaterSource(name: string, language: string): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  const table = WATER_SOURCES_MAP[language]
+  if (table && table[trimmed]) return table[trimmed]
+  return name
+}
+
+export function formatConfidence(name: string, language: string): string {
+  if (!name) return ''
+  const trimmed = name.trim().toLowerCase()
+  const table = CONFIDENCE_MAP[language]
+  if (table && table[trimmed]) return table[trimmed]
+  return name
+}
+

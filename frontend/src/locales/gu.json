@@ -408,7 +408,8 @@
     "noProductsFound": "કોઈ ઉત્પાદનો મળ્યાં નથી",
     "tryAdjusting": "તમારી શોધ અથવા ભાવ મર્યાદા બદલીને જુઓ.",
     "resetFilters": "ફિલ્ટર રીસેટ કરો",
-    "verifiedSellersDesc": "પ્રમાણિત વિક્રેતાઓ પાસેથી શ્રેષ્ઠ ઉત્પાદનો"
+    "verifiedSellersDesc": "પ્રમાણિત વિક્રેતાઓ પાસેથી શ્રેષ્ઠ ઉત્પાદનો",
+    "tapCropHint": "પાક જોવા માટે ટેપ કરો. ખરીદવા માટે Add to Cart અથવા Buy Now દબાવો."
   },
   "land": {
     "directVerifiedListings": "સીધી ચકાસાયેલ યાદੀ",
@@ -468,7 +469,8 @@
     "openAdvisor": "પાક સલાહકાર ખોલો",
     "addToSeedCart": "બિયારણ કાર્ટમાં ઉમેરો",
     "outOfStock": "સ્ટોક ખાલી",
-    "noSeedsYet": "કોઈ બિયારણ ઉપલબ્ધ નથી"
+    "noSeedsYet": "કોઈ બિયારણ ઉપલબ્ધ નથી",
+    "hint": "બિયારણ જોવા માટે ટેપ કરો. કાર્ટમાં ઉમેરવા માટે \"Add\" દબાવો."
   },
   "aiHome": {
     "title": "ફાર્મવર્સ કૃષિ એઆઈ",
@@ -539,7 +541,13 @@
     "history": "ઇતિહાસ",
     "removeFromFavorites": "મનપસંદમાંથી દૂર કરો",
     "addToFavorites": "મનપસંદમાં ઉમેરો",
-    "showingResults": "{count} પરિણામો દર્શાવે છે"
+    "showingResults": "{count} પરિણામો દર્શાવે છે",
+    "mandiGuideTitle": "બજાર ભાવ કેવી રીતે ચેક કરવા:",
+    "mandiGuideStep1": "નીચે તમારું રાજ્ય, પછી જિલ્લો અને માર્કેટ યાર્ડ (મંડી) પસંદ કરો.",
+    "mandiGuideStep2": "તે મંડીના આજના તાજા ભાવો આ પેજ પર દેખાશે.",
+    "mandiGuideStep3": "માત્ર એક પાકનો ભાવ જોવો હોય તો પાક પસંદ કરો.",
+    "mandiGuideHeartHint": "મંડી સેવ કરવા માટે હાર્ટ (❤️) પર ટેપ કરો.",
+    "mandiGuideBellHint": "ભાવ બદલાય ત્યારે મેસેજ મેળવવા માટે બેલ (🔔) પર ટેપ કરો."
   },
   "landDetails": {
     "backToLandMarketplace": "જમીન બજાર પર પાછા જાઓ",
@@ -1062,5 +1070,109 @@
     "sending": "મોકલાઈ રહ્યું છે...",
     "messageSent": "સંદેશ મોકલાઈ ગયો!",
     "sendAnother": "બીજો સંદેશ મોકલો"
+  },
+  "cropAdvisor": {
+    "title": "પાક સલાહકાર",
+    "subtitle": "તમારી જમીન વિશે જણાવો અને અમે શ્રેષ્ઠ પાકની ભલામણ કરીશું.",
+    "locationLabel": "સ્થળ (વૈકલ્પિક)",
+    "locationPlaceholder": "દા.ત. આણંદ, ગુજરાત",
+    "seasonLabel": "ઋતુ / સીઝન",
+    "soilTypeLabel": "માટીનો પ્રકાર",
+    "waterLabel": "પાણીની ઉપલબ્ધતા",
+    "getRecommendation": "ભલામણ મેળવો",
+    "tryAnother": "બીજો વિકલ્પ તપાસો",
+    "recommendedCrop": "ભલામણ કરેલ પાક",
+    "suitableCrops": "યોગ્ય પાક",
+    "warnings": "ચેતવણીઓ",
+    "recommendations": "ભલામણો"
+  },
+  "soilAnalysis": {
+    "title": "માટી વિશ્લેષણ",
+    "subtitle": "AI-આધારિત ભલામણો માટે તમારા માટી પરીક્ષણ મૂલ્યો દાખલ કરો.",
+    "phLabel": "pH મૂલ્ય",
+    "soilTypeLabel": "માટીનો પ્રકાર",
+    "nitrogenLabel": "નાઇટ્રોજન (N)",
+    "phosphorusLabel": "ફોસ્ફરસ (P)",
+    "potassiumLabel": "પોટેશિયમ (K)",
+    "analyzeButton": "વિશ્લેષણ કરો",
+    "resultTitle": "માટી વિશ્લેષણ પરિણામ",
+    "suitableCrops": "યોગ્ય પાક",
+    "recommendedAmendments": "સૂચવેલ ખાતરો અને સુધારાઓ",
+    "warnings": "ચેતવણીઓ",
+    "newAnalysis": "નવું વિશ્લેષણ"
+  },
+  "diseaseDetection": {
+    "title": "રોગ ઓળખ",
+    "subtitle": "અસરગ્રસ્ત પાકનો ફોટો લો અથવા અપલોડ કરો.",
+    "noImage": "હજી કોઈ ફોટો પસંદ કરેલ નથી",
+    "takePhoto": "ફોટો લો",
+    "uploadImage": "ફોટો અપલોડ કરો",
+    "analyzing": "વિશ્લેષણ ચાલુ છે…",
+    "retry": "ફરી પ્રયાસ કરો",
+    "analyzeAnother": "બીજો ફોટો તપાસો",
+    "looksHealthy": "પાક સ્વસ્થ દેખાય છે",
+    "analysisComplete": "વિશ્લેષણ પૂર્ણ થયું",
+    "confidence": "{confidence} ચોકસાઈ",
+    "recommendedAction": "સૂચવેલ ઉપચાર",
+    "warnings": "ચેતવણીઓ"
+  },
+  "cropRotation": {
+    "title": "પાક ફેરબદલી આયોજક",
+    "subtitle": "પાક ફેરબદલીથી જમીનની ફળદ્રુપતા વધે છે અને જીવાતોનો ઉપદ્રવ ઘટે છે.",
+    "currentCropLabel": "હાલનો પાક",
+    "soilTypeLabel": "માટીનો પ્રકાર",
+    "getRotationPlan": "પાક ફેરબદલી યોજના મેળવો",
+    "planTitle": "પાક ફેરબદલી યોજના",
+    "currentlyGrowing": "હાલમાં {crop} ઉગાડવામાં આવી રહ્યું છે",
+    "suggestedNext": "આગામી સૂચવેલા પાક",
+    "planAnother": "બીજી યોજના બનાવો"
+  },
+  "fertilizerAdvice": {
+    "title": "ખાતર સલાહ",
+    "subtitle": "તમારા પાકના વર્તમાન વૃદ્ધિ તબક્કા મુજબ યોગ્ય ખાતરની સલાહ મેળવો.",
+    "cropLabel": "પાક",
+    "soilTypeLabel": "માટીનો પ્રકાર",
+    "growthStageLabel": "વૃદ્ધિ તબક્કો",
+    "getAdvice": "સલાહ મેળવો",
+    "npkGuidance": "NPK માર્ગદર્શન",
+    "newRecommendation": "નવી સલાહ મેળવો",
+    "stageInfo": "{crop} · {stage} તબક્કો"
+  },
+  "irrigationAdvice": {
+    "title": "સિંચાઈ સલાહ",
+    "subtitle": "તમારા પાક, માટી અને સ્થળના આધારે સિંચાઈની જરૂરિયાત.",
+    "cropLabel": "હાલનો પાક",
+    "soilTypeLabel": "માટીનો પ્રકાર",
+    "locationLabel": "સ્થળ (વૈકલ્પિક)",
+    "locationPlaceholder": "દા.ત. સુરત, ગુજરાત",
+    "getAdvice": "સિંચાઈ સલાહ મેળવો",
+    "suggestedSchedule": "સૂચવેલ સમયપત્રક",
+    "viewWeatherForecast": "સંપૂર્ણ હવામાન આગાહી જુઓ →",
+    "newAdvice": "નવી સલાહ મેળવો"
+  },
+  "aiChat": {
+    "title": "AI ને પૂછો",
+    "placeholder": "તમારો પ્રશ્ન અહીં લખો…",
+    "loadingConversation": "વાતચીત લોડ થઈ રહી છે…",
+    "welcomeMessage": "નમસ્તે! હું તમારો ખેતી સહાયક છું. હું તમને કેવી રીતે મદદ કરી શકું?",
+    "send": "મોકલો",
+    "suggestion1": "મારા ઘઉંના પાંદડા કેમ પીળા પડી રહ્યા છે?",
+    "suggestion2": "સોયાબીન વાવણીનો શ્રેષ્ઠ સમય કયો છે?",
+    "suggestion3": "પાકને પાણી ક્યારે અને કેવી રીતે આપવું?"
+  },
+  "advisoryResult": {
+    "recommendedCrops": "ભલામણ કરેલ પાક",
+    "suggestedNextCrops": "આગામી સૂચવેલા પાક",
+    "suitableCrops": "યોગ્ય પાક",
+    "npkGuidance": "ખાતર / NPK માર્ગદર્શન",
+    "suggestedSchedule": "સૂચવેલ સમયપત્રક",
+    "rotationPlan": "પાક ફેરબદલી યોજના",
+    "amendments": "માટી સુધારકો",
+    "recommendations": "ભલામણો",
+    "warnings": "ચેતવણીઓ",
+    "confidence": "{confidence} ચોકસાઈ",
+    "cropHealthy": "પાક સ્વસ્થ દેખાય છે",
+    "issueDetected": "સમસ્યા જણાઈ",
+    "issueDetectedWith": "સમસ્યા જણાઈ: {disease}"
   }
 }

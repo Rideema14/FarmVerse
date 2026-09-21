@@ -7,9 +7,10 @@ import { useSeedCart } from '@/context/SeedCartContext'
 import { getApiErrorMessage } from '@/services/api'
 import { formatINR } from '@/utils/format'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatCropName, formatProductName, formatSeason, formatUnit } from '@/utils/localize'
 
 export default function SeedDetailsPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { id: slug } = useParams<{ id: string }>()
   const [seed, setSeed] = useState<Seed | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -72,14 +73,14 @@ export default function SeedDetailsPage() {
         )}
       </div>
 
-      <h1 className="text-xl">{seed.name}</h1>
+      <h1 className="text-xl">{formatProductName(seed.name, language)}</h1>
       <p className="mt-1 flex items-center gap-1 text-xs text-ink-500">
         <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" aria-hidden="true" />
-        {seed.rating.toFixed(1)} {t('seedDetails.reviewsCount', { count: seed.reviewCount })} · {seed.categoryName}
+        {seed.rating.toFixed(1)} {t('seedDetails.reviewsCount', { count: seed.reviewCount })} · {formatCropName(seed.categoryName, language)}
         {seed.sellerName && <> · {t('seedDetails.soldBy', { name: seed.sellerName })}</>}
       </p>
       <p className="mt-3 text-2xl font-bold text-ink-900">
-        {formatINR(seed.price)} <span className="text-xs font-normal text-ink-400">/ {seed.unit}</span>
+        {formatINR(seed.price)} <span className="text-xs font-normal text-ink-400">/ {formatUnit(seed.unit, language)}</span>
       </p>
       {seed.stock <= 0 && <p className="mt-1 text-xs font-semibold text-danger-500">{t('seedDetails.outOfStock')}</p>}
 
@@ -110,7 +111,7 @@ export default function SeedDetailsPage() {
         {seed.sowingSeason && (
           <div className="rounded-xl bg-surface-sunk px-3 py-2">
             <p className="text-[11px] text-ink-400">{t('seedDetails.sowingSeason')}</p>
-            <p className="font-medium text-ink-900">{seed.sowingSeason}</p>
+            <p className="font-medium text-ink-900">{formatSeason(seed.sowingSeason, language)}</p>
           </div>
         )}
         {typeof seed.germinationRatePercent === 'number' && (

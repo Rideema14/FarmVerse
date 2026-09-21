@@ -406,7 +406,8 @@
     "openAdvisor": "Open →",
     "addToSeedCart": "Add to Seed Cart",
     "outOfStock": "Out of stock",
-    "noSeedsYet": "No seeds listed yet — check back soon."
+    "noSeedsYet": "No seeds listed yet — check back soon.",
+    "hint": "Tap a seed to see it. Tap \"Add\" to put it in your cart."
   },
   "aiHome": {
     "title": "FarmVerse Krishi AI",
@@ -485,7 +486,13 @@
     "history": "History",
     "removeFromFavorites": "Remove from favorites",
     "addToFavorites": "Add to favorites",
-    "showingResults": "Showing {count} results"
+    "showingResults": "Showing {count} results",
+    "mandiGuideTitle": "How to check crop prices:",
+    "mandiGuideStep1": "Pick your State, then District, then Mandi (market) below.",
+    "mandiGuideStep2": "Today's prices for that mandi will show up on this page.",
+    "mandiGuideStep3": "Want one crop only? Pick it in the Crop box.",
+    "mandiGuideHeartHint": "Tap the heart to save a mandi.",
+    "mandiGuideBellHint": "Tap the bell to get a message when a price changes."
   },
   "categoryNames": {
     "building-materials": "Building Materials",
@@ -543,7 +550,8 @@
     "noProductsFound": "No products found",
     "tryAdjusting": "Try adjusting your search query or price parameters.",
     "resetFilters": "Reset filters",
-    "verifiedSellersDesc": "Quality products from verified sellers"
+    "verifiedSellersDesc": "Quality products from verified sellers",
+    "tapCropHint": "Tap any crop to see it. Tap Add to Cart or Buy Now to buy it."
   },
   "sellerDashboard": {
     "title": "Seller Dashboard",
@@ -1066,5 +1074,109 @@
     "aiRecommendations": "AI recommendations",
     "smsAlerts": "SMS alerts",
     "account": "Account"
+  },
+  "cropAdvisor": {
+    "title": "Crop Advisor",
+    "subtitle": "Tell us about your land and we'll recommend the best crop.",
+    "locationLabel": "Location (optional)",
+    "locationPlaceholder": "e.g. Katni, Madhya Pradesh",
+    "seasonLabel": "Season",
+    "soilTypeLabel": "Soil Type",
+    "waterLabel": "Water Availability",
+    "getRecommendation": "Get Recommendation",
+    "tryAnother": "Try Another",
+    "recommendedCrop": "Recommended Crop",
+    "suitableCrops": "Suitable Crops",
+    "warnings": "Warnings",
+    "recommendations": "Recommendations"
+  },
+  "soilAnalysis": {
+    "title": "Soil Analysis",
+    "subtitle": "Enter your soil test values for AI-based recommendations.",
+    "phLabel": "pH",
+    "soilTypeLabel": "Soil Type",
+    "nitrogenLabel": "Nitrogen (N)",
+    "phosphorusLabel": "Phosphorus (P)",
+    "potassiumLabel": "Potassium (K)",
+    "analyzeButton": "Analyze",
+    "resultTitle": "Soil Analysis Result",
+    "suitableCrops": "Suitable Crops",
+    "recommendedAmendments": "Recommended Amendments",
+    "warnings": "Warnings",
+    "newAnalysis": "New Analysis"
+  },
+  "diseaseDetection": {
+    "title": "Disease Detection",
+    "subtitle": "Take or upload a photo of the affected crop.",
+    "noImage": "No image selected yet",
+    "takePhoto": "Take Photo",
+    "uploadImage": "Upload Image",
+    "analyzing": "Analyzing…",
+    "retry": "Retry",
+    "analyzeAnother": "Analyze Another",
+    "looksHealthy": "Looks healthy",
+    "analysisComplete": "Analysis complete",
+    "confidence": "{confidence} confidence",
+    "recommendedAction": "Recommended Action",
+    "warnings": "Warnings"
+  },
+  "cropRotation": {
+    "title": "Crop Rotation Planner",
+    "subtitle": "Rotating crops improves soil health and breaks pest cycles.",
+    "currentCropLabel": "Current Crop",
+    "soilTypeLabel": "Soil Type",
+    "getRotationPlan": "Get Rotation Plan",
+    "planTitle": "Crop Rotation Plan",
+    "currentlyGrowing": "Currently growing {crop}",
+    "suggestedNext": "Suggested Next",
+    "planAnother": "Plan Another Rotation"
+  },
+  "fertilizerAdvice": {
+    "title": "Fertilizer Advice",
+    "subtitle": "Get the right fertilizer for your crop's current stage.",
+    "cropLabel": "Crop",
+    "soilTypeLabel": "Soil Type",
+    "growthStageLabel": "Growth Stage",
+    "getAdvice": "Get Advice",
+    "npkGuidance": "NPK Guidance",
+    "newRecommendation": "New Recommendation",
+    "stageInfo": "{crop} · {stage} stage"
+  },
+  "irrigationAdvice": {
+    "title": "Irrigation Advice",
+    "subtitle": "Based on your crop, soil, and location.",
+    "cropLabel": "Current Crop",
+    "soilTypeLabel": "Soil Type",
+    "locationLabel": "Location (optional)",
+    "locationPlaceholder": "e.g. Katni, Madhya Pradesh",
+    "getAdvice": "Get Irrigation Advice",
+    "suggestedSchedule": "Suggested Schedule",
+    "viewWeatherForecast": "View full weather forecast →",
+    "newAdvice": "New Advice"
+  },
+  "aiChat": {
+    "title": "Ask AI",
+    "placeholder": "Type your question…",
+    "loadingConversation": "Loading conversation…",
+    "welcomeMessage": "Hello! I am your AI farming assistant. How can I help you today?",
+    "send": "Send",
+    "suggestion1": "Why are my wheat leaves turning yellow?",
+    "suggestion2": "Best time to sow soybean?",
+    "suggestion3": "When should I irrigate my crops?"
+  },
+  "advisoryResult": {
+    "recommendedCrops": "Recommended Crops",
+    "suggestedNextCrops": "Suggested Next Crops",
+    "suitableCrops": "Suitable Crops",
+    "npkGuidance": "Fertilizer / NPK Guidance",
+    "suggestedSchedule": "Suggested Schedule",
+    "rotationPlan": "Rotation Plan",
+    "amendments": "Soil Amendments",
+    "recommendations": "Recommendations",
+    "warnings": "Warnings",
+    "confidence": "{confidence} confidence",
+    "cropHealthy": "Crop appears healthy",
+    "issueDetected": "Issue detected",
+    "issueDetectedWith": "Issue detected: {disease}"
   }
 }

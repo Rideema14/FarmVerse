@@ -7,8 +7,10 @@ import { useLanguage } from '@/context/LanguageContext'
 import { cropAnalysisService, type AdvisoryResult } from '@/services/aiService'
 import { getApiErrorMessage } from '@/services/api'
 import { mandiService } from '@/services/mandiService'
+import { formatCropName, formatSoilName } from '@/utils/localize'
 
 export default function CropRotationPage() {
+  const { t, language } = useLanguage()
   const [crops, setCrops] = useState<string[]>([])
   const [current, setCurrent] = useState('')
   const [soil, setSoil] = useState('Black soil')
@@ -16,7 +18,6 @@ export default function CropRotationPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const { refreshHistory } = useAi()
-  const { language } = useLanguage()
 
   useEffect(() => {
     let cancelled = false
@@ -57,17 +58,19 @@ export default function CropRotationPage() {
   if (result) {
     return (
       <div className="mx-auto max-w-md px-4 py-6 md:px-6 md:py-8">
-        <h1 className="mb-1 text-xl">Crop Rotation Plan</h1>
-        <p className="mb-4 text-xs text-ink-400">Currently growing {current}</p>
+        <h1 className="mb-1 text-xl">{t('cropRotation.planTitle')}</h1>
+        <p className="mb-4 text-xs text-ink-400">
+          {t('cropRotation.currentlyGrowing', { crop: formatCropName(current, language) })}
+        </p>
 
         {result.suggestedNextCrops && result.suggestedNextCrops.length > 0 && (
           <div className="mb-4 flex flex-col items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink-400">Suggested Next</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-ink-400">{t('cropRotation.suggestedNext')}</span>
             <div className="flex flex-wrap justify-center gap-2">
               {result.suggestedNextCrops.map((c) => (
                 <span key={c} className="flex items-center gap-1.5 rounded-2xl border border-brand-300 bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-800">
                   <Sprout className="h-4 w-4" aria-hidden="true" />
-                  {c}
+                  {formatCropName(c, language)}
                 </span>
               ))}
             </div>
@@ -103,7 +106,7 @@ export default function CropRotationPage() {
 
         <Button variant="secondary" className="mt-5" onClick={() => setResult(null)}>
           <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          Plan Another Rotation
+          {t('cropRotation.planAnother')}
         </Button>
       </div>
     )
@@ -111,23 +114,23 @@ export default function CropRotationPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-6 md:px-6 md:py-8">
-      <h1 className="mb-1 text-xl">Crop Rotation Planner</h1>
-      <p className="mb-6 text-sm text-ink-500">Rotating crops improves soil health and breaks pest cycles.</p>
+      <h1 className="mb-1 text-xl">{t('cropRotation.title')}</h1>
+      <p className="mb-6 text-sm text-ink-500">{t('cropRotation.subtitle')}</p>
 
       <form onSubmit={handleSubmit}>
-        <SelectField id="current" label="Current Crop" value={current} onChange={(e) => setCurrent(e.target.value)}>
+        <SelectField id="current" label={t('cropRotation.currentCropLabel')} value={current} onChange={(e) => setCurrent(e.target.value)}>
           {crops.map((c) => (
-            <option key={c}>{c}</option>
+            <option key={c} value={c}>{formatCropName(c, language)}</option>
           ))}
         </SelectField>
-        <SelectField id="soil" label="Soil Type" value={soil} onChange={(e) => setSoil(e.target.value)}>
+        <SelectField id="soil" label={t('cropRotation.soilTypeLabel')} value={soil} onChange={(e) => setSoil(e.target.value)}>
           {['Black soil', 'Alluvial soil', 'Red soil', 'Loamy soil'].map((s) => (
-            <option key={s}>{s}</option>
+            <option key={s} value={s}>{formatSoilName(s, language)}</option>
           ))}
         </SelectField>
         {error && <p className="mb-3 text-xs font-medium text-danger-500">{error}</p>}
         <Button type="submit" fullWidth loading={isLoading} disabled={!crops.length || !current.trim()}>
-          Get Rotation Plan
+          {t('cropRotation.getRotationPlan')}
         </Button>
       </form>
     </div>

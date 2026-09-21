@@ -5,10 +5,12 @@ import { useAi } from '@/context/AiContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { cropAnalysisService, type AdvisoryResult } from '@/services/aiService'
 import { getApiErrorMessage } from '@/services/api'
+import { formatConfidence, formatCropName } from '@/utils/localize'
 
 type Stage = 'idle' | 'analyzing' | 'success' | 'error'
 
 export default function DiseaseDetectionPage() {
+  const { t, language } = useLanguage()
   const [stage, setStage] = useState<Stage>('idle')
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [result, setResult] = useState<AdvisoryResult | null>(null)
@@ -16,7 +18,6 @@ export default function DiseaseDetectionPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const { refreshHistory } = useAi()
-  const { language } = useLanguage()
 
   async function handleFile(file: File | undefined) {
     if (!file) return
@@ -40,16 +41,14 @@ export default function DiseaseDetectionPage() {
     if (imagePreview) URL.revokeObjectURL(imagePreview)
     setImagePreview(null)
     setResult(null)
-    // Clear both inputs' values — otherwise re-picking the same file after
-    // "Analyze Another" wouldn't fire onChange at all (its value never changed).
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (galleryInputRef.current) galleryInputRef.current.value = ''
   }
 
   return (
     <div className="mx-auto max-w-lg px-4 py-6 md:px-6 md:py-8">
-      <h1 className="mb-1 text-xl">Disease Detection</h1>
-      <p className="mb-5 text-sm text-ink-500">Take or upload a photo of the affected crop.</p>
+      <h1 className="mb-1 text-xl">{t('diseaseDetection.title')}</h1>
+      <p className="mb-5 text-sm text-ink-500">{t('diseaseDetection.subtitle')}</p>
 
       <input
         ref={fileInputRef}
@@ -59,9 +58,6 @@ export default function DiseaseDetectionPage() {
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0])}
       />
-      {/* Separate, capture-less input: on mobile, an input carrying
-          capture="environment" opens the camera directly, even for a
-          button meant to pick an existing photo from the gallery. */}
       <input
         ref={galleryInputRef}
         type="file"
@@ -73,15 +69,15 @@ export default function DiseaseDetectionPage() {
       {stage === 'idle' && (
         <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-ink-200 py-16 text-center">
           <ScanEye className="mb-3 h-12 w-12 text-ink-300" aria-hidden="true" />
-          <p className="mb-5 text-sm text-ink-500">No image selected yet</p>
+          <p className="mb-5 text-sm text-ink-500">{t('diseaseDetection.noImage')}</p>
           <div className="flex gap-2">
             <Button onClick={() => fileInputRef.current?.click()}>
               <Camera className="h-4 w-4" aria-hidden="true" />
-              Take Photo
+              {t('diseaseDetection.takePhoto')}
             </Button>
             <Button variant="secondary" onClick={() => galleryInputRef.current?.click()}>
               <Upload className="h-4 w-4" aria-hidden="true" />
-              Upload Image
+              {t('diseaseDetection.uploadImage')}
             </Button>
           </div>
         </div>
@@ -91,7 +87,7 @@ export default function DiseaseDetectionPage() {
         <div className="flex flex-col items-center text-center">
           <img src={imagePreview} alt="Uploaded crop for analysis" className="mb-4 h-56 w-full rounded-2xl object-cover" />
           <span className="h-8 w-8 animate-spin rounded-full border-3 border-brand-200 border-t-brand-600" aria-hidden="true" />
-          <p className="mt-3 text-sm font-medium text-ink-700">Analyzing…</p>
+          <p className="mt-3 text-sm font-medium text-ink-700">{t('diseaseDetection.analyzing')}</p>
         </div>
       )}
 
@@ -101,7 +97,7 @@ export default function DiseaseDetectionPage() {
           <p className="px-6 text-sm font-medium text-danger-700">{errorMessage}</p>
           <Button variant="danger" className="mt-4" onClick={reset}>
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            Retry
+            {t('diseaseDetection.retry')}
           </Button>
         </div>
       )}
@@ -112,11 +108,13 @@ export default function DiseaseDetectionPage() {
           <div className="rounded-2xl border border-ink-100 bg-surface p-4">
             <div className="flex items-center justify-between gap-3">
               <p className="text-lg font-bold text-ink-900">
-                {result.isHealthy ? 'Looks healthy' : result.diseaseName || 'Analysis complete'}
+                {result.isHealthy
+                  ? t('diseaseDetection.looksHealthy')
+                  : (result.diseaseName ? formatCropName(result.diseaseName, language) : t('diseaseDetection.analysisComplete'))}
               </p>
               {result.confidence && (
                 <span className="shrink-0 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 capitalize">
-                  {result.confidence} confidence
+                  {t('diseaseDetection.confidence', { confidence: formatConfidence(result.confidence, language) })}
                 </span>
               )}
             </div>
@@ -125,7 +123,7 @@ export default function DiseaseDetectionPage() {
 
             {result.recommendations && result.recommendations.length > 0 && (
               <>
-                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-400">Recommended Action</p>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-400">{t('diseaseDetection.recommendedAction')}</p>
                 <ul className="mt-1.5 space-y-1.5 text-sm text-ink-700">
                   {result.recommendations.map((r) => (
                     <li key={r} className="flex items-start gap-1.5">
@@ -139,7 +137,7 @@ export default function DiseaseDetectionPage() {
 
             {result.warnings && result.warnings.length > 0 && (
               <>
-                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-400">Warnings</p>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-400">{t('diseaseDetection.warnings')}</p>
                 <ul className="mt-1.5 space-y-1.5 text-sm text-ink-700">
                   {result.warnings.map((w) => (
                     <li key={w} className="flex items-start gap-1.5">
@@ -153,7 +151,7 @@ export default function DiseaseDetectionPage() {
           </div>
           <Button variant="secondary" className="mt-4" onClick={reset}>
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            Analyze Another
+            {t('diseaseDetection.analyzeAnother')}
           </Button>
         </div>
       )}

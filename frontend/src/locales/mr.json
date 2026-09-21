@@ -408,7 +408,8 @@
     "noProductsFound": "कोणतीही उत्पादने सापडली नाहीत",
     "tryAdjusting": "तुमचा शोध किंवा किंमत फिल्टर बदलून पहा.",
     "resetFilters": "फिल्टर रीसेट करा",
-    "verifiedSellersDesc": "प्रमाणित विक्रेत्यांकडून उत्तम उत्पादने"
+    "verifiedSellersDesc": "प्रमाणित विक्रेत्यांकडून उत्तम उत्पादने",
+    "tapCropHint": "पीक पाहण्यासाठी टॅप करा. खरेदी करण्यासाठी Add to Cart किंवा Buy Now दाबा."
   },
   "land": {
     "directVerifiedListings": "थेट सत्यापित सूची",
@@ -468,7 +469,8 @@
     "openAdvisor": "पीक सल्लागार उघडा",
     "addToSeedCart": "बियाणे कार्टमध्ये जोडा",
     "outOfStock": "स्टॉक संपला",
-    "noSeedsYet": "सध्या कोणतीही बियाणे उपलब्ध नाहीत"
+    "noSeedsYet": "सध्या कोणतीही बियाणे उपलब्ध नाहीत",
+    "hint": "बियाणे पाहण्यासाठी टॅप करा. कार्टमध्ये टाकण्यासाठी \"Add\" दाबा."
   },
   "aiHome": {
     "title": "फार्मव्हर्स कृषी एआय",
@@ -539,7 +541,13 @@
     "history": "इतिहास",
     "removeFromFavorites": "आवडत्यातून काढा",
     "addToFavorites": "आवडत्यामध्ये जोडा",
-    "showingResults": "{count} निकाल दर्शवित आहे"
+    "showingResults": "{count} निकाल दर्शवित आहे",
+    "mandiGuideTitle": "बाजारभाव कसे तपासायचे:",
+    "mandiGuideStep1": "खाली तुमचे राज्य, जिल्हा आणि बाजार समिती निवडा.",
+    "mandiGuideStep2": "त्या बाजार समितीचे आजचे ताजे दर या पानावर दिसतील.",
+    "mandiGuideStep3": "फक्त एका पिकाचा दर हवा असल्यास पीक निवडा.",
+    "mandiGuideHeartHint": "बाजार समिती सेव्ह करण्यासाठी हृदयावर (❤️) टॅप करा.",
+    "mandiGuideBellHint": "दर बदलल्यावर अलर्ट मिळवण्यासाठी घंटीवर (🔔) टॅप करा."
   },
   "landDetails": {
     "backToLandMarketplace": "जमीन बाज़ाराकडे परत जा",
@@ -1062,5 +1070,109 @@
     "sending": "पाठवत आहे...",
     "messageSent": "संदेश पाठवला गेला!",
     "sendAnother": "दुसरा संदेश पाठवा"
+  },
+  "cropAdvisor": {
+    "title": "पीक सल्लागार",
+    "subtitle": "तुमच्या जमिनीबद्दल सांगा आणि आम्ही सर्वोत्तम पिकाची शिफारस करू.",
+    "locationLabel": "स्थान (पर्यायी)",
+    "locationPlaceholder": "उदा. पुणे, महाराष्ट्र",
+    "seasonLabel": "हंगाम",
+    "soilTypeLabel": "मातीचा प्रकार",
+    "waterLabel": "पाण्याची उपलब्धता",
+    "getRecommendation": "शिफारस मिळवा",
+    "tryAnother": "दुसरा पर्याय तपासा",
+    "recommendedCrop": "शिफारस केलेले पीक",
+    "suitableCrops": "योग्य पिके",
+    "warnings": "सावधानता",
+    "recommendations": "शिफारसी"
+  },
+  "soilAnalysis": {
+    "title": "माती विश्लेषण",
+    "subtitle": "AI-आधारित शिफारसींसाठी तुमच्या माती चाचणीचे मूल्य प्रविष्ट करा.",
+    "phLabel": "pH मूल्य",
+    "soilTypeLabel": "मातीचा प्रकार",
+    "nitrogenLabel": "नायट्रोजन (N)",
+    "phosphorusLabel": "फॉस्फरस (P)",
+    "potassiumLabel": "पोटॅशियम (K)",
+    "analyzeButton": "विश्लेषण करा",
+    "resultTitle": "माती विश्लेषण निकाल",
+    "suitableCrops": "योग्य पिके",
+    "recommendedAmendments": "सुचवलेली खते व सुधारणा",
+    "warnings": "सावधानता",
+    "newAnalysis": "नवीन विश्लेषण"
+  },
+  "diseaseDetection": {
+    "title": "रोग ओळख",
+    "subtitle": "बाधित पिकाचा फोटो काढा किंवा अपलोड करा.",
+    "noImage": "अद्याप कोणताही फोटो निवडलेला नाही",
+    "takePhoto": "फोटो काढा",
+    "uploadImage": "फोटो अपलोड करा",
+    "analyzing": "विश्लेषण सुरू आहे…",
+    "retry": "पुन्हा प्रयत्न करा",
+    "analyzeAnother": "दुसरा फोटो तपासा",
+    "looksHealthy": "पीक निरोगी दिसत आहे",
+    "analysisComplete": "विश्लेषण पूर्ण झाले",
+    "confidence": "{confidence} अचूकता",
+    "recommendedAction": "सुचवलेला उपाय",
+    "warnings": "सावधानता"
+  },
+  "cropRotation": {
+    "title": "पीक फेरपालट नियोजन",
+    "subtitle": "पीक फेरपालटीमुळे मातीची सुपीकता वाढते आणि कीटकांचा प्रादुर्भाव कमी होतो.",
+    "currentCropLabel": "सध्याचे पीक",
+    "soilTypeLabel": "मातीचा प्रकार",
+    "getRotationPlan": "फेरपालट योजना मिळवा",
+    "planTitle": "पीक फेरपालट योजना",
+    "currentlyGrowing": "सध्या {crop} पिकवले जात आहे",
+    "suggestedNext": "पुढील सुचवलेली पिके",
+    "planAnother": "दुसरी योजना तयार करा"
+  },
+  "fertilizerAdvice": {
+    "title": "खत सल्ला",
+    "subtitle": "पिकाच्या सध्याच्या वाढीच्या टप्प्यानुसार योग्य खतांचा सल्ला मिळवा.",
+    "cropLabel": "पीक",
+    "soilTypeLabel": "मातीचा प्रकार",
+    "growthStageLabel": "वाढीचा टप्पा",
+    "getAdvice": "सल्ला मिळवा",
+    "npkGuidance": "NPK मार्गदर्शन",
+    "newRecommendation": "नवीन सल्ला मिळवा",
+    "stageInfo": "{crop} · {stage} टप्पा"
+  },
+  "irrigationAdvice": {
+    "title": "सिंचन सल्ला",
+    "subtitle": "तुमचे पीक, माती आणि स्थानावर आधारित सिंचन गरजा.",
+    "cropLabel": "सध्याचे पीक",
+    "soilTypeLabel": "मातीचा प्रकार",
+    "locationLabel": "स्थान (पर्यायी)",
+    "locationPlaceholder": "उदा. नाशिक, महाराष्ट्र",
+    "getAdvice": "सिंचन सल्ला मिळवा",
+    "suggestedSchedule": "सुचवलेले वेळापत्रक",
+    "viewWeatherForecast": "हवामान अंदाज पहा →",
+    "newAdvice": "नवीन सल्ला मिळवा"
+  },
+  "aiChat": {
+    "title": "AI ला विचारा",
+    "placeholder": "तुमचा प्रश्न येथे लिहा…",
+    "loadingConversation": "संभाषण लोड होत आहे…",
+    "welcomeMessage": "नमस्कार! मी तुमचा शेती सहाय्यक आहे. मी तुम्हाला कशी मदत करू शकतो?",
+    "send": "पाठवा",
+    "suggestion1": "माझ्या गव्हाची पाने पिवळी का पडत आहेत?",
+    "suggestion2": "सोयाबीन पेरणीची योग्य वेळ कोणती?",
+    "suggestion3": "पिकांना पाणी कधी आणि कसे द्यावे?"
+  },
+  "advisoryResult": {
+    "recommendedCrops": "शिफारस केलेली पिके",
+    "suggestedNextCrops": "पुढील सुचवलेली पिके",
+    "suitableCrops": "योग्य पिके",
+    "npkGuidance": "खत / NPK मार्गदर्शन",
+    "suggestedSchedule": "सुचवलेले वेळापत्रक",
+    "rotationPlan": "फेरपालट योजना",
+    "amendments": "माती सुधारक",
+    "recommendations": "शिफारसी",
+    "warnings": "सावधानता",
+    "confidence": "{confidence} अचूकता",
+    "cropHealthy": "पीक निरोगी दिसत आहे",
+    "issueDetected": "समस्या आढळली",
+    "issueDetectedWith": "समस्या आढळली: {disease}"
   }
 }

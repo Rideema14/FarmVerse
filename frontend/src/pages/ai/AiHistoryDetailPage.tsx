@@ -6,6 +6,7 @@ import { cropAnalysisService, soilService, type AdvisoryResult, type CropAnalysi
 import { getApiErrorMessage } from '@/services/api'
 import { formatDateLabel } from '@/utils/format'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatLocationName, formatNutrientLevel, formatSoilName } from '@/utils/localize'
 
 interface Loaded {
   title: string
@@ -16,7 +17,7 @@ interface Loaded {
 }
 
 export default function AiHistoryDetailPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { kind, id } = useParams<{ kind: 'crop' | 'soil'; id: string }>()
   const [data, setData] = useState<Loaded | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -50,12 +51,12 @@ export default function AiHistoryDetailPage() {
       const report = await soilService.getOne(id)
       const soilMeta = [
         report.soilPh != null && { label: t('aiHistory.soilPh'), value: String(report.soilPh) },
-        report.nitrogenLevel && { label: t('aiHistory.nitrogen'), value: report.nitrogenLevel },
-        report.phosphorusLevel && { label: t('aiHistory.phosphorus'), value: report.phosphorusLevel },
-        report.potassiumLevel && { label: t('aiHistory.potassium'), value: report.potassiumLevel },
+        report.nitrogenLevel && { label: t('aiHistory.nitrogen'), value: formatNutrientLevel(report.nitrogenLevel, language) },
+        report.phosphorusLevel && { label: t('aiHistory.phosphorus'), value: formatNutrientLevel(report.phosphorusLevel, language) },
+        report.potassiumLevel && { label: t('aiHistory.potassium'), value: formatNutrientLevel(report.potassiumLevel, language) },
         report.organicCarbonPercent != null && { label: t('aiHistory.organicCarbon'), value: `${report.organicCarbonPercent}%` },
-        report.soilType && { label: t('aiHistory.soilType'), value: report.soilType },
-        report.location && { label: t('aiHistory.location'), value: report.location },
+        report.soilType && { label: t('aiHistory.soilType'), value: formatSoilName(report.soilType, language) },
+        report.location && { label: t('aiHistory.location'), value: formatLocationName(report.location, language) },
       ].filter(Boolean) as { label: string; value: string }[]
 
       return {

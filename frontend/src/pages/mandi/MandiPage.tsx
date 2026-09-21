@@ -208,15 +208,15 @@ export default function MandiPage() {
       </div>
 
       <div className="mb-5 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-800">
-        <p className="font-semibold">How to check crop prices:</p>
+        <p className="font-semibold">{t('mandi.mandiGuideTitle')}</p>
         <ol className="mt-1.5 list-decimal space-y-0.5 pl-4">
-          <li>Pick your State, then District, then Mandi (market) below.</li>
-          <li>Today's prices for that mandi will show up on this page.</li>
-          <li>Want one crop only? Pick it in the Crop box.</li>
+          <li>{t('mandi.mandiGuideStep1')}</li>
+          <li>{t('mandi.mandiGuideStep2')}</li>
+          <li>{t('mandi.mandiGuideStep3')}</li>
         </ol>
         <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1">
-          <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Tap the heart to save a mandi.
-          <Bell className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Tap the bell to get a message when a price changes.
+          <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> {t('mandi.mandiGuideHeartHint')}
+          <Bell className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> {t('mandi.mandiGuideBellHint')}
         </p>
       </div>
 

@@ -19,13 +19,14 @@ import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
+import { formatLocationName, formatSoilName, formatWaterSource } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 import type { BackendLandDealType, LandQueryParams } from '@/services/landService'
 
 export default function LandMarketplacePage() {
   const { listings, fetchListings, isLoading, error, meta } = useLand()
   const { isSeller } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   const [search, setSearch] = useState('')
   const [dealType, setDealType] = useState<BackendLandDealType | 'ALL'>('ALL')
@@ -393,7 +394,7 @@ export default function LandMarketplacePage() {
                     <div className="mt-1.5 space-y-1.5 text-xs text-[#6C7567]">
                       <p className="line-clamp-1 flex items-center gap-1.5">
                         <MapPin className="h-3.5 w-3.5 shrink-0 text-[#9EA298]" />
-                        <span>{land.location}</span>
+                        <span>{formatLocationName(land.location, language)}</span>
                       </p>
                       <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                         <span className="flex items-center gap-1 rounded-md bg-[#F3F5EF] px-2 py-0.5 text-[11px] font-bold text-[#435537]">
@@ -403,13 +404,13 @@ export default function LandMarketplacePage() {
                         {land.soilType && (
                           <span className="flex items-center gap-1 rounded-md bg-[#F5EFE0] px-2 py-0.5 text-[11px] font-medium text-[#8A6A2E]">
                             <Layers className="h-3 w-3" />
-                            {land.soilType}
+                            {formatSoilName(land.soilType, language)}
                           </span>
                         )}
                         {land.waterSource && (
                           <span className="flex items-center gap-1 rounded-md bg-[#EAF1F8] px-2 py-0.5 text-[11px] font-medium text-[#2E5F8A]">
                             <Droplets className="h-3 w-3" />
-                            {land.waterSource}
+                            {formatWaterSource(land.waterSource, language)}
                           </span>
                         )}
                       </div>

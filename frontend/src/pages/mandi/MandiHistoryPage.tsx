@@ -5,11 +5,12 @@ import { SelectField } from '@/components/common/FormField'
 import { useLanguage } from '@/context/LanguageContext'
 import { mandiService } from '@/services/mandiService'
 import { formatINR } from '@/utils/format'
+import { formatCropName, formatMandiMarket } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 import { Loader2 } from 'lucide-react'
 
 export default function MandiHistoryPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [searchParams] = useSearchParams()
   const initialCropId = searchParams.get('cropId') || ''
   const initialMandiId = searchParams.get('mandiId') || ''
@@ -96,12 +97,12 @@ export default function MandiHistoryPage() {
       <div className="mb-4 grid grid-cols-2 gap-3">
         <SelectField id="crop" label={t('mandiHistory.crop')} value={cropId} onChange={(e) => setCropId(e.target.value)}>
           {crops.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>{formatCropName(c.name, language)}</option>
           ))}
         </SelectField>
         <SelectField id="mandi" label={t('mandiHistory.mandi')} value={mandiId} onChange={(e) => setMandiId(e.target.value)}>
           {mandis.map((m) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
+            <option key={m.id} value={m.id}>{formatMandiMarket(m.name, language)}</option>
           ))}
         </SelectField>
       </div>
