@@ -3,7 +3,6 @@ import { env } from '../config/env';
 import logger from '../common/utils/logger';
 
 export function startKeepAliveCron() {
-  // Run every 15 minutes
   cron.schedule('*/10 * * * *', async () => {
     try {
       const url = process.env.BASE_URL || `http://localhost:${env.port}/`;
