@@ -4,11 +4,12 @@ import { useWishlist } from '@/context/WishlistContext'
 import { useCart } from '@/context/CartContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 
 export default function WishlistPage() {
   const { products, isLoading, removeFromWishlist } = useWishlist()
   const { addToCart } = useCart()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   if (isLoading && products.length === 0) {
     return <div className="flex min-h-[60vh] items-center justify-center text-sm text-ink-400">{t('common.loading')}</div>
@@ -45,7 +46,7 @@ export default function WishlistPage() {
             </Link>
             <div className="min-w-0 flex-1">
               <Link to={`/product/${product.slug ?? product.id}`} className="line-clamp-2 text-sm font-medium text-ink-900">
-                {product.name}
+                {formatProductName(product.name, language)}
               </Link>
               <p className="mt-0.5 text-sm font-bold text-ink-900">{formatINR(product.price)}</p>
               <div className="mt-2 flex gap-3">

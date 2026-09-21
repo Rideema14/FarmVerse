@@ -3,8 +3,11 @@ import { Trash2 } from 'lucide-react'
 import { adminService, type AdminProduct } from '@/services/adminService'
 import { productService } from '@/services/productService'
 import { formatINR } from '@/utils/format'
+import { useLanguage } from '@/context/LanguageContext'
+import { formatProductName, formatCropName } from '@/utils/localize'
 
 export default function AdminProductsPage() {
+  const { language } = useLanguage()
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -57,8 +60,8 @@ export default function AdminProductsPage() {
             <tbody className="divide-y divide-ink-100">
               {products.map((p) => (
                 <tr key={p.id}>
-                  <td className="px-4 py-3 font-medium text-ink-900">{p.name}</td>
-                  <td className="px-4 py-3 text-ink-600">{p.category.name}</td>
+                  <td className="px-4 py-3 font-medium text-ink-900">{formatProductName(p.name, language)}</td>
+                  <td className="px-4 py-3 text-ink-600">{formatCropName(p.category.name, language)}</td>
                   <td className="px-4 py-3 text-ink-600">{p.seller.name}</td>
                   <td className="px-4 py-3 text-ink-600">{formatINR(Number(p.price))}</td>
                   <td className="px-4 py-3">
