@@ -683,18 +683,16 @@ export default function LandingPage() {
 
         <div className="absolute inset-0 z-0">
           <img
-  src="https://images.unsplash.com/photo-1623958045855-0b7a60cfb9eb?q=80&w=1600&auto=format&fit=crop"
-  width={1600}
-  height={1000}
-  alt="Farmers harvesting crop in field"
-  className="
-    h-full
-    w-full
-    scale-105
-    object-cover
-    object-center
-  "
-/>
+            src="https://images.unsplash.com/photo-1592982537447-7440770cbfc9?q=80&w=1600&auto=format&fit=crop"
+            alt="Tractor working a farm field"
+            className="
+              h-full
+              w-full
+              scale-105
+              object-cover
+              object-center
+            "
+          />
 
           <div
             className="
