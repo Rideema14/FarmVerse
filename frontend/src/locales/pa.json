@@ -795,7 +795,10 @@
     "deleteListing": "ਸੂਚੀ ਹਟਾਓ",
     "activeBadge": "ਚਾਲੂ",
     "inactiveBadge": "ਬੰਦ",
-    "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ..."
+    "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
+    "decreaseStock": "ਸਟਾਕ ਘਟਾਓ",
+    "increaseStock": "ਸਟਾਕ ਵਧਾਓ",
+    "outOfStock": "ਸਟਾਕ ਵਿੱਚ ਨਹੀਂ"
   },
   "addProduct": {
     "title": "ਉਤਪਾਦ ਜੋੜੋ",

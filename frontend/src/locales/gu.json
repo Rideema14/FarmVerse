@@ -795,7 +795,10 @@
     "deleteListing": "ઉત્પાદન કાઢી નાખો",
     "activeBadge": "સક્રિય",
     "inactiveBadge": "નિષ્ક્રિય",
-    "loading": "લોડ થઈ રહ્યું છે..."
+    "loading": "લોડ થઈ રહ્યું છે...",
+    "decreaseStock": "સ્ટોક ઓછો કરો",
+    "increaseStock": "સ્ટોક વધારો",
+    "outOfStock": "સ્ટોક નથી"
   },
   "addProduct": {
     "title": "ઉત્પાદન ઉમેરો",

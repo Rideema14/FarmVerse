@@ -6,7 +6,7 @@ import { useMandi } from '@/context/MandiContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { mandiService } from '@/services/mandiService'
 import { formatDateLabel, formatINR } from '@/utils/format'
-import { formatCropName, formatMandiMarket } from '@/utils/localize'
+import { formatCropName, formatMandiMarket, formatLocationName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 const PAGE_SIZE = 15
@@ -224,25 +224,25 @@ export default function MandiPage() {
         <SelectField id="state" label={t('mandi.stateLabel')} value={state} onChange={(e) => setState(e.target.value)}>
           <option value="">{t('mandi.allStates')}</option>
           {states.map((s) => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>{formatLocationName(s, language)}</option>
           ))}
         </SelectField>
         <SelectField id="district" label={t('mandi.districtLabel')} value={district} onChange={(e) => setDistrict(e.target.value)} disabled={!state}>
           <option value="">{state ? t('mandi.allDistricts') : t('mandi.selectStateFirst')}</option>
           {districts.map((d) => (
-            <option key={d} value={d}>{d}</option>
+            <option key={d} value={d}>{formatLocationName(d, language)}</option>
           ))}
         </SelectField>
         <SelectField id="mandi" label={t('mandi.mandiLabel')} value={mandiId} onChange={(e) => setMandiId(e.target.value)} disabled={!district}>
           <option value="">{district ? t('mandi.selectAMandi') : t('mandi.selectDistrictFirst')}</option>
           {mandis.map((m) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
+            <option key={m.id} value={m.id}>{formatMandiMarket(m.name, language)}</option>
           ))}
         </SelectField>
         <SelectField id="crop" label={t('mandi.cropLabel')} value={cropId} onChange={(e) => setCropId(e.target.value)}>
           <option value="">{t('mandi.allCrops')}</option>
           {(mandiId ? availableCrops : crops).map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>{formatCropName(c.name, language)}</option>
           ))}
         </SelectField>
         <div className="flex flex-col gap-1.5">
@@ -295,7 +295,7 @@ export default function MandiPage() {
               <div>
                 <p className="text-sm font-semibold text-ink-900">{row.crop?.name ? formatCropName(row.crop.name, language) : t('mandi.unknownCrop')}</p>
                 <p className="text-xs text-ink-400">
-                  {row.mandi?.name ? formatMandiMarket(row.mandi.name, language) : t('mandi.unknownMandi')} · {row.mandi?.district}, {row.mandi?.state} · {row.variety || ''} · {formatDateLabel(row.priceDate)}
+                  {row.mandi?.name ? formatMandiMarket(row.mandi.name, language) : t('mandi.unknownMandi')} · {row.mandi?.district ? formatLocationName(row.mandi.district, language) : ''}, {row.mandi?.state ? formatLocationName(row.mandi.state, language) : ''} · {row.variety || ''} · {formatDateLabel(row.priceDate)}
                 </p>
                 <p className="mt-1 text-[11px] text-ink-400">
                   {t('common.range')}: {formatINR(row.minPrice)} – {formatINR(row.maxPrice)}

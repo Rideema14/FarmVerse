@@ -10,6 +10,7 @@ interface SellerContextValue {
   refreshListings: () => Promise<void>
   toggleListingActive: (id: string) => Promise<void>
   removeListing: (id: string) => Promise<void>
+  updateListingStock: (id: string, newStock: number) => Promise<void>
   sellerOrders: SellerOrder[]
   isLoadingOrders: boolean
   isUpdatingOrder: boolean
@@ -93,6 +94,18 @@ export function SellerProvider({ children }: { children: ReactNode }) {
     setListings((prev) => prev.filter((l) => l.id !== id))
   }, [])
 
+  const updateListingStock = useCallback(async (id: string, newStock: number) => {
+    const clamped = Math.max(0, Math.round(newStock))
+    // Optimistic update
+    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, stock: clamped } : l)))
+    try {
+      await productService.update(id, { stock: clamped })
+    } catch {
+      // Revert on failure
+      await refreshListings()
+    }
+  }, [refreshListings])
+
   // This is the seller's ONLY write action on an order's shipment — no
   // status field, nothing else. Submitting moves the order straight to
   // "shipped"; every status after that is a manual admin action.
@@ -128,6 +141,7 @@ export function SellerProvider({ children }: { children: ReactNode }) {
       refreshListings,
       toggleListingActive,
       removeListing,
+      updateListingStock,
       sellerOrders,
       isLoadingOrders,
       isUpdatingOrder,
@@ -140,6 +154,7 @@ export function SellerProvider({ children }: { children: ReactNode }) {
       refreshListings,
       toggleListingActive,
       removeListing,
+      updateListingStock,
       sellerOrders,
       isLoadingOrders,
       isUpdatingOrder,

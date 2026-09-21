@@ -122,14 +122,14 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
             <img
               src={image}
               alt={product.name}
-              className="
-                h-full
-                w-full
-                object-cover
-                transition-transform
-                duration-300
-                group-hover:scale-[1.025]
-              "
+              className={cn(
+                'h-full',
+                'w-full',
+                'object-cover',
+                'transition-all',
+                'duration-300',
+                outOfStock ? 'grayscale' : 'group-hover:scale-[1.025]',
+              )}
               loading="lazy"
               decoding="async"
             />
@@ -164,9 +164,22 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
             </span>
           )}
 
-          {product.stock === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <span className="rounded-md bg-white/95 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-[#3D3D3D]">
+          {outOfStock && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <span
+                className="
+                  rounded-lg
+                  bg-[#D92D20]
+                  px-4
+                  py-2
+                  text-[13px]
+                  font-extrabold
+                  uppercase
+                  tracking-wider
+                  text-white
+                  shadow-lg
+                "
+              >
                 Out of Stock
               </span>
             </div>

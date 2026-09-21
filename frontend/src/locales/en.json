@@ -572,7 +572,10 @@
     "deleteListing": "Delete listing",
     "activeBadge": "active",
     "inactiveBadge": "inactive",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "decreaseStock": "Decrease stock",
+    "increaseStock": "Increase stock",
+    "outOfStock": "Out of Stock"
   },
   "addProduct": {
     "title": "Add Product",

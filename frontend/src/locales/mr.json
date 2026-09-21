@@ -795,7 +795,10 @@
     "deleteListing": "उत्पादन हटवा",
     "activeBadge": "सक्रिय",
     "inactiveBadge": "निष्क्रिय",
-    "loading": "लोड होत आहे..."
+    "loading": "लोड होत आहे...",
+    "decreaseStock": "स्टॉक कमी करा",
+    "increaseStock": "स्टॉक वाढवा",
+    "outOfStock": "स्टॉकमध्ये नाही"
   },
   "addProduct": {
     "title": "उत्पादन जोडा",

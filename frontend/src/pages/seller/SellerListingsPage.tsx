@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PlusSquare, Sprout, Trash2 } from 'lucide-react'
+import { Minus, Plus, PlusSquare, Sprout, Trash2 } from 'lucide-react'
 import { useSeller } from '@/context/SellerContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
@@ -9,7 +9,7 @@ import { cn } from '@/utils/cn'
 type Tab = 'active' | 'inactive'
 
 export default function SellerListingsPage() {
-  const { listings, isLoadingListings, toggleListingActive, removeListing } = useSeller()
+  const { listings, isLoadingListings, toggleListingActive, removeListing, updateListingStock } = useSeller()
   const { t } = useLanguage()
   const [tab, setTab] = useState<Tab>('active')
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -72,7 +72,7 @@ export default function SellerListingsPage() {
         <div className="space-y-2">
           {filtered.map((listing) => (
             <div key={listing.id} className="flex items-center gap-3 rounded-2xl border border-ink-100 bg-surface p-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-sunk text-brand-600">
+              <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-sunk text-brand-600', listing.stock === 0 && 'grayscale')}>
                 {listing.images?.[0] ? (
                   <img src={listing.images[0]} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                 ) : (
@@ -82,16 +82,49 @@ export default function SellerListingsPage() {
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-1 text-sm font-medium text-ink-900">{listing.name}</p>
                 <p className="text-xs text-ink-400">
-                  {formatINR(listing.price)} / {listing.unit} · {t('sellerListings.stock')} {listing.stock}
+                  {formatINR(listing.price)} / {listing.unit}
                 </p>
+                {/* Stock controls */}
+                <div className="mt-1 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => updateListingStock(listing.id, listing.stock - 1)}
+                    disabled={busyId === listing.id || listing.stock <= 0}
+                    className="flex h-5 w-5 items-center justify-center rounded-md border border-ink-200 bg-surface-sunk text-ink-600 transition-colors hover:bg-ink-100 disabled:opacity-30"
+                    aria-label={t('sellerListings.decreaseStock')}
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className={cn('min-w-[28px] text-center text-xs font-bold', listing.stock === 0 ? 'text-danger-600' : 'text-ink-700')}>
+                    {listing.stock}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateListingStock(listing.id, listing.stock + 1)}
+                    disabled={busyId === listing.id}
+                    className="flex h-5 w-5 items-center justify-center rounded-md border border-ink-200 bg-surface-sunk text-ink-600 transition-colors hover:bg-ink-100 disabled:opacity-30"
+                    aria-label={t('sellerListings.increaseStock')}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                  <span className="ml-1 text-[10px] text-ink-400">{t('sellerListings.stock')}</span>
+                </div>
               </div>
               <span
                 className={cn(
                   'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize',
-                  listing.isActive !== false ? 'bg-brand-50 text-brand-700' : 'bg-ink-100 text-ink-500',
+                  listing.stock === 0
+                    ? 'bg-danger-50 text-danger-700'
+                    : listing.isActive !== false
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'bg-ink-100 text-ink-500',
                 )}
               >
-                {listing.isActive !== false ? t('sellerListings.activeBadge') : t('sellerListings.inactiveBadge')}
+                {listing.stock === 0
+                  ? t('sellerListings.outOfStock')
+                  : listing.isActive !== false
+                    ? t('sellerListings.activeBadge')
+                    : t('sellerListings.inactiveBadge')}
               </span>
               <button
                 type="button"

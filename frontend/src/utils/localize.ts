@@ -1,5 +1,5 @@
 import type { TranslationKey } from '@/context/LanguageContext'
-
+import dynamicTranslations from './dynamic_translations.json'
 /**
  * Comprehensive Crop & Commodity translations for Mandi rates and Marketplace items.
  */
@@ -495,11 +495,12 @@ export function formatCropName(name: string, language: string): string {
   if (table && table[trimmed]) {
     return table[trimmed]
   }
-  // Try case-insensitive or partial match
-  if (table) {
-    const key = Object.keys(table).find((k) => k.toLowerCase() === trimmed.toLowerCase())
-    if (key) return table[key]
+  // Try dynamic translations fallback
+  const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
+  if (dynTable && dynTable[trimmed]) {
+    return dynTable[trimmed]
   }
+
   return name
 }
 
@@ -517,6 +518,13 @@ export function formatMandiMarket(name: string, language: string): string {
       return `${cleaned} ${suffix}`
     }
   }
+
+  // Try dynamic translations fallback
+  const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
+  if (dynTable && dynTable[trimmed]) {
+    return dynTable[trimmed]
+  }
+
   return name
 }
 
@@ -546,5 +554,110 @@ export function formatProductName(name: string, language: string): string {
     const key = Object.keys(table).find((k) => k.toLowerCase() === trimmed.toLowerCase())
     if (key) return table[key]
   }
+  return name
+}
+
+export function formatLocationName(name: string, language: string): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  
+  const translations: Record<string, Record<string, string>> = {
+    hi: {
+      'Madhya Pradesh': 'मध्य प्रदेश',
+      'Maharashtra': 'महाराष्ट्र',
+      'Gujarat': 'गुजरात',
+      'Punjab': 'पंजाब',
+      'Bhopal': 'भोपाल',
+      'Indore': 'इंदौर',
+      'Ujjain': 'उज्जैन',
+      'Jabalpur': 'जबलपुर',
+      'Gwalior': 'ग्वालियर',
+      'Sehore': 'सीहोर',
+      'Sagar': 'सागर',
+      'Harda': 'हरदा',
+      'Badwani': 'बड़वानी',
+      'Umariya': 'उमरिया',
+      'Chhatarpur': 'छतरपुर',
+      'Itarsi': 'इटारसी',
+      'Khurai': 'खुरई',
+      'Deori': 'देवरी',
+      'Soyatkalan': 'सोयत कलां'
+    },
+    mr: {
+      'Madhya Pradesh': 'मध्य प्रदेश',
+      'Maharashtra': 'महाराष्ट्र',
+      'Gujarat': 'गुजरात',
+      'Punjab': 'पंजाब',
+      'Bhopal': 'भोपाळ',
+      'Indore': 'इंदूर',
+      'Ujjain': 'उज्जैन',
+      'Jabalpur': 'जबलपूर',
+      'Gwalior': 'ग्वाल्हेर',
+      'Sehore': 'सीहोर',
+      'Sagar': 'सागर',
+      'Harda': 'हरदा',
+      'Badwani': 'बडवानी',
+      'Umariya': 'उमरिया',
+      'Chhatarpur': 'छतरपूर',
+      'Itarsi': 'इटारसी',
+      'Khurai': 'खुरई',
+      'Deori': 'देवरी',
+      'Soyatkalan': 'सोयत कलां'
+    },
+    gu: {
+      'Madhya Pradesh': 'મધ્ય પ્રદેશ',
+      'Maharashtra': 'મહારાષ્ટ્ર',
+      'Gujarat': 'ગુજરાત',
+      'Punjab': 'પંજાબ',
+      'Bhopal': 'ભોપાલ',
+      'Indore': 'ઇન્દોર',
+      'Ujjain': 'ઉજ્જૈન',
+      'Jabalpur': 'જબલપુર',
+      'Gwalior': 'ગ્વાલિયર',
+      'Sehore': 'સિહોર',
+      'Sagar': 'સાગર',
+      'Harda': 'હરદા',
+      'Badwani': 'બડવાની',
+      'Umariya': 'ઉમરિયા',
+      'Chhatarpur': 'છતરપુર',
+      'Itarsi': 'ઇટારસી',
+      'Khurai': 'ખુરઈ',
+      'Deori': 'દેવરી',
+      'Soyatkalan': 'સોયત કલાં'
+    },
+    pa: {
+      'Madhya Pradesh': 'ਮੱਧ ਪ੍ਰਦੇਸ਼',
+      'Maharashtra': 'ਮਹਾਰਾਸ਼ਟਰ',
+      'Gujarat': 'ਗੁਜਰਾਤ',
+      'Punjab': 'ਪੰਜਾਬ',
+      'Bhopal': 'ਭੋਪਾਲ',
+      'Indore': 'ਇੰਦੌਰ',
+      'Ujjain': 'ਉਜੈਨ',
+      'Jabalpur': 'ਜਬਲਪੁਰ',
+      'Gwalior': 'ਗਵਾਲੀਅਰ',
+      'Sehore': 'ਸਿਹੋਰ',
+      'Sagar': 'ਸਾਗਰ',
+      'Harda': 'ਹਰਦਾ',
+      'Badwani': 'ਬੜਵਾਨੀ',
+      'Umariya': 'ਉਮਰੀਆ',
+      'Chhatarpur': 'ਛਤਰਪੁਰ',
+      'Itarsi': 'ਇਟਾਰਸੀ',
+      'Khurai': 'ਖੁਰਈ',
+      'Deori': 'ਦੇਵਰੀ',
+      'Soyatkalan': 'ਸੋਯਤਕਲਾਂ'
+    }
+  }
+
+  const table = translations[language]
+  if (table && table[trimmed]) {
+    return table[trimmed]
+  }
+
+  // Try dynamic translations fallback
+  const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
+  if (dynTable && dynTable[trimmed]) {
+    return dynTable[trimmed]
+  }
+
   return name
 }

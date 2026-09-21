@@ -564,7 +564,10 @@
     "deleteListing": "लिस्टिंग हटाएं",
     "activeBadge": "सक्रिय",
     "inactiveBadge": "निष्क्रिय",
-    "loading": "लोड हो रहा है…"
+    "loading": "लोड हो रहा है…",
+    "decreaseStock": "स्टॉक कम करें",
+    "increaseStock": "स्टॉक बढ़ाएं",
+    "outOfStock": "स्टॉक में नहीं"
   },
   "addProduct": {
     "title": "उत्पाद जोड़ें",
