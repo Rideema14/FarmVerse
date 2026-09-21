@@ -255,6 +255,11 @@ export default function ProductDetailsPage() {
             +
           </button>
         </div>
+        {effectiveStock > 0 && effectiveStock < 10 && (
+          <p className="ml-2 text-xs font-bold text-danger-600">
+            Only {effectiveStock} left in stock!
+          </p>
+        )}
       </div>
 
       <div className="mt-5 flex gap-2.5">
