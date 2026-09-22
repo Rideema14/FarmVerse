@@ -11,7 +11,6 @@ interface SellerContextValue {
   toggleListingActive: (id: string) => Promise<void>
   removeListing: (id: string) => Promise<void>
   updateListingStock: (id: string, newStock: number) => Promise<void>
-  updateListingPrice: (id: string, newPrice: number) => Promise<void>
   sellerOrders: SellerOrder[]
   isLoadingOrders: boolean
   isUpdatingOrder: boolean
@@ -43,7 +42,7 @@ export function SellerProvider({ children }: { children: ReactNode }) {
     }
     setIsLoadingListings(true)
     try {
-      const { items } = await productService.list({ sellerId: user.id, limit: 100, includeInactive: true })
+      const { items } = await productService.list({ sellerId: user.id, limit: 100 })
       setListings(items)
     } finally {
       setIsLoadingListings(false)
@@ -106,17 +105,8 @@ export function SellerProvider({ children }: { children: ReactNode }) {
   const toggleListingActive = useCallback(async (id: string) => {
     const current = listings.find((l) => l.id === id)
     if (!current) return
-    const nextActive = current.isActive === false
-    // Optimistic update
-    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, isActive: nextActive } : l)))
-    try {
-      const updated = await productService.update(id, { isActive: nextActive })
-      setListings((prev) => prev.map((l) => (l.id === id ? { ...l, isActive: updated.isActive ?? nextActive } : l)))
-    } catch (err) {
-      // Revert on failure
-      setListings((prev) => prev.map((l) => (l.id === id ? { ...l, isActive: current.isActive } : l)))
-      throw err
-    }
+    const updated = await productService.update(id, { isActive: !current.isActive })
+    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, isActive: updated.isActive } : l)))
   }, [listings])
 
   const removeListing = useCallback(async (id: string) => {
@@ -135,22 +125,6 @@ export function SellerProvider({ children }: { children: ReactNode }) {
       await refreshListings()
     }
   }, [refreshListings])
-
-  const updateListingPrice = useCallback(async (id: string, newPrice: number) => {
-    const clamped = Math.max(0.01, Number(newPrice))
-    const current = listings.find((l) => l.id === id)
-    if (!current) return
-    // Optimistic update
-    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, price: clamped } : l)))
-    try {
-      const updated = await productService.update(id, { price: clamped })
-      setListings((prev) => prev.map((l) => (l.id === id ? { ...l, price: updated.price } : l)))
-    } catch (err) {
-      // Revert on failure
-      setListings((prev) => prev.map((l) => (l.id === id ? { ...l, price: current.price } : l)))
-      throw err
-    }
-  }, [listings])
 
   // This is the seller's ONLY write action on an order's shipment — no
   // status field, nothing else. Submitting moves the order straight to
@@ -188,7 +162,6 @@ export function SellerProvider({ children }: { children: ReactNode }) {
       toggleListingActive,
       removeListing,
       updateListingStock,
-      updateListingPrice,
       sellerOrders,
       isLoadingOrders,
       isUpdatingOrder,
@@ -202,7 +175,6 @@ export function SellerProvider({ children }: { children: ReactNode }) {
       toggleListingActive,
       removeListing,
       updateListingStock,
-      updateListingPrice,
       sellerOrders,
       isLoadingOrders,
       isUpdatingOrder,

@@ -61,8 +61,6 @@ export interface ProductQuery {
   minPrice?: number
   maxPrice?: number
   sellerId?: string
-  includeInactive?: boolean
-  isActive?: boolean
   sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'popular'
 }
 

@@ -5603,7 +5603,27 @@ export function formatProductDescription(description: string, language: string, 
 }
 
 export function formatLandTitle(title: string, language: string, translations?: GenericContentTranslations): string {
-  return formatLocalizedContent(title, language, translations, 'title')
+  const localized = formatLocalizedContent(title, language, translations, 'title')
+  if (!title || language.toLowerCase().split('-')[0] === 'en') return title || ''
+  if (localized && localized.trim().toLocaleLowerCase() !== title.trim().toLocaleLowerCase()) return localized
+
+  // Final fallback for common land-listing wording when an older listing has no
+  // stored translation yet. Custom seller text is still handled by the database
+  // translation/backfill script.
+  const lang = language.toLowerCase().split('-')[0]
+  const common: Record<string, Record<string, string>> = {
+    hi: { land: 'जमीन', farmland: 'कृषि भूमि', agricultural: 'कृषि', farm: 'खेत', plot: 'प्लॉट', acre: 'एकड़', acres: 'एकड़' },
+    mr: { land: 'जमीन', farmland: 'शेती जमीन', agricultural: 'कृषी', farm: 'शेत', plot: 'प्लॉट', acre: 'एकर', acres: 'एकर' },
+    gu: { land: 'જમીન', farmland: 'ખેતીની જમીન', agricultural: 'કૃષિ', farm: 'ખેતર', plot: 'પ્લોટ', acre: 'એકર', acres: 'એકર' },
+    pa: { land: 'ਜ਼ਮੀਨ', farmland: 'ਖੇਤੀਬਾੜੀ ਦੀ ਜ਼ਮੀਨ', agricultural: 'ਖੇਤੀਬਾੜੀ', farm: 'ਖੇਤ', plot: 'ਪਲਾਟ', acre: 'ਏਕੜ', acres: 'ਏਕੜ' },
+  }
+  const terms = common[lang]
+  if (!terms) return localized
+  let result = title
+  for (const [source, target] of Object.entries(terms)) {
+    result = result.replace(new RegExp(`\\b${source}\\b`, 'gi'), target)
+  }
+  return result
 }
 
 export function formatLandDescription(description: string, language: string, translations?: GenericContentTranslations): string {

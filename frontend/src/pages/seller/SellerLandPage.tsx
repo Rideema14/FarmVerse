@@ -13,7 +13,7 @@ import {
 import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
-import { formatLandTitle } from '@/utils/localize'
+import { formatLandTitle, formatLandLocation } from '@/utils/localize'
 import { formatINR, toIntlLocale } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { BackendVisitStatus } from '@/services/landService'
