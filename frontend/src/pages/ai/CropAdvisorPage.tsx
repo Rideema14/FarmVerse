@@ -6,12 +6,14 @@ import { useAi } from '@/context/AiContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { cropAnalysisService, type AdvisoryResult } from '@/services/aiService'
 import { getApiErrorMessage } from '@/services/api'
+import { formatCropName, formatSeason, formatSoilName, formatWaterAvailability } from '@/utils/localize'
 
 const SEASONS = ['Kharif (Jun–Oct)', 'Rabi (Nov–Mar)', 'Zaid (Mar–Jun)']
 const SOILS = ['Black soil', 'Alluvial soil', 'Red soil', 'Loamy soil']
 const WATER = ['Rainfed only', 'Partial irrigation', 'Full irrigation']
 
 export default function CropAdvisorPage() {
+  const { t, language } = useLanguage()
   const [location, setLocation] = useState('')
   const [season, setSeason] = useState(SEASONS[0])
   const [soil, setSoil] = useState(SOILS[0])
@@ -20,7 +22,6 @@ export default function CropAdvisorPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const { refreshHistory } = useAi()
-  const { language } = useLanguage()
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -52,8 +53,8 @@ export default function CropAdvisorPage() {
         </span>
         {crop && (
           <>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Recommended Crop</p>
-            <h1 className="mt-1 text-3xl">{crop}</h1>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{t('cropAdvisor.recommendedCrop')}</p>
+            <h1 className="mt-1 text-3xl">{formatCropName(crop, language)}</h1>
           </>
         )}
         <p className="mt-3 text-sm leading-relaxed text-ink-700">{result.summary}</p>
@@ -62,7 +63,7 @@ export default function CropAdvisorPage() {
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {result.recommendedCrops!.map((c) => (
               <span key={c} className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-                {c}
+                {formatCropName(c, language)}
               </span>
             ))}
           </div>
@@ -92,7 +93,7 @@ export default function CropAdvisorPage() {
 
         <Button variant="secondary" className="mt-6" onClick={() => setResult(null)}>
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          Try Another
+          {t('cropAdvisor.tryAnother')}
         </Button>
       </div>
     )
@@ -100,39 +101,39 @@ export default function CropAdvisorPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-6 md:px-6 md:py-8">
-      <h1 className="mb-1 text-xl">Crop Advisor</h1>
-      <p className="mb-5 text-sm text-ink-500">Tell us about your land and we'll recommend the best crop.</p>
+      <h1 className="mb-1 text-xl">{t('cropAdvisor.title')}</h1>
+      <p className="mb-5 text-sm text-ink-500">{t('cropAdvisor.subtitle')}</p>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label htmlFor="location" className="mb-1.5 block text-sm font-medium text-ink-800">
-            Location (optional)
+            {t('cropAdvisor.locationLabel')}
           </label>
           <input
             id="location"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="e.g. Katni, Madhya Pradesh"
+            placeholder={t('cropAdvisor.locationPlaceholder')}
             className="h-11 w-full rounded-xl border border-ink-200 bg-surface px-3.5 text-sm"
           />
         </div>
-        <SelectField id="season" label="Season" value={season} onChange={(e) => setSeason(e.target.value)}>
+        <SelectField id="season" label={t('cropAdvisor.seasonLabel')} value={season} onChange={(e) => setSeason(e.target.value)}>
           {SEASONS.map((s) => (
-            <option key={s}>{s}</option>
+            <option key={s} value={s}>{formatSeason(s, language)}</option>
           ))}
         </SelectField>
-        <SelectField id="soil" label="Soil Type" value={soil} onChange={(e) => setSoil(e.target.value)}>
+        <SelectField id="soil" label={t('cropAdvisor.soilTypeLabel')} value={soil} onChange={(e) => setSoil(e.target.value)}>
           {SOILS.map((s) => (
-            <option key={s}>{s}</option>
+            <option key={s} value={s}>{formatSoilName(s, language)}</option>
           ))}
         </SelectField>
-        <SelectField id="water" label="Water Availability" value={water} onChange={(e) => setWater(e.target.value)}>
+        <SelectField id="water" label={t('cropAdvisor.waterLabel')} value={water} onChange={(e) => setWater(e.target.value)}>
           {WATER.map((w) => (
-            <option key={w}>{w}</option>
+            <option key={w} value={w}>{formatWaterAvailability(w, language)}</option>
           ))}
         </SelectField>
         {error && <p className="mb-3 text-xs font-medium text-danger-500">{error}</p>}
         <Button type="submit" fullWidth loading={isLoading}>
-          Get Recommendation
+          {t('cropAdvisor.getRecommendation')}
         </Button>
       </form>
     </div>

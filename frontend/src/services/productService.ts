@@ -63,19 +63,6 @@ export interface ProductQuery {
   sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'popular'
 }
 
-export interface EditableProduct {
-  id: string
-  name: string
-  brand?: string | null
-  description?: string | null
-  categoryId?: string
-  price: number
-  discountPrice?: number | null
-  stock: number
-  unit: string
-  images: { id: string; url: string }[]
-}
-
 export interface ProductCreateInput {
   categoryId: string
   subCategoryId?: string
@@ -146,12 +133,6 @@ export const productService = {
       params: query,
     })
     return { items: res.data.data.map(mapSummary), meta: res.data.meta.pagination }
-  },
-
-  async getEditableBySlug(slug: string): Promise<EditableProduct> {
-    const res = await api.get<{ data: BackendProductDetail }>(`/products/${encodeURIComponent(slug)}`)
-    const p = res.data.data
-    return { id: p.id, name: p.name, brand: (p as BackendProductDetail & { brand?: string | null }).brand, description: p.description, categoryId: p.category?.id, price: Number(p.price), discountPrice: p.discountPrice == null ? null : Number(p.discountPrice), stock: p.stock, unit: p.unit, images: p.images?.map((img) => ({ id: img.id, url: img.url })) ?? [] }
   },
 
   async getBySlug(slug: string): Promise<Product> {
@@ -246,10 +227,6 @@ export const productService = {
 
   async remove(id: string): Promise<void> {
     await api.delete(`/products/${id}`)
-  },
-
-  async removeImage(productId: string, imageId: string): Promise<void> {
-    await api.delete(`/products/${productId}/images/${imageId}`)
   },
 
   async uploadImages(productId: string, files: File[]): Promise<void> {

@@ -41,7 +41,6 @@
     "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "zod": "^3.23.8"
   },
@@ -58,7 +57,9 @@
     "@types/nodemailer": "^6.4.16",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
-    "prisma": "^6.19.3"
+    "google-translate-api-x": "^10.7.3",
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.15"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -20,6 +20,7 @@ import {
 } from '@/services/machineryService'
 import { getApiErrorMessage } from '@/services/api'
 import { formatINR } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 type Tab = 'listings' | 'bookings'
@@ -34,7 +35,7 @@ const STATUS_STYLE: Record<MachineryBookingStatus, string> = {
 
 export default function SellerMachineryPage() {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [tab, setTab] = useState<Tab>('listings')
 
   const [stats, setStats] = useState<MachineryDashboardStats | null>(null)
@@ -196,7 +197,7 @@ export default function SellerMachineryPage() {
                   )}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-1 text-sm font-medium text-ink-900">{listing.name}</p>
+                  <p className="line-clamp-1 text-sm font-medium text-ink-900">{formatProductName(listing.name, language)}</p>
                   <p className="text-xs text-ink-400">
                     {formatINR(listing.pricePerDay)}{t('sellerMachinery.perDay')} · {listing.totalUnits > 1 ? t('sellerMachinery.machinesCountPlural', { count: listing.totalUnits }) : t('sellerMachinery.machinesCount', { count: listing.totalUnits })}
                   </p>

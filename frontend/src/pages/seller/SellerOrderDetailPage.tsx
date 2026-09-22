@@ -18,6 +18,8 @@ import { orderService } from '@/services/orderService'
 import { getApiErrorMessage } from '@/services/api'
 import { formatDateTimeLabel, formatINR } from '@/utils/format'
 import { cn } from '@/utils/cn'
+import { useLanguage } from '@/context/LanguageContext'
+import { formatProductName } from '@/utils/localize'
 import type { Carrier, SellerOrderDetail } from '@/types'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -36,6 +38,7 @@ const STATUS_STYLES: Record<string, string> = {
 export default function SellerOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { language } = useLanguage()
 
   const [order, setOrder] = useState<SellerOrderDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -218,7 +221,7 @@ export default function SellerOrderDetailPage() {
                 )}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="line-clamp-1 text-sm font-medium text-ink-900">{item.name}</p>
+                <p className="line-clamp-1 text-sm font-medium text-ink-900">{formatProductName(item.name, language)}</p>
                 <p className="text-xs text-ink-400">
                   {formatINR(item.unitPrice)} × {item.quantity}
                 </p>

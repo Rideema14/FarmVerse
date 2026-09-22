@@ -294,7 +294,9 @@
     "verifiedSeller": "ਇੱਕ ਪ੍ਰਮਾਣਿਤ ਵਿਕਰੇਤਾ",
     "productInformation": "ਉਤਪਾਦ ਜਾਣਕਾਰੀ",
     "noDescriptionAvailable": "ਇਸ ਉਤਪਾਦ ਲਈ ਕੋਈ ਵੇਰਵਾ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
-    "customerFeedback": "ਗਾਹਕ ਫੀਡਬੈਕ"
+    "customerFeedback": "ਗਾਹਕ ਫੀਡਬੈਕ",
+    "onlyLeftInStock": "ਸਿਰਫ਼ {count} ਬਚੇ ਹਨ",
+    "add": "ਜੋੜੋ"
   },
   "address": {
     "label": "ਲੇਬਲ",
@@ -408,7 +410,8 @@
     "noProductsFound": "ਕੋਈ ਉਤਪਾਦ ਨਹੀਂ ਮਿਲਿਆ",
     "tryAdjusting": "ਆਪਣੀ ਖੋਜ ਜਾਂ ਕੀਮਤ ਸੀਮਾ ਬਦਲ ਕੇ ਵੇਖੋ।",
     "resetFilters": "ਫਿਲਟਰ ਰੀਸੈੱਟ ਕਰੋ",
-    "verifiedSellersDesc": "ਪ੍ਰਮਾਣਿਤ ਵਿਕਰੇਤਾਵਾਂ ਤੋਂ ਵਧੀਆ ਉਤਪਾਦ"
+    "verifiedSellersDesc": "ਪ੍ਰਮਾਣਿਤ ਵਿਕਰੇਤਾਵਾਂ ਤੋਂ ਵਧੀਆ ਉਤਪਾਦ",
+    "tapCropHint": "ਫ਼ਸਲ ਦੇਖਣ ਲਈ ਟੈਪ ਕਰੋ। ਖਰੀਦਣ ਲਈ Add to Cart ਜਾਂ Buy Now ਦਬਾਓ।"
   },
   "land": {
     "directVerifiedListings": "ਸਿੱਧੀਆਂ ਤਸਦੀਕਸ਼ੁਦਾ ਸੂਚੀਆਂ",
@@ -468,7 +471,8 @@
     "openAdvisor": "ਫਸਲ ਸਲਾਹਕਾਰ ਖੋਲ੍ਹੋ",
     "addToSeedCart": "ਬੀਜ ਕਾਰਟ ਵਿੱਚ ਜੋੜੋ",
     "outOfStock": "ਸਟਾਕ ਖਤਮ",
-    "noSeedsYet": "ਕੋਈ ਬੀਜ ਉਪਲਬਧ ਨਹੀਂ ਹੈ"
+    "noSeedsYet": "ਕੋਈ ਬੀਜ ਉਪਲਬਧ ਨਹੀਂ ਹੈ",
+    "hint": "ਬੀਜ ਦੇਖਣ ਲਈ ਟੈਪ ਕਰੋ। ਕਾਰਟ ਵਿੱਚ ਪਾਉਣ ਲਈ \"Add\" ਦਬਾਓ।"
   },
   "aiHome": {
     "title": "ਫਾਰਮਵਰਸ ਕ੍ਰਿਸ਼ੀ ਏਆਈ",
@@ -539,7 +543,13 @@
     "history": "ਇਤਿਹਾਸ",
     "removeFromFavorites": "ਮਨਪਸੰਦ ਵਿੱਚੋਂ ਹਟਾਓ",
     "addToFavorites": "ਮਨਪਸੰਦ ਵਿੱਚ ਸ਼ਾਮਲ ਕਰੋ",
-    "showingResults": "{count} ਨਤੀਜੇ ਦਿਖਾ ਰਿਹਾ ਹੈ"
+    "showingResults": "{count} ਨਤੀਜੇ ਦਿਖਾ ਰਿਹਾ ਹੈ",
+    "mandiGuideTitle": "ਫ਼ਸਲ ਦੇ ਭਾਅ ਕਿਵੇਂ ਚੈੱਕ ਕਰੀਏ:",
+    "mandiGuideStep1": "ਹੇਠਾਂ ਆਪਣਾ ਰਾਜ, ਫਿਰ ਜ਼ਿਲ੍ਹਾ ਅਤੇ ਮੰਡੀ ਚੁਣੋ।",
+    "mandiGuideStep2": "ਉਸ ਮੰਡੀ ਦੇ ਅੱਜ ਦੇ ਤਾਜ਼ਾ ਰੇਟ ਇਸ ਪੇਜ 'ਤੇ ਦਿਖਣਗੇ।",
+    "mandiGuideStep3": "ਸਿਰਫ਼ ਇੱਕ ਫ਼ਸਲ ਦਾ ਰੇਟ ਚਾਹੀਦਾ ਹੈ ਤਾਂ ਫ਼ਸਲ ਚੁਣੋ।",
+    "mandiGuideHeartHint": "ਮੰਡੀ ਨੂੰ ਸੇਵ ਕਰਨ ਲਈ ਦਿਲ (❤️) 'ਤੇ ਟੈਪ ਕਰੋ।",
+    "mandiGuideBellHint": "ਰੇਟ ਬਦਲਣ 'ਤੇ ਮੈਸੇਜ ਪਾਉਣ ਲਈ ਘੰਟੀ (🔔) 'ਤੇ ਟੈਪ ਕਰੋ।"
   },
   "landDetails": {
     "backToLandMarketplace": "ਜ਼ਮੀਨ ਮੰਡੀ 'ਤੇ ਵਾਪਸ ਜਾਓ",
@@ -662,7 +672,8 @@
     "noAlerts": "ਕੋਈ ਚਾਲੂ ਅਲਰਟ ਨਹੀਂ।",
     "alertSummary": "ਭਾਅ {condition} 'ਤੇ ਅਲਰਟ: {price}",
     "conditionRisesAbove": "ਵਧਣ",
-    "conditionFallsBelow": "ਘਟਣ"
+    "conditionFallsBelow": "ਘਟਣ",
+    "atMandi": "ਵਿਖੇ"
   },
   "mandiFavorites": {
     "title": "ਮੇਰੀਆਂ ਮਨਪਸੰਦ ਮੰਡੀਆਂ",
@@ -795,7 +806,10 @@
     "deleteListing": "ਸੂਚੀ ਹਟਾਓ",
     "activeBadge": "ਚਾਲੂ",
     "inactiveBadge": "ਬੰਦ",
-    "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ..."
+    "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
+    "decreaseStock": "ਸਟਾਕ ਘਟਾਓ",
+    "increaseStock": "ਸਟਾਕ ਵਧਾਓ",
+    "outOfStock": "ਸਟਾਕ ਵਿੱਚ ਨਹੀਂ"
   },
   "addProduct": {
     "title": "ਉਤਪਾਦ ਜੋੜੋ",
@@ -1059,5 +1073,109 @@
     "sending": "ਭੇਜਿਆ ਜਾ ਰਿਹਾ ਹੈ...",
     "messageSent": "ਸੁਨੇਹਾ ਭੇਜ ਦਿੱਤਾ ਗਿਆ!",
     "sendAnother": "ਦੂਜਾ ਸੁਨੇਹਾ ਭੇਜੋ"
+  },
+  "cropAdvisor": {
+    "title": "ਫ਼ਸਲ ਸਲਾਹਕਾਰ",
+    "subtitle": "ਆਪਣੀ ਜ਼ਮੀਨ ਬਾਰੇ ਦੱਸੋ ਅਤੇ ਅਸੀਂ ਸਭ ਤੋਂ ਵਧੀਆ ਫ਼ਸਲ ਦੀ ਸਿਫ਼ਾਰਸ਼ ਕਰਾਂਗੇ।",
+    "locationLabel": "ਸਥਾਨ (ਵਿਕਲਪਿਕ)",
+    "locationPlaceholder": "ਉਦਾ. ਲੁਧਿਆਣਾ, ਪੰਜਾਬ",
+    "seasonLabel": "ਸੀਜ਼ਨ",
+    "soilTypeLabel": "ਮਿੱਟੀ ਦੀ ਕਿਸਮ",
+    "waterLabel": "ਪਾਣੀ ਦੀ ਉਪਲਬਧਤਾ",
+    "getRecommendation": "ਸਿਫ਼ਾਰਿਸ਼ ਪ੍ਰਾਪਤ ਕਰੋ",
+    "tryAnother": "ਹੋਰ ਜਾਂਚ ਕਰੋ",
+    "recommendedCrop": "ਸਿਫ਼ਾਰਸ਼ੀ ਫ਼ਸਲ",
+    "suitableCrops": "ਢੁਕਵੀਆਂ ਫ਼ਸਲਾਂ",
+    "warnings": "ਚੇਤਾਵਨੀਆਂ",
+    "recommendations": "ਸਿਫ਼ਾਰਸ਼ਾਂ"
+  },
+  "soilAnalysis": {
+    "title": "ਮਿੱਟੀ ਵਿਸ਼ਲੇਸ਼ਣ",
+    "subtitle": "AI-ਅਧਾਰਿਤ ਸਿਫ਼ਾਰਸ਼ਾਂ ਲਈ ਆਪਣੇ ਮਿੱਟੀ ਟੈਸਟ ਮੁੱਲ ਦਰਜ ਕਰੋ।",
+    "phLabel": "pH ਮੁੱਲ",
+    "soilTypeLabel": "ਮਿੱਟੀ ਦੀ ਕਿਸਮ",
+    "nitrogenLabel": "ਨਾਈਟ੍ਰੋਜਨ (N)",
+    "phosphorusLabel": "ਫ਼ਾਸਫ਼ੋਰਸ (P)",
+    "potassiumLabel": "ਪੋਟਾਸ਼ੀਅਮ (K)",
+    "analyzeButton": "ਵਿਸ਼ਲੇਸ਼ਣ ਕਰੋ",
+    "resultTitle": "ਮਿੱਟੀ ਵਿਸ਼ਲੇਸ਼ਣ ਨਤੀਜਾ",
+    "suitableCrops": "ਢੁਕਵੀਆਂ ਫ਼ਸਲਾਂ",
+    "recommendedAmendments": "ਸੁਝਾਈਆਂ ਖਾਦਾਂ ਤੇ ਸੁਧਾਰ",
+    "warnings": "ਚੇਤਾਵਨੀਆਂ",
+    "newAnalysis": "ਨਵਾਂ ਵਿਸ਼ਲੇਸ਼ਣ"
+  },
+  "diseaseDetection": {
+    "title": "ਬਿਮਾਰੀ ਦੀ ਪਛਾਣ",
+    "subtitle": "ਪ੍ਰਭਾਵਿਤ ਫ਼ਸਲ ਦੀ ਫ਼ੋਟੋ ਲਓ ਜਾਂ ਅੱਪਲੋਡ ਕਰੋ।",
+    "noImage": "ਅਜੇ ਕੋਈ ਫ਼ੋਟੋ ਨਹੀਂ ਚੁਣੀ ਗਈ",
+    "takePhoto": "ਫ਼ੋਟੋ ਖਿੱਚੋ",
+    "uploadImage": "ਫ਼ੋਟੋ ਅੱਪਲੋਡ ਕਰੋ",
+    "analyzing": "ਵਿਸ਼ਲੇਸ਼ਣ ਹੋ ਰਿਹਾ ਹੈ…",
+    "retry": "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+    "analyzeAnother": "ਹੋਰ ਫ਼ੋਟੋ ਜਾਂਚੋ",
+    "looksHealthy": "ਫ਼ਸਲ ਤੰਦਰੁਸਤ ਲੱਗਦੀ ਹੈ",
+    "analysisComplete": "ਵਿਸ਼ਲੇਸ਼ਣ ਪੂਰਾ ਹੋਇਆ",
+    "confidence": "{confidence} ਸ਼ੁੱਧਤਾ",
+    "recommendedAction": "ਸੁਝਾਇਆ ਗਿਆ ਇਲਾਜ",
+    "warnings": "ਚੇਤਾਵਨੀਆਂ"
+  },
+  "cropRotation": {
+    "title": "ਫ਼ਸਲੀ ਚੱਕਰ ਯੋਜਨਾਕਾਰ",
+    "subtitle": "ਫ਼ਸਲੀ ਚੱਕਰ ਅਪਣਾਉਣ ਨਾਲ ਜ਼ਮੀਨ ਦੀ ਸਿਹਤ ਸੁਧਰਦੀ ਹੈ ਅਤੇ ਕੀੜੇ-ਮਕੌੜੇ ਘਟਦੇ ਹਨ।",
+    "currentCropLabel": "ਮੌਜੂਦਾ ਫ਼ਸਲ",
+    "soilTypeLabel": "ਮਿੱਟੀ ਦੀ ਕਿਸਮ",
+    "getRotationPlan": "ਫ਼ਸਲੀ ਚੱਕਰ ਯੋਜਨਾ ਪ੍ਰਾਪਤ ਕਰੋ",
+    "planTitle": "ਫ਼ਸਲੀ ਚੱਕਰ ਯੋਜਨਾ",
+    "currentlyGrowing": "ਇਸ ਸਮੇਂ {crop} ਉਗਾਈ ਜਾ ਰਹੀ ਹੈ",
+    "suggestedNext": "ਅਗਲੀਆਂ ਸੁਝਾਈਆਂ ਫ਼ਸਲਾਂ",
+    "planAnother": "ਦੂਜੀ ਯੋਜਨਾ ਬਣਾਓ"
+  },
+  "fertilizerAdvice": {
+    "title": "ਖਾਦ ਸਲਾਹ",
+    "subtitle": "ਆਪਣੀ ਫ਼ਸਲ ਦੇ ਮੌਜੂਦਾ ਵਾਧੇ ਦੇ ਪੜਾਅ ਮੁਤਾਬਕ ਸਹੀ ਖਾਦ ਦੀ ਸਲਾਹ ਲਓ।",
+    "cropLabel": "ਫ਼ਸਲ",
+    "soilTypeLabel": "ਮਿੱਟੀ ਦੀ ਕਿਸਮ",
+    "growthStageLabel": "ਵਾਧੇ ਦਾ ਪੜਾਅ",
+    "getAdvice": "ਸਲਾਹ ਪ੍ਰਾਪਤ ਕਰੋ",
+    "npkGuidance": "NPK ਮਾਰਗਦਰਸ਼ਨ",
+    "newRecommendation": "ਨਵੀਂ ਸਲਾਹ ਲਓ",
+    "stageInfo": "{crop} · {stage} ਪੜਾਅ"
+  },
+  "irrigationAdvice": {
+    "title": "ਸਿੰਚਾਈ ਸਲਾਹ",
+    "subtitle": "ਤੁਹਾਡੀ ਫ਼ਸਲ, ਮਿੱਟੀ ਅਤੇ ਸਥਾਨ ਮੁਤਾਬਕ ਸਿੰਚਾਈ ਦੀ ਲੋੜ।",
+    "cropLabel": "ਮੌਜੂਦਾ ਫ਼ਸਲ",
+    "soilTypeLabel": "ਮਿੱਟੀ ਦੀ ਕਿਸਮ",
+    "locationLabel": "ਸਥਾਨ (ਵਿਕਲਪਿਕ)",
+    "locationPlaceholder": "ਉਦਾ. ਜਲੰਧਰ, ਪੰਜਾਬ",
+    "getAdvice": "ਸਿੰਚਾਈ ਸਲਾਹ ਪ੍ਰਾਪਤ ਕਰੋ",
+    "suggestedSchedule": "ਸੁਝਾਇਆ ਗਿਆ ਸਮਾਂ-ਸੂਚੀ",
+    "viewWeatherForecast": "ਮੌਸਮ ਦਾ ਪੂਰਾ ਅਨੁਮਾਨ ਦੇਖੋ →",
+    "newAdvice": "ਨਵੀਂ ਸਲਾਹ ਲਓ"
+  },
+  "aiChat": {
+    "title": "AI ਨੂੰ ਪੁੱਛੋ",
+    "placeholder": "ਆਪਣਾ ਸਵਾਲ ਇੱਥੇ ਲਿਖੋ…",
+    "loadingConversation": "ਗੱਲਬਾਤ ਲੋਡ ਹੋ ਰਹੀ ਹੈ…",
+    "welcomeMessage": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡਾ ਖੇਤੀ ਸਹਾਇਕ ਹਾਂ। ਮੈਂ ਤੁਹਾਡੀ ਕੀ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ?",
+    "send": "ਭੇਜੋ",
+    "suggestion1": "ਕਣਕ ਦੇ ਪੱਤੇ ਪੀਲੇ ਕਿਉਂ ਪੈ ਰਹੇ ਹਨ?",
+    "suggestion2": "ਸੋਇਆਬੀਨ ਬੀਜਣ ਦਾ ਸਭ ਤੋਂ ਵਧੀਆ ਸਮਾਂ ਕੀ ਹੈ?",
+    "suggestion3": "ਫ਼ਸਲ ਨੂੰ ਪਾਣੀ ਕਦੋਂ ਦੇਣਾ ਚਾਹੀਦਾ ਹੈ?"
+  },
+  "advisoryResult": {
+    "recommendedCrops": "ਸਿਫ਼ਾਰਸ਼ ਕੀਤੀਆਂ ਫ਼ਸਲਾਂ",
+    "suggestedNextCrops": "ਅਗਲੀਆਂ ਸੁਝਾਈਆਂ ਫ਼ਸਲਾਂ",
+    "suitableCrops": "ਢੁਕਵੀਆਂ ਫ਼ਸਲਾਂ",
+    "npkGuidance": "ਖਾਦ / NPK ਮਾਰਗਦਰਸ਼ਨ",
+    "suggestedSchedule": "ਸੁਝਾਈ ਗਈ ਸਮਾਂ-ਸੂਚੀ",
+    "rotationPlan": "ਫ਼ਸਲੀ ਚੱਕਰ ਯੋਜਨਾ",
+    "amendments": "ਮਿੱਟੀ ਸੁਧਾਰਕ",
+    "recommendations": "ਸਿਫ਼ਾਰਸ਼ਾਂ",
+    "warnings": "ਚੇਤਾਵਨੀਆਂ",
+    "confidence": "{confidence} ਸ਼ੁੱਧਤਾ",
+    "cropHealthy": "ਫ਼ਸਲ ਤੰਦਰੁਸਤ ਲੱਗਦੀ ਹੈ",
+    "issueDetected": "ਸਮੱਸਿਆ ਪਾਈ ਗਈ",
+    "issueDetectedWith": "ਸਮੱਸਿਆ ਪਾਈ ਗਈ: {disease}"
   }
 }

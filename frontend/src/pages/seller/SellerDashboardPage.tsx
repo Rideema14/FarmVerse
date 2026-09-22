@@ -5,6 +5,7 @@ import { IndianRupee, List, PackageCheck, TrendingUp } from 'lucide-react'
 import { StatCard } from '@/components/common/StatCard'
 import { sellerService, type SellerAnalytics, type SellerDashboard } from '@/services/sellerService'
 import { formatINR, formatNumberIN } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 import { useLanguage } from '@/context/LanguageContext'
 
 export default function SellerDashboardPage() {
@@ -12,7 +13,7 @@ export default function SellerDashboardPage() {
   const [dashboard, setDashboard] = useState<SellerDashboard | null>(null)
   const [analytics, setAnalytics] = useState<SellerAnalytics | null>(null)
 
-  useEffect(() => {
+  const refresh = () => {
     let cancelled = false
     Promise.all([sellerService.getDashboard(), sellerService.getAnalytics(90, 5)]).then(([d, a]) => {
       if (cancelled) return
@@ -21,6 +22,24 @@ export default function SellerDashboardPage() {
     })
     return () => {
       cancelled = true
+    }
+  }
+
+  useEffect(() => {
+    const cleanup = refresh()
+
+    const handleUpdate = () => {
+      console.log('[SellerDashboard] Auto-refreshing due to socket event')
+      refresh()
+    }
+
+    window.addEventListener('socket:seller:newOrder', handleUpdate)
+    window.addEventListener('socket:seller:listingUpdated', handleUpdate)
+
+    return () => {
+      if (cleanup) cleanup()
+      window.removeEventListener('socket:seller:newOrder', handleUpdate)
+      window.removeEventListener('socket:seller:listingUpdated', handleUpdate)
     }
   }, [])
 
@@ -90,7 +109,7 @@ export default function SellerDashboardPage() {
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-sunk text-[10px] font-bold text-ink-500">
                           {index + 1}
                         </span>
-                        {p.name}
+                        {formatProductName(p.name, language)}
                       </span>
                       <span className="text-xs text-ink-400">{t('sellerDashboard.unitsSold', { count: p.unitsSold })}</span>
                     </li>

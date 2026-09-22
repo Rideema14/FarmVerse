@@ -104,3 +104,18 @@ export function emitOrderUpdate(order: OrderForBroadcast): void {
   };
   io.to(`user:${order.userId}`).to(`order:${order.id}`).emit('order:statusUpdate', payload);
 }
+
+export function emitNotificationNew(userId: string): void {
+  if (!io) return;
+  io.to(`user:${userId}`).emit('notification:new');
+}
+
+export function emitSellerNewOrder(sellerId: string): void {
+  if (!io) return;
+  io.to(`user:${sellerId}`).emit('seller:newOrder');
+}
+
+export function emitSellerListingUpdated(sellerId: string): void {
+  if (!io) return;
+  io.to(`user:${sellerId}`).emit('seller:listingUpdated');
+}

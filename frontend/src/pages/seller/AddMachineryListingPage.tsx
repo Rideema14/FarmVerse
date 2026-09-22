@@ -5,6 +5,7 @@ import { Button } from '@/components/common/Button'
 import { SelectField, TextAreaField, TextField } from '@/components/common/FormField'
 import { machineryService, type MachineryCategory } from '@/services/machineryService'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatCategoryName } from '@/utils/localize'
 import { getApiErrorMessage } from '@/services/api'
 import { LoadingOverlay } from '@/components/common/LoadingOverlay'
 
@@ -125,7 +126,7 @@ export default function AddMachineryListingPage() {
           <SelectField id="category" label={t('addMachinery.category')} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {formatCategoryName(c, t)}
               </option>
             ))}
           </SelectField>

@@ -213,7 +213,7 @@ export async function updateProduct(id: string, user: User, data: ProductUpdateI
   }
 
   const nextPrice = productData.price ?? Number(product.price);
-  const nextDiscount = productData.discountPrice === null ? undefined : (productData.discountPrice ?? (product.discountPrice ? Number(product.discountPrice) : undefined));
+  const nextDiscount = productData.discountPrice ?? (product.discountPrice ? Number(product.discountPrice) : undefined);
   if (nextDiscount && Number(nextDiscount) >= Number(nextPrice)) {
     throw ApiError.badRequest('discountPrice must be lower than price.');
   }

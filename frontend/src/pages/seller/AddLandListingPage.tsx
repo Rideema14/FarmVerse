@@ -8,11 +8,12 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import type { BackendLandDealType } from '@/services/landService'
 import { LoadingOverlay } from '@/components/common/LoadingOverlay'
+import { formatSoilName } from '@/utils/localize'
 
 export default function AddLandListingPage() {
   const { addLandListing, isActionLoading } = useLand()
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const navigate = useNavigate()
 
   const [title, setTitle] = useState('')
@@ -174,7 +175,7 @@ export default function AddLandListingPage() {
         <div className="grid grid-cols-2 gap-3">
           <SelectField id="soil" label={t('addLand.soilType')} value={soilType} onChange={(e) => setSoilType(e.target.value)}>
             {['Black soil', 'Alluvial soil', 'Red soil', 'Loamy soil', 'Sandy soil', 'Clay soil'].map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>{formatSoilName(s, language)}</option>
             ))}
           </SelectField>
           <TextField

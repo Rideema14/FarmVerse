@@ -8,13 +8,13 @@ import {
   ShoppingCart,
   Sprout,
   Trash2,
-  Truck,
 } from 'lucide-react'
 
 import { Button } from '@/components/common/Button'
-import { useCart, getDeliveryFee } from '@/context/CartContext'
+import { useCart } from '@/context/CartContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 
 
 /* =========================================================
@@ -30,16 +30,21 @@ export default function CartPage() {
     toggleSaveForLater,
     subtotal,
     itemCount,
+    freeShippingThreshold,
+    taxRate,
+    isConfigLoading,
+    getPlatformFee,
   } = useCart()
 
   const navigate = useNavigate()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   const activeLines = lines.filter((line) => !line.savedForLater)
   const savedLines = lines.filter((line) => line.savedForLater)
 
-  const deliveryFee = getDeliveryFee(subtotal)
-  const total = subtotal + deliveryFee
+  const platformFee = getPlatformFee(subtotal)
+  const taxAmount = subtotal * taxRate
+  const total = subtotal + platformFee + taxAmount
 
   /* =======================================================
      LOADING
@@ -281,12 +286,12 @@ export default function CartPage() {
                                       sm:text-[15px]
                                     "
                                   >
-                                    {product.name}
+                                    {formatProductName(product.name, language)}
                                   </Link>
 
                                   {line.variantName && (
                                     <p className="mt-1 text-xs text-ink-400">
-                                      {line.variantName}
+                                      {formatProductName(line.variantName, language)}
                                     </p>
                                   )}
 
@@ -358,7 +363,6 @@ export default function CartPage() {
                                         line.quantity - 1,
                                       )
                                     }
-                                    disabled={line.quantity <= 1}
                                     aria-label={t(
                                       'common.decreaseQuantity',
                                     )}
@@ -574,7 +578,7 @@ export default function CartPage() {
                         <div className="min-w-0 flex-1">
 
                           <p className="line-clamp-1 text-sm font-medium text-ink-700">
-                            {product.name}
+                            {formatProductName(product.name, language)}
                           </p>
 
                           <p className="mt-0.5 text-xs text-ink-400">
@@ -690,114 +694,100 @@ export default function CartPage() {
 
               <div className="p-5">
 
-                {/* DELIVERY INFO */}
-
-                <div
-                  className="
-                    mb-5
-                    flex
-                    items-center
-                    gap-3
-                    rounded-xl
-                    bg-[#F5F7EF]
-                    px-3.5
-                    py-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-8
-                      w-8
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-lg
-                      bg-white
-                    "
-                  >
-                    <Truck
-                      className="h-4 w-4 text-[#667744]"
-                      strokeWidth={1.8}
-                    />
+                {isConfigLoading ? (
+                  <div className="space-y-4 animate-pulse pt-2">
+                    <div className="h-14 rounded-xl bg-ink-50"></div>
+                    <div className="space-y-3 pt-2">
+                      <div className="flex justify-between"><div className="h-4 w-20 bg-ink-50 rounded"></div><div className="h-4 w-16 bg-ink-50 rounded"></div></div>
+                      <div className="flex justify-between"><div className="h-4 w-24 bg-ink-50 rounded"></div><div className="h-4 w-16 bg-ink-50 rounded"></div></div>
+                      <div className="flex justify-between"><div className="h-4 w-28 bg-ink-50 rounded"></div><div className="h-4 w-16 bg-ink-50 rounded"></div></div>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    {/* INFO BADGE */}
 
-                  <div className="min-w-0">
+                    {subtotal > 0 && subtotal < freeShippingThreshold && (
+                      <div className="mb-5 rounded-xl bg-orange-50 px-3.5 py-3 text-xs text-orange-800">
+                        <p className="font-semibold">Add {formatINR(freeShippingThreshold - subtotal)} more</p>
+                        <p className="mt-0.5 text-[11px] opacity-90">to get free platform fees!</p>
+                      </div>
+                    )}
+                    {subtotal >= freeShippingThreshold && (
+                      <div className="mb-5 rounded-xl bg-green-50 px-3.5 py-3 text-xs text-green-800">
+                        <p className="font-semibold">Free Platform Fees Unlocked!</p>
+                      </div>
+                    )}
 
-                    <p className="text-xs font-semibold text-ink-700">
-                      {deliveryFee === 0
-                        ? 'Free delivery'
-                        : 'Delivery available'}
-                    </p>
+                    {/* PRICE BREAKDOWN */}
 
-                    <p className="mt-0.5 text-[11px] leading-4 text-ink-400">
-                      {deliveryFee === 0
-                        ? 'Your order qualifies for free delivery.'
-                        : t('cart.freeDeliveryNote')}
-                    </p>
+                    <div className="space-y-3">
 
-                  </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-ink-500">
+                          {t('cart.subtotal')}
+                        </span>
 
-                </div>
+                        <span className="font-medium text-ink-800">
+                          {formatINR(subtotal)}
+                        </span>
+                      </div>
 
-                {/* PRICE BREAKDOWN */}
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-ink-500">
+                          Tax ({(taxRate * 100).toFixed(0)}%)
+                        </span>
 
-                <div className="space-y-3">
+                        <span className="font-medium text-ink-800">
+                          {formatINR(subtotal * taxRate)}
+                        </span>
+                      </div>
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-ink-500">
-                      {t('cart.subtotal')}
-                    </span>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-ink-500">
+                          Platform Fee
+                        </span>
 
-                    <span className="font-medium text-ink-800">
-                      {formatINR(subtotal)}
-                    </span>
-                  </div>
+                        <span
+                          className={
+                            platformFee === 0
+                              ? 'font-semibold text-[#667744]'
+                              : 'font-medium text-ink-800'
+                          }
+                        >
+                          {platformFee === 0
+                            ? t('cart.free')
+                            : formatINR(platformFee)}
+                        </span>
+                      </div>
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-ink-500">
-                      {t('cart.delivery')}
-                    </span>
-
-                    <span
-                      className={
-                        deliveryFee === 0
-                          ? 'font-semibold text-[#667744]'
-                          : 'font-medium text-ink-800'
-                      }
-                    >
-                      {deliveryFee === 0
-                        ? t('cart.free')
-                        : formatINR(deliveryFee)}
-                    </span>
-                  </div>
-
-                </div>
-
-                {/* TOTAL */}
-
-                <div className="my-5 border-t border-dashed border-ink-200 pt-4">
-
-                  <div className="flex items-end justify-between">
-
-                    <div>
-                      <p className="text-xs text-ink-400">
-                        {t('cart.total')}
-                      </p>
-
-                      <p className="mt-1 text-xl font-bold tracking-tight text-ink-950">
-                        {formatINR(total)}
-                      </p>
                     </div>
 
-                    <span className="text-[10px] font-medium text-[#667744]">
-                      Final amount
-                    </span>
+                    {/* TOTAL */}
 
-                  </div>
+                    <div className="my-5 border-t border-dashed border-ink-200 pt-4">
 
-                </div>
+                      <div className="flex items-end justify-between">
+
+                        <div>
+                          <p className="text-xs text-ink-400">
+                            {t('cart.total')}
+                          </p>
+
+                          <p className="mt-1 text-xl font-bold tracking-tight text-ink-950">
+                            {formatINR(total)}
+                          </p>
+                        </div>
+
+                        <span className="text-[10px] font-medium text-[#667744]">
+                          Final amount
+                        </span>
+
+                      </div>
+
+                    </div>
+                  </>
+                )}
 
                 {/* CHECKOUT */}
 

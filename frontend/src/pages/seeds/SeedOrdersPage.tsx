@@ -4,6 +4,7 @@ import { useSeedCart } from '@/context/SeedCartContext'
 import { formatDateLabel, formatINR } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatProductName } from '@/utils/localize'
 
 const STATUS_STYLES: Record<string, string> = {
   placed: 'bg-ink-100 text-ink-600',
@@ -17,7 +18,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export default function SeedOrdersPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { seedOrders, isLoadingOrders } = useSeedCart()
 
   if (isLoadingOrders && seedOrders.length === 0) {
@@ -52,7 +53,7 @@ export default function SeedOrdersPage() {
                   {order.status.replace(/_/g, ' ')}
                 </span>
               </div>
-              <p className="mt-1 truncate text-xs text-ink-500">{order.itemsLabel}</p>
+              <p className="mt-1 truncate text-xs text-ink-500">{formatProductName(order.itemsLabel, language)}</p>
               <div className="mt-1.5 flex items-center justify-between text-xs">
                 <span className="text-ink-400">{formatDateLabel(order.placedAt)}</span>
                 <span className="font-semibold text-ink-800">{formatINR(order.total)}</span>

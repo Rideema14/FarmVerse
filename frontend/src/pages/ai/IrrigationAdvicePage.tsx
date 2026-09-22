@@ -8,8 +8,10 @@ import { useLanguage } from '@/context/LanguageContext'
 import { cropAnalysisService, type AdvisoryResult } from '@/services/aiService'
 import { getApiErrorMessage } from '@/services/api'
 import { mandiService } from '@/services/mandiService'
+import { formatCropName, formatSoilName } from '@/utils/localize'
 
 export default function IrrigationAdvicePage() {
+  const { t, language } = useLanguage()
   const [crops, setCrops] = useState<string[]>([])
   const [crop, setCrop] = useState('')
   const [soil, setSoil] = useState('Black soil')
@@ -18,7 +20,6 @@ export default function IrrigationAdvicePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const { refreshHistory } = useAi()
-  const { language } = useLanguage()
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +67,7 @@ export default function IrrigationAdvicePage() {
 
         {result.suggestedSchedule && (
           <div className="mt-4 rounded-2xl border border-ink-100 bg-surface p-3.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Suggested Schedule</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{t('irrigationAdvice.suggestedSchedule')}</p>
             <p className="mt-1 text-sm text-ink-700">{result.suggestedSchedule}</p>
           </div>
         )}
@@ -93,12 +94,12 @@ export default function IrrigationAdvicePage() {
         )}
 
         <Link to="/weather" className="mt-3 block text-center text-xs font-semibold text-brand-600 hover:underline">
-          View full weather forecast →
+          {t('irrigationAdvice.viewWeatherForecast')}
         </Link>
 
         <Button variant="secondary" className="mt-5" onClick={() => setResult(null)}>
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          New Advice
+          {t('irrigationAdvice.newAdvice')}
         </Button>
       </div>
     )
@@ -106,35 +107,35 @@ export default function IrrigationAdvicePage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-6 md:px-6 md:py-8">
-      <h1 className="mb-1 text-xl">Irrigation Advice</h1>
-      <p className="mb-5 text-sm text-ink-500">Based on your crop, soil, and location.</p>
+      <h1 className="mb-1 text-xl">{t('irrigationAdvice.title')}</h1>
+      <p className="mb-5 text-sm text-ink-500">{t('irrigationAdvice.subtitle')}</p>
 
       <form onSubmit={handleSubmit}>
-        <SelectField id="crop" label="Current Crop" value={crop} onChange={(e) => setCrop(e.target.value)}>
+        <SelectField id="crop" label={t('irrigationAdvice.cropLabel')} value={crop} onChange={(e) => setCrop(e.target.value)}>
           {crops.map((c) => (
-            <option key={c}>{c}</option>
+            <option key={c} value={c}>{formatCropName(c, language)}</option>
           ))}
         </SelectField>
-        <SelectField id="soil" label="Soil Type" value={soil} onChange={(e) => setSoil(e.target.value)}>
+        <SelectField id="soil" label={t('irrigationAdvice.soilTypeLabel')} value={soil} onChange={(e) => setSoil(e.target.value)}>
           {['Black soil', 'Alluvial soil', 'Red soil', 'Loamy soil'].map((s) => (
-            <option key={s}>{s}</option>
+            <option key={s} value={s}>{formatSoilName(s, language)}</option>
           ))}
         </SelectField>
         <div className="mb-4">
           <label htmlFor="location" className="mb-1.5 block text-sm font-medium text-ink-800">
-            Location (optional)
+            {t('irrigationAdvice.locationLabel')}
           </label>
           <input
             id="location"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="e.g. Katni, Madhya Pradesh"
+            placeholder={t('irrigationAdvice.locationPlaceholder')}
             className="h-11 w-full rounded-xl border border-ink-200 bg-surface px-3.5 text-sm"
           />
         </div>
         {error && <p className="mb-3 text-xs font-medium text-danger-500">{error}</p>}
         <Button type="submit" fullWidth loading={isLoading} disabled={!crops.length || !crop.trim()}>
-          Get Irrigation Advice
+          {t('irrigationAdvice.getAdvice')}
         </Button>
       </form>
     </div>

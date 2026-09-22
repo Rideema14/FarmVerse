@@ -15,7 +15,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
   const { isWishlisted, toggleWishlist } = useWishlist()
   const { quantityOf, addToCart, setQuantity, removeFromCart } = useCart()
   const { isAuthenticated } = useAuth()
-  const { language } = useLanguage()
+  const { language, t } = useLanguage()
   const navigate = useNavigate()
 
   // Tracks only "we just fired the very first add" so a second click before
@@ -122,14 +122,14 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
             <img
               src={image}
               alt={product.name}
-              className="
-                h-full
-                w-full
-                object-cover
-                transition-transform
-                duration-300
-                group-hover:scale-[1.025]
-              "
+              className={cn(
+                'h-full',
+                'w-full',
+                'object-cover',
+                'transition-all',
+                'duration-300',
+                outOfStock ? 'grayscale' : 'group-hover:scale-[1.025]',
+              )}
               loading="lazy"
               decoding="async"
             />
@@ -164,10 +164,23 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
             </span>
           )}
 
-          {product.stock === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <span className="rounded-md bg-white/95 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-[#3D3D3D]">
-                Out of Stock
+          {outOfStock && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <span
+                className="
+                  rounded-lg
+                  bg-[#D92D20]
+                  px-4
+                  py-2
+                  text-[13px]
+                  font-extrabold
+                  uppercase
+                  tracking-wider
+                  text-white
+                  shadow-lg
+                "
+              >
+                {t('product.outOfStock')}
               </span>
             </div>
           )}
@@ -362,6 +375,11 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
 
       {!outOfStock && (
         <div className="mt-2 w-full shrink-0">
+          {product.stock < 10 && (
+            <p className="mb-1.5 text-center text-[10px] font-bold text-[#D92D20]">
+              {t('product.onlyLeftInStock').replace('{count}', String(product.stock))}
+            </p>
+          )}
           {inCart ? (
             <div
               className="
@@ -446,7 +464,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
               "
             >
               <Plus className="h-3.5 w-3.5" />
-              Add
+              {t('product.add')}
             </button>
           )}
         </div>

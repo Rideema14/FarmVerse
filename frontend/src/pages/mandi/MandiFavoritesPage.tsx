@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import { Heart, Trash2, MapPin } from 'lucide-react'
 import { useMandi } from '@/context/MandiContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatLocationName, formatMandiMarket } from '@/utils/localize'
 
 export default function MandiFavoritesPage() {
   const { favorites, toggleFavorite, refreshFavorites, isLoading } = useMandi()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   useEffect(() => {
     refreshFavorites()
@@ -43,10 +44,10 @@ export default function MandiFavoritesPage() {
           return (
             <div key={fav.id} className="flex items-center justify-between rounded-2xl border border-ink-100 bg-surface p-4">
               <div>
-                <p className="text-sm font-semibold text-ink-900">{fav.mandi?.name || t('mandi.unknownMandi')}</p>
+                <p className="text-sm font-semibold text-ink-900">{fav.mandi?.name ? formatMandiMarket(fav.mandi.name, language) : t('mandi.unknownMandi')}</p>
                 <div className="flex items-center gap-1 text-xs text-ink-400 mt-1">
                   <MapPin className="h-3 w-3" />
-                  {fav.mandi?.district}, {fav.mandi?.state}
+                  {fav.mandi?.district ? formatLocationName(fav.mandi.district, language) : ''}, {fav.mandi?.state ? formatLocationName(fav.mandi.state, language) : ''}
                 </div>
               </div>
               <div className="flex items-center gap-3">

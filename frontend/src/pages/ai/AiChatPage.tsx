@@ -8,12 +8,9 @@ import { useAi } from '@/context/AiContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/utils/cn'
 
-const SUGGESTIONS = ['मेरी गेहूं की फसल पीली हो रही है', 'Best time to sow soybean?', 'सिंचाई कब करें?']
-
 export default function AiChatPage() {
-  // Present when this page is opened from AI History to reopen a past
-  // conversation, rather than starting a brand-new one.
   const { sessionId: routeSessionId } = useParams<{ sessionId?: string }>()
+  const { t, language } = useLanguage()
 
   const [sessionId, setSessionId] = useState<string | null>(routeSessionId ?? null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -23,14 +20,17 @@ export default function AiChatPage() {
   const [error, setError] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
   const { refreshHistory } = useAi()
-  const { language } = useLanguage()
+
+  const suggestions = [
+    t('aiChat.suggestion1'),
+    t('aiChat.suggestion2'),
+    t('aiChat.suggestion3'),
+  ]
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, typing])
 
-  // Load the existing conversation when arriving with a sessionId in the URL
-  // (i.e. opened from the AI History list).
   useEffect(() => {
     if (!routeSessionId) return
     let cancelled = false
@@ -91,17 +91,17 @@ export default function AiChatPage() {
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold-50 text-gold-600">
           <Sparkles className="h-4.5 w-4.5" aria-hidden="true" />
         </span>
-        <h1 className="text-lg">Ask AI</h1>
+        <h1 className="text-lg">{t('aiChat.title')}</h1>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto pb-3">
         {isLoadingSession && (
-          <div className="flex justify-center py-8 text-sm text-ink-400">Loading conversation…</div>
+          <div className="flex justify-center py-8 text-sm text-ink-400">{t('aiChat.loadingConversation')}</div>
         )}
         {!isLoadingSession && messages.length === 0 && !typing && (
           <div className="flex justify-start">
             <p className="max-w-[80%] rounded-2xl bg-surface-sunk px-3.5 py-2.5 text-sm leading-relaxed text-ink-800">
-              नमस्ते! मैं आपकी खेती से जुड़े सवालों में मदद कर सकता हूँ। आप क्या जानना चाहते हैं?
+              {t('aiChat.welcomeMessage')}
             </p>
           </div>
         )}
@@ -135,7 +135,7 @@ export default function AiChatPage() {
 
       {messages.length === 0 && !isLoadingSession && (
         <div className="mb-2 flex flex-wrap gap-2">
-          {SUGGESTIONS.map((s) => (
+          {suggestions.map((s) => (
             <button
               key={s}
               type="button"
@@ -152,13 +152,13 @@ export default function AiChatPage() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your question…"
+          placeholder={t('aiChat.placeholder')}
           className="h-11 flex-1 rounded-full border border-ink-200 bg-surface px-4 text-sm focus:border-brand-400"
         />
         <button
           type="submit"
           disabled={!input.trim() || typing}
-          aria-label="Send"
+          aria-label={t('aiChat.send')}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white disabled:bg-ink-200"
         >
           <Send className="h-4 w-4" aria-hidden="true" />

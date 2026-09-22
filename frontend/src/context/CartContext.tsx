@@ -16,10 +16,12 @@ interface CartContextValue {
   itemCount: number
   subtotal: number
   quantityOf: (productId: string) => number
+  platformFee: number
+  freeShippingThreshold: number
+  taxRate: number
+  isConfigLoading: boolean
+  getPlatformFee: (subtotal: number) => number
 }
-
-const DELIVERY_FLAT_FEE = 49
-const FREE_DELIVERY_THRESHOLD = 999
 
 /** Prefix used for lines that only exist optimistically (server hasn't confirmed the real itemId yet). */
 const TEMP_ITEM_PREFIX = 'temp-'
@@ -36,6 +38,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Saved-for-later has no backend equivalent — tracked locally by productId.
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
+
+  const [isConfigLoading, setIsConfigLoading] = useState(true)
+  const [config, setConfig] = useState({
+    platformFee: 0,
+    freeShippingThreshold: 0,
+    taxRate: 0,
+  })
 
   // Debounce bookkeeping for setQuantity: one pending timer + one "state
   // before this burst of clicks started" snapshot per productId, so a rapid
@@ -60,6 +69,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  useEffect(() => {
+    // Fetch global platform config (pricing fees, taxes)
+    import('@/services/api').then(({ api }) => {
+      api.get('/config').then((res) => {
+        if (res.data?.success && res.data?.data) {
+          setConfig({
+            platformFee: res.data.data.platformFee ?? 0,
+            freeShippingThreshold: res.data.data.freeShippingThreshold ?? 0,
+            taxRate: res.data.data.taxRate ?? 0,
+          })
+        }
+      }).catch((err) => {
+        console.error('[CartContext] Failed to fetch platform config', err)
+      }).finally(() => {
+        setIsConfigLoading(false)
+      })
+    })
+  }, [])
 
   // Clear any in-flight debounce timers on unmount so they don't fire against a gone component.
   useEffect(() => {
@@ -98,8 +126,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const idx = prev.findIndex((l) => l.productId === product.id && (l.variantId ?? undefined) === variantId)
         if (idx >= 0) {
           const next = [...prev]
-          const newQuantity = next[idx].quantity + quantity
-          next[idx] = { ...next[idx], quantity: newQuantity, lineTotal: unitPrice * newQuantity }
+          const existingLine = next[idx]
+          const currentVariantStock = variant?.stock ?? product.stock
+          const maxAvailable = currentVariantStock > 0 ? currentVariantStock : 0
+          const newQuantity = Math.min(existingLine.quantity + quantity, maxAvailable)
+          next[idx] = { ...existingLine, quantity: newQuantity, lineTotal: unitPrice * newQuantity }
           return next
         }
         const optimisticLine: CartLine = {
@@ -184,7 +215,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
    */
   const setQuantity = useCallback(
     async (productId: string, quantity: number) => {
-      const targetQuantity = Math.max(1, quantity)
+      if (quantity <= 0) {
+        return removeFromCart(productId)
+      }
+
+      const targetQuantity = quantity
       let itemId: string | undefined
 
       setRawLines((prev) => {
@@ -220,7 +255,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }, QUANTITY_DEBOUNCE_MS)
     },
-    [showToast],
+    [showToast, removeFromCart],
   )
 
   const toggleSaveForLater = useCallback((productId: string) => {
@@ -261,6 +296,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return { itemCount: count, subtotal: Math.round(sub * 100) / 100 }
   }, [lines])
 
+  const getPlatformFee = useCallback((sub: number) => {
+    return sub === 0 || sub >= config.freeShippingThreshold ? 0 : config.platformFee
+  }, [config])
+
   const value = useMemo(
     () => ({
       lines,
@@ -274,8 +313,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       itemCount,
       subtotal,
       quantityOf,
+      platformFee: config.platformFee,
+      freeShippingThreshold: config.freeShippingThreshold,
+      taxRate: config.taxRate,
+      isConfigLoading,
+      getPlatformFee,
     }),
-    [lines, isLoading, addToCart, removeFromCart, setQuantity, toggleSaveForLater, clearCart, refresh, itemCount, subtotal, quantityOf],
+    [lines, isLoading, addToCart, removeFromCart, setQuantity, toggleSaveForLater, clearCart, refresh, itemCount, subtotal, quantityOf, config, isConfigLoading, getPlatformFee],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
@@ -285,8 +329,4 @@ export function useCart(): CartContextValue {
   const ctx = useContext(CartContext)
   if (!ctx) throw new Error('useCart must be used within a CartProvider')
   return ctx
-}
-
-export function getDeliveryFee(subtotal: number): number {
-  return subtotal === 0 || subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FLAT_FEE
 }

@@ -16,6 +16,7 @@ import { MachineryProvider } from '@/context/MachineryContext'
 import { AdminProvider } from '@/context/AdminContext'
 import { NotificationProvider } from '@/context/NotificationContext'
 import { SellerProvider } from '@/context/SellerContext'
+import { SocketProvider } from '@/context/SocketContext'
 
 import { SplashScreen } from '@/components/common/SplashScreen'
 import { AppRouter } from '@/routes/AppRouter'
@@ -40,8 +41,9 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <AuthGate>
-            <AppModeProvider>
-              <NotificationProvider>
+            <SocketProvider>
+              <AppModeProvider>
+                <NotificationProvider>
 
                 {/* =====================================================
                     AI PROVIDER
@@ -121,7 +123,8 @@ export default function App() {
                 </AiProvider>
 
               </NotificationProvider>
-            </AppModeProvider>
+              </AppModeProvider>
+            </SocketProvider>
           </AuthGate>
         </AuthProvider>
       </ToastProvider>

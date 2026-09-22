@@ -3,6 +3,7 @@ import { ClipboardList, Truck } from 'lucide-react'
 import { useOrders } from '@/context/OrderContext'
 import { useLanguage, type TranslationKey } from '@/context/LanguageContext'
 import { formatINR, formatDateLabel } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -33,7 +34,7 @@ const STATUS_KEYS: Record<string, TranslationKey> = {
 
 export default function OrdersPage() {
   const { orders, isLoading } = useOrders()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   if (isLoading && orders.length === 0) {
     return <div className="flex min-h-[60vh] items-center justify-center text-sm text-ink-400">{t('common.loading')}</div>
@@ -71,7 +72,7 @@ export default function OrdersPage() {
                   {t(STATUS_KEYS[order.status])}
                 </span>
               </div>
-              <p className="mt-1 truncate text-xs text-ink-500">{order.itemsLabel}</p>
+              <p className="mt-1 truncate text-xs text-ink-500">{formatProductName(order.itemsLabel, language)}</p>
               <div className="mt-1.5 flex items-center justify-between text-xs">
                 <span className="text-ink-400">{formatDateLabel(order.placedAt)}</span>
                 <span className="font-semibold text-ink-800">{formatINR(order.total)}</span>

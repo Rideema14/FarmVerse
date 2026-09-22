@@ -10,9 +10,10 @@ import { getApiErrorMessage } from '@/services/api'
 import { formatINR } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatProductName } from '@/utils/localize'
 
 export default function SeedCartPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { lines, removeFromCart, setQuantity, subtotal, clearCart, refreshSeedOrders } = useSeedCart()
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -100,7 +101,7 @@ export default function SeedCartPage() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="line-clamp-1 text-sm font-medium text-ink-900">
-                {line.seed.name}
+                {formatProductName(line.seed.name, language)}
                 {line.variantName && <span className="text-ink-400"> · {line.variantName}</span>}
               </p>
               <p className="mt-0.5 text-sm font-bold text-ink-900">{formatINR(line.unitPrice)}</p>

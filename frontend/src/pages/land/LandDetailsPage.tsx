@@ -23,13 +23,14 @@ import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
+import { formatLocationName, formatSoilName, formatWaterSource } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 export default function LandDetailsPage() {
   const { id: slugOrId } = useParams<{ id: string }>()
   const { getListingBySlug, selectedListing, getVisitForLand, cancelVisitRequest, uploadImages, removeImage, deleteLand, isActionLoading } = useLand()
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const navigate = useNavigate()
 
   const [activeImageIndex, setActiveImageIndex] = useState(0)
@@ -207,7 +208,7 @@ export default function LandDetailsPage() {
           <h1 className="text-2xl font-extrabold text-ink-900 sm:text-3xl">{land.title}</h1>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-500">
             <MapPin className="h-4 w-4 text-brand-600" />
-            <span>{land.location} {land.city ? `· ${land.city}` : ''} {land.state ? `, ${land.state}` : ''}</span>
+            <span>{formatLocationName(land.location, language)} {land.city ? `· ${formatLocationName(land.city, language)}` : ''} {land.state ? `, ${formatLocationName(land.state, language)}` : ''}</span>
           </p>
         </div>
         <div className="border-t sm:border-t-0 sm:border-l border-ink-100 pt-3 sm:pt-0 sm:pl-6">
@@ -236,12 +237,12 @@ export default function LandDetailsPage() {
         <div className="rounded-2xl border border-ink-100 bg-surface p-4 text-center">
           <Layers className="mx-auto h-5 w-5 text-soil-600" />
           <p className="mt-1 text-[11px] text-ink-400 uppercase tracking-wider font-semibold">{t('landDetails.soilType')}</p>
-          <p className="mt-0.5 text-base font-bold text-ink-900">{land.soilType || t('landDetails.notSpecified')}</p>
+          <p className="mt-0.5 text-base font-bold text-ink-900">{land.soilType ? formatSoilName(land.soilType, language) : t('landDetails.notSpecified')}</p>
         </div>
         <div className="rounded-2xl border border-ink-100 bg-surface p-4 text-center">
           <Droplets className="mx-auto h-5 w-5 text-sky-600" />
           <p className="mt-1 text-[11px] text-ink-400 uppercase tracking-wider font-semibold">{t('landDetails.waterSource')}</p>
-          <p className="mt-0.5 text-base font-bold text-ink-900">{land.waterSource || t('landDetails.rainFed')}</p>
+          <p className="mt-0.5 text-base font-bold text-ink-900">{land.waterSource ? formatWaterSource(land.waterSource, language) : t('landDetails.rainFed')}</p>
         </div>
         <div className="rounded-2xl border border-ink-100 bg-surface p-4 text-center">
           <Building2 className="mx-auto h-5 w-5 text-emerald-600" />

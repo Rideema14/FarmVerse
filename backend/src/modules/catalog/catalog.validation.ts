@@ -31,7 +31,7 @@ export const productCreateSchema = z.object({
   description: z.string().trim().max(5000).optional(),
   brand: z.string().trim().max(100).optional(),
   price: z.coerce.number().positive(),
-  discountPrice: z.coerce.number().positive().optional().nullable(),
+  discountPrice: z.coerce.number().positive().optional(),
   stock: z.coerce.number().int().min(0).default(0),
   unit: z.string().trim().max(30).default('piece'),
   specifications: z.record(z.any()).optional(),

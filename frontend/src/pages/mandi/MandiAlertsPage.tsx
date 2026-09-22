@@ -6,10 +6,11 @@ import { useMandi } from '@/context/MandiContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { mandiService } from '@/services/mandiService'
 import { formatINR } from '@/utils/format'
+import { formatCropName, formatMandiMarket } from '@/utils/localize'
 
 export default function MandiAlertsPage() {
   const { alerts, addAlert, removeAlert, isLoading } = useMandi()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   
   const [crops, setCrops] = useState<{ id: string; name: string }[]>([])
   const [mandis, setMandis] = useState<{ id: string; name: string }[]>([])
@@ -65,13 +66,13 @@ export default function MandiAlertsPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SelectField id="alert-crop" label={t('mandiAlerts.crop')} value={cropId} onChange={(e) => setCropId(e.target.value)} required>
             {crops.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>{formatCropName(c.name, language)}</option>
             ))}
           </SelectField>
           <SelectField id="alert-mandi" label={t('mandiAlerts.mandiOptional')} value={mandiId} onChange={(e) => setMandiId(e.target.value)}>
             <option value="">{t('mandiAlerts.anyMandi')}</option>
             {mandis.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
+              <option key={m.id} value={m.id}>{formatMandiMarket(m.name, language)}</option>
             ))}
           </SelectField>
           <SelectField id="alert-condition" label={t('mandiAlerts.condition')} value={condition} onChange={(e) => setCondition(e.target.value as any)} required>
@@ -108,7 +109,7 @@ export default function MandiAlertsPage() {
                 </span>
                 <div>
                   <p className="text-sm font-medium text-ink-900">
-                    {alert.crop?.name || 'Unknown Crop'} {alert.mandi ? `at ${alert.mandi.name}` : `(${t('mandiAlerts.anyMandi')})`}
+                    {formatCropName(alert.crop?.name || '', language) || t('mandi.unknownCrop')} {alert.mandi ? `${t('mandiAlerts.atMandi')} ${formatMandiMarket(alert.mandi.name, language)}` : `(${t('mandiAlerts.anyMandi')})`}
                   </p>
                   <p className="text-xs text-ink-400">
                     {t('mandiAlerts.alertSummary', {

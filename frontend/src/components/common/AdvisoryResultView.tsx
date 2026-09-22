@@ -1,6 +1,8 @@
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { AiMarkdown } from '@/components/common/AiMarkdown'
 import type { AdvisoryResult, Confidence } from '@/services/aiService'
+import { useLanguage } from '@/context/LanguageContext'
+import { formatConfidence, formatCropName } from '@/utils/localize'
 
 const CONFIDENCE_STYLE: Record<Confidence, string> = {
   high: 'bg-brand-50 text-brand-700',
@@ -8,7 +10,7 @@ const CONFIDENCE_STYLE: Record<Confidence, string> = {
   low: 'bg-danger-50 text-danger-600',
 }
 
-function Chips({ label, items }: { label: string; items?: string[] }) {
+function Chips({ label, items, language }: { label: string; items?: string[]; language: string }) {
   if (!items || items.length === 0) return null
   return (
     <div className="mt-4">
@@ -16,7 +18,7 @@ function Chips({ label, items }: { label: string; items?: string[] }) {
       <div className="flex flex-wrap gap-2">
         {items.map((item) => (
           <span key={item} className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-            {item}
+            {formatCropName(item, language)}
           </span>
         ))}
       </div>
@@ -40,6 +42,8 @@ function Field({ label, value }: { label: string; value?: string | null }) {
  * advisor page's bespoke "just generated" UI doesn't apply.
  */
 export function AdvisoryResultView({ result, imageUrl }: { result: AdvisoryResult; imageUrl?: string | null }) {
+  const { t, language } = useLanguage()
+
   return (
     <div className="text-left">
       {imageUrl && (
@@ -50,7 +54,7 @@ export function AdvisoryResultView({ result, imageUrl }: { result: AdvisoryResul
         <AiMarkdown content={result.summary} className="flex-1" />
         {result.confidence && (
           <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${CONFIDENCE_STYLE[result.confidence]}`}>
-            {result.confidence} confidence
+            {t('advisoryResult.confidence', { confidence: formatConfidence(result.confidence, language) })}
           </span>
         )}
       </div>
@@ -62,22 +66,26 @@ export function AdvisoryResultView({ result, imageUrl }: { result: AdvisoryResul
           }`}
         >
           {result.isHealthy ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
-          {result.isHealthy ? 'Crop appears healthy' : `Issue detected${result.diseaseName ? `: ${result.diseaseName}` : ''}`}
+          {result.isHealthy
+            ? t('advisoryResult.cropHealthy')
+            : result.diseaseName
+            ? t('advisoryResult.issueDetectedWith', { disease: formatCropName(result.diseaseName, language) })
+            : t('advisoryResult.issueDetected')}
         </div>
       )}
 
-      <Chips label="Recommended Crops" items={result.recommendedCrops} />
-      <Chips label="Suggested Next Crops" items={result.suggestedNextCrops} />
-      <Chips label="Suitable Crops" items={result.suitableCrops} />
+      <Chips label={t('advisoryResult.recommendedCrops')} items={result.recommendedCrops} language={language} />
+      <Chips label={t('advisoryResult.suggestedNextCrops')} items={result.suggestedNextCrops} language={language} />
+      <Chips label={t('advisoryResult.suitableCrops')} items={result.suitableCrops} language={language} />
 
-      <Field label="Fertilizer / NPK Guidance" value={result.npkGuidance} />
-      <Field label="Suggested Schedule" value={result.suggestedSchedule} />
-      <Field label="Rotation Plan" value={result.rotationPlan} />
-      <Chips label="Soil Amendments" items={result.amendments} />
+      <Field label={t('advisoryResult.npkGuidance')} value={result.npkGuidance} />
+      <Field label={t('advisoryResult.suggestedSchedule')} value={result.suggestedSchedule} />
+      <Field label={t('advisoryResult.rotationPlan')} value={result.rotationPlan} />
+      <Chips label={t('advisoryResult.amendments')} items={result.amendments} language={language} />
 
       {result.recommendations && result.recommendations.length > 0 && (
         <div className="mt-4">
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">Recommendations</p>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">{t('advisoryResult.recommendations')}</p>
           <div className="space-y-2">
             {result.recommendations.map((reason) => (
               <div key={reason} className="flex items-start gap-2 rounded-xl bg-brand-50 p-3 text-sm text-brand-800">
@@ -91,7 +99,7 @@ export function AdvisoryResultView({ result, imageUrl }: { result: AdvisoryResul
 
       {result.warnings && result.warnings.length > 0 && (
         <div className="mt-3">
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">Warnings</p>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">{t('advisoryResult.warnings')}</p>
           <div className="space-y-2">
             {result.warnings.map((w) => (
               <div key={w} className="flex items-start gap-2 rounded-xl bg-gold-50 p-3 text-sm text-gold-800">
