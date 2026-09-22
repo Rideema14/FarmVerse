@@ -677,7 +677,17 @@
     "loadDataFailed": "आपका मशीनरी डेटा लोड नहीं हो सका।",
     "updateListingFailed": "यह लिस्टिंग अपडेट नहीं हो सकी।",
     "deleteListingFailed": "यह लिस्टिंग हटाई नहीं जा सकी। अगर इसमें बुकिंग हैं तो इसे निष्क्रिय करें।",
-    "updateBookingFailed": "यह बुकिंग अपडेट नहीं हो सकी।"
+    "updateBookingFailed": "यह बुकिंग अपडेट नहीं हो सकी।",
+    "updateListing": "लिस्टिंग अपडेट हो रही है…",
+    "editListing": "मशीनरी लिस्टिंग संपादित करें",
+    "editListingSubtitle": "कीमत, मात्रा, विवरण, छूट और अन्य लिस्टिंग जानकारी बदलें।",
+    "saveChanges": "बदलाव सहेजें",
+    "bulkDiscounts": "थोक किराया छूट",
+    "bulkDiscountsSubtitle": "कई मशीनें किराए पर लेने पर किसानों को छूट दें।",
+    "addDiscount": "छूट जोड़ें",
+    "minimumUnits": "न्यूनतम इकाइयाँ",
+    "discountPercent": "छूट %",
+    "removeDiscount": "छूट हटाएँ"
   },
   "sellerLand": {
     "sellerHub": "विक्रेता हब",

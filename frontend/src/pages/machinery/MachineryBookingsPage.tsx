@@ -4,6 +4,7 @@ import { useMachinery } from '@/context/MachineryContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR, toIntlLocale } from '@/utils/format'
 import { cn } from '@/utils/cn'
+import { formatMachineryName } from '@/utils/localize'
 
 const STATUS_STYLE: Record<string, string> = {
   pending: 'bg-gold-50 text-gold-700',
@@ -59,7 +60,7 @@ export default function MachineryBookingsPage() {
               <Tractor className="h-4.5 w-4.5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-ink-900">{booking.machineryName}</p>
+              <p className="text-sm font-semibold text-ink-900">{formatMachineryName(booking.machineryName, language)}</p>
               <p className="mt-0.5 text-xs text-ink-500">
                 {new Date(booking.startDate).toLocaleDateString(localeCode)} – {new Date(booking.endDate).toLocaleDateString(localeCode)}
                 {booking.quantity > 1 ? ` · ${t('machineryBookings.machinesCount', { count: booking.quantity })}` : ''}

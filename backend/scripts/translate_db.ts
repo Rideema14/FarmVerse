@@ -23,10 +23,20 @@ async function main() {
   const districts = (await prisma.mandi.findMany({ select: { district: true }, distinct: ['district'] })).map(x => x.district);
   const mandis = (await prisma.mandi.findMany({ select: { name: true }, distinct: ['name'] })).map(x => x.name);
   const crops = (await prisma.crop.findMany({ select: { name: true }, distinct: ['name'] })).map(x => x.name);
-  
+
+  // Seller-created machinery was previously missing from the translation
+  // dictionary. Include listing names and descriptions so the same language
+  // switcher also translates machinery marketplace content.
+  const machinery = await prisma.machinery.findMany({
+    select: { name: true, description: true },
+  });
+  const machineryStrings = machinery.flatMap((x) => [x.name, x.description]).filter(Boolean);
+
   // Dedup all strings
-  const allStrings = Array.from(new Set([...states, ...districts, ...mandis, ...crops])).filter(Boolean);
-  
+  const allStrings = Array.from(
+    new Set([...states, ...districts, ...mandis, ...crops, ...machineryStrings]),
+  ).filter(Boolean);
+
   console.log(`Total unique strings to translate: ${allStrings.length}`);
 
   // Load existing to avoid re-translating if run multiple times
@@ -75,6 +85,32 @@ async function main() {
     }
   }
 
+  // Persist machinery translations on each listing as well. This makes
+  // existing listings behave exactly like newly-created listings; the frontend
+  // no longer depends only on a static dictionary generated at build time.
+  const machineryRows = await prisma.machinery.findMany({
+    select: { id: true, name: true, description: true, translations: true },
+  });
+
+  for (const machine of machineryRows) {
+    const nextTranslations: Record<string, { name?: string; description?: string }> = {
+      ...(machine.translations && typeof machine.translations === 'object' ? machine.translations : {}),
+    };
+
+    for (const lang of TARGET_LANGS) {
+      nextTranslations[lang] = {
+        name: existing[lang][machine.name] || machine.name,
+        description: machine.description ? (existing[lang][machine.description] || machine.description) : undefined,
+      };
+    }
+
+    await prisma.machinery.update({
+      where: { id: machine.id },
+      data: { translations: nextTranslations },
+    });
+  }
+
+  console.log(`Persisted translations for ${machineryRows.length} machinery listings.`);
   console.log('Done mapping.');
 }
 

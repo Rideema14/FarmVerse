@@ -5471,6 +5471,47 @@ export function formatWeatherCondition(condition: string, language: string): str
   return condition
 }
 
+export function formatDynamicText(value: string, language: string): string {
+  if (!value || language === 'en') return value || ''
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+
+  const table = (dynamicTranslations as Record<string, Record<string, string>>)[language]
+  if (!table) return value
+
+  // Exact lookup first: this covers strings translated from the database.
+  const direct = table[trimmed]
+  if (direct && direct.trim().toLocaleLowerCase() !== trimmed.toLocaleLowerCase()) {
+    return direct
+  }
+
+  // Then do a case-insensitive lookup so small casing differences in seller
+  // listings do not make the UI fall back to English.
+  const lower = trimmed.toLocaleLowerCase()
+  const match = Object.entries(table).find(
+    ([key, translated]) =>
+      key.trim().toLocaleLowerCase() === lower &&
+      translated.trim().toLocaleLowerCase() !== lower,
+  )
+  return match?.[1] ?? value
+}
+
+export type MachineryTranslations = Record<string, { name?: string; description?: string }>
+
+export function formatMachineryName(name: string, language: string, translations?: MachineryTranslations): string {
+  if (!name || language === 'en') return name || ''
+  const cached = translations?.[language]?.name
+  if (cached && cached.trim() && cached.trim().toLocaleLowerCase() !== name.trim().toLocaleLowerCase()) return cached
+  return formatDynamicText(name, language)
+}
+
+export function formatMachineryDescription(description: string, language: string, translations?: MachineryTranslations): string {
+  if (!description || language === 'en') return description || ''
+  const cached = translations?.[language]?.description
+  if (cached && cached.trim() && cached.trim().toLocaleLowerCase() !== description.trim().toLocaleLowerCase()) return cached
+  return formatDynamicText(description, language)
+}
+
 export function formatProductName(name: string, language: string): string {
   if (!name || language === 'en') return name || ''
   const trimmed = name.trim()

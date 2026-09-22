@@ -923,7 +923,17 @@
     "loadDataFailed": "ਤੁਹਾਡਾ ਮਸ਼ੀਨਰੀ ਡਾਟਾ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
     "updateListingFailed": "ਇਹ ਸੂਚੀ ਅੱਪਡੇਟ ਨਹੀਂ ਹੋ ਸਕੀ।",
     "deleteListingFailed": "ਇਹ ਸੂਚੀ ਹਟਾਈ ਨਹੀਂ ਜਾ ਸਕੀ। ਜੇ ਇਸ ਵਿੱਚ ਬੁਕਿੰਗਾਂ ਹਨ ਤਾਂ ਇਸਨੂੰ ਅਕਿਰਿਆਸ਼ੀਲ ਕਰੋ।",
-    "updateBookingFailed": "ਇਹ ਬੁਕਿੰਗ ਅੱਪਡੇਟ ਨਹੀਂ ਹੋ ਸਕੀ।"
+    "updateBookingFailed": "ਇਹ ਬੁਕਿੰਗ ਅੱਪਡੇਟ ਨਹੀਂ ਹੋ ਸਕੀ।",
+    "updateListing": "ਲਿਸਟਿੰਗ ਅੱਪਡੇਟ ਹੋ ਰਹੀ ਹੈ…",
+    "editListing": "ਮਸ਼ੀਨਰੀ ਲਿਸਟਿੰਗ ਸੋਧੋ",
+    "editListingSubtitle": "ਕੀਮਤ, ਮਾਤਰਾ, ਵੇਰਵੇ, ਛੂਟ ਅਤੇ ਹੋਰ ਲਿਸਟਿੰਗ ਜਾਣਕਾਰੀ ਬਦਲੋ।",
+    "saveChanges": "ਬਦਲਾਅ ਸੇਵ ਕਰੋ",
+    "bulkDiscounts": "ਵੱਡੀ ਮਾਤਰਾ ਕਿਰਾਏ ਦੀ ਛੂਟ",
+    "bulkDiscountsSubtitle": "ਕਈ ਮਸ਼ੀਨਾਂ ਕਿਰਾਏ ਤੇ ਲੈਣ ਵਾਲੇ ਕਿਸਾਨਾਂ ਨੂੰ ਛੂਟ ਦਿਓ।",
+    "addDiscount": "ਛੂਟ ਸ਼ਾਮਲ ਕਰੋ",
+    "minimumUnits": "ਘੱਟੋ-ਘੱਟ ਯੂਨਿਟ",
+    "discountPercent": "ਛੂਟ %",
+    "removeDiscount": "ਛੂਟ ਹਟਾਓ"
   },
   "sellerLand": {
     "sellerHub": "ਵਿਕਰੇਤਾ ਕੇਂਦਰ",

@@ -4,7 +4,7 @@ import { Loader2, MapPin, PackageX, Search, Star, Tractor } from 'lucide-react'
 import { machineryService, type MachineryCategory, type MachineryListing } from '@/services/machineryService'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
-import { formatCategoryName, formatProductName } from '@/utils/localize'
+import { formatCategoryName, formatMachineryName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -114,13 +114,13 @@ export default function MachineryMarketplacePage() {
             <Link key={m.id} to={`/machinery/${m.slug}`} className="rounded-2xl border border-ink-100 bg-surface p-4 hover:shadow-card">
               <div className="mb-3 flex h-32 items-center justify-center overflow-hidden rounded-xl bg-soil-50">
                 {m.images[0] ? (
-                  <img src={m.images[0]} alt={m.name} className="h-full w-full object-cover" />
+                  <img src={m.images[0]} alt={formatMachineryName(m.name, language, m.translations)} className="h-full w-full object-cover" />
                 ) : (
                   <Tractor className="h-10 w-10 text-soil-400" strokeWidth={1.4} aria-hidden="true" />
                 )}
               </div>
               <div className="flex items-start justify-between">
-                <h2 className="text-sm font-semibold text-ink-900">{formatProductName(m.name, language)}</h2>
+                <h2 className="text-sm font-semibold text-ink-900">{formatMachineryName(m.name, language, m.translations)}</h2>
                 <span
                   className={cn(
                     'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',

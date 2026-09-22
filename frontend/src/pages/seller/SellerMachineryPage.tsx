@@ -8,6 +8,7 @@ import {
   PlusSquare,
   Tractor,
   Trash2,
+  Pencil,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -20,7 +21,7 @@ import {
 } from '@/services/machineryService'
 import { getApiErrorMessage } from '@/services/api'
 import { formatINR, toIntlLocale } from '@/utils/format'
-import { formatProductName } from '@/utils/localize'
+import { formatMachineryName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 type Tab = 'listings' | 'bookings'
@@ -205,7 +206,7 @@ export default function SellerMachineryPage() {
                   )}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-1 text-sm font-medium text-ink-900">{formatProductName(listing.name, language)}</p>
+                  <p className="line-clamp-1 text-sm font-medium text-ink-900">{formatMachineryName(listing.name, language, listing.translations)}</p>
                   <p className="text-xs text-ink-400">
                     {formatINR(listing.pricePerDay)}{t('sellerMachinery.perDay')} · {listing.totalUnits > 1 ? t('sellerMachinery.machinesCountPlural', { count: listing.totalUnits }) : t('sellerMachinery.machinesCount', { count: listing.totalUnits })}
                   </p>
@@ -229,6 +230,13 @@ export default function SellerMachineryPage() {
                 >
                   {listing.available ? t('sellerMachinery.deactivate') : t('sellerMachinery.activate')}
                 </button>
+                <Link
+                  to={`/seller/edit-machinery/${listing.slug}`}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-brand-600 hover:bg-brand-50"
+                  aria-label={t('profile.edit')}
+                >
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                </Link>
                 <button
                   type="button"
                   onClick={() => handleDelete(listing)}

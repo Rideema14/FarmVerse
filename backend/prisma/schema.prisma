@@ -1241,6 +1241,9 @@ model Machinery {
   name        String
   slug        String  @unique
   description String?
+  // Cached seller-content translations keyed by language code (hi, mr, gu, pa).
+  // English remains the canonical source text.
+  translations Json?
   brand       String?
   model       String?
 

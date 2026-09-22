@@ -147,6 +147,9 @@ const AddLandListingPage = lazy(
 const AddMachineryListingPage = lazy(
   () => import("@/pages/seller/AddMachineryListingPage"),
 );
+const EditMachineryListingPage = lazy(
+  () => import("@/pages/seller/EditMachineryListingPage"),
+);
 const SellerMachineryPage = lazy(
   () => import("@/pages/seller/SellerMachineryPage"),
 );
@@ -487,6 +490,10 @@ const router = createBrowserRouter([
       {
         path: "/seller/add-machinery",
         element: <AddMachineryListingPage />,
+      },
+      {
+        path: "/seller/edit-machinery/:id",
+        element: <EditMachineryListingPage />,
       },
       {
         path: "/seller/machinery",

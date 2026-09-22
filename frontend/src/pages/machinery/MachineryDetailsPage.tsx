@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useMachinery } from '@/context/MachineryContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
+import { formatCategoryName, formatMachineryDescription, formatMachineryName } from '@/utils/localize'
 
 function addDaysToDateString(dateStr: string, days: number): string {
   const [year, month, day] = dateStr.split('-').map(Number)
@@ -31,7 +32,7 @@ export default function MachineryDetailsPage() {
   const { slug } = useParams<{ slug: string }>()
   const { user, isAuthenticated } = useAuth()
   const { refresh: refreshBookings } = useMachinery()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const navigate = useNavigate()
 
   const [machine, setMachine] = useState<MachineryListing | null>(null)
@@ -111,7 +112,7 @@ export default function MachineryDetailsPage() {
             name: user?.name ?? '',
             email: user?.email,
             phone: user?.phone,
-            description: `Rental — ${machine.name}`,
+            description: `Rental — ${formatMachineryName(machine.name, language, machine.translations)}`,
             verifyEndpoint: '/machinery/payments/verify',
           })
         } catch (payErr) {
@@ -136,7 +137,7 @@ export default function MachineryDetailsPage() {
         </span>
         <h1 className="text-xl">{t('machineryDetails.bookingConfirmed')}</h1>
         <p className="mt-1 text-sm text-ink-500">
-          {machine.name} — {formatINR(confirmed.total)}
+          {formatMachineryName(machine.name, language, machine.translations)} — {formatINR(confirmed.total)}
         </p>
         <p className="mt-0.5 text-xs text-ink-400">{t('machineryDetails.bookingNumber', { number: confirmed.bookingNumber })}</p>
         <div className="mt-6 flex gap-2">
@@ -160,17 +161,17 @@ export default function MachineryDetailsPage() {
 
       <div className="mb-4 flex h-48 items-center justify-center overflow-hidden rounded-2xl bg-soil-50">
         {machine.images[0] ? (
-          <img src={machine.images[0]} alt={machine.name} className="h-full w-full object-cover" />
+          <img src={machine.images[0]} alt={formatMachineryName(machine.name, language, machine.translations)} className="h-full w-full object-cover" />
         ) : (
           <Tractor className="h-14 w-14 text-soil-400" strokeWidth={1.3} aria-hidden="true" />
         )}
       </div>
 
-      <h1 className="text-xl">{machine.name}</h1>
+      <h1 className="text-xl">{formatMachineryName(machine.name, language, machine.translations)}</h1>
       <div className="mt-1.5 flex flex-wrap gap-3 text-sm text-ink-500">
         <span className="flex items-center gap-1">
           <MapPin className="h-4 w-4" aria-hidden="true" />
-          {machine.categoryName}
+          {formatCategoryName({ slug: (machine as unknown as Record<string, unknown>).categorySlug as string ?? '', name: machine.categoryName }, t)}
         </span>
         {machine.ownerName && (
           <span className="flex items-center gap-1">
@@ -186,7 +187,7 @@ export default function MachineryDetailsPage() {
       <p className="mt-3 text-2xl font-bold text-ink-900">
         {formatINR(machine.pricePerDay)} <span className="text-sm font-normal text-ink-400">{t('machineryDetails.perDay')}</span>
       </p>
-      {machine.description && <p className="mt-3 text-sm leading-relaxed text-ink-600">{machine.description}</p>}
+      {machine.description && <p className="mt-3 text-sm leading-relaxed text-ink-600">{formatMachineryDescription(machine.description, language, machine.translations)}</p>}
 
       {machine.available ? (
         <form onSubmit={handleSubmit} className="mt-6 rounded-2xl border border-ink-100 bg-surface p-4">

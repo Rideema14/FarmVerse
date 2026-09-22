@@ -31,6 +31,7 @@ interface BackendMachinerySummary {
   name: string
   slug: string
   description?: string | null
+  translations?: Record<string, { name?: string; description?: string }> | null
   brand?: string | null
   model?: string | null
   totalUnits: number
@@ -121,6 +122,7 @@ export interface MachineryListing {
   rating: number
   reviewCount: number
   description: string
+  translations?: Record<string, { name?: string; description?: string }>
   brand?: string
   model?: string
   categoryId: string
@@ -240,6 +242,7 @@ function mapListing(m: BackendMachinerySummary): MachineryListing {
     rating: m.avgRating,
     reviewCount: m.reviewCount,
     description: m.description ?? '',
+    translations: m.translations ?? undefined,
     brand: m.brand ?? undefined,
     model: m.model ?? undefined,
     categoryId: m.category?.id ?? m.categoryId,

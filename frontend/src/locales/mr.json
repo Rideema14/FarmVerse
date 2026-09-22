@@ -923,7 +923,17 @@
     "loadDataFailed": "तुमचा यंत्रसामग्री डेटा लोड करता आला नाही.",
     "updateListingFailed": "ही सूची अपडेट करता आली नाही.",
     "deleteListingFailed": "ही सूची हटवता आली नाही. जर त्यात बुकिंग्ज असतील तर ती निष्क्रिय करा.",
-    "updateBookingFailed": "ही बुकिंग अपडेट करता आली नाही."
+    "updateBookingFailed": "ही बुकिंग अपडेट करता आली नाही.",
+    "updateListing": "लिस्टिंग अपडेट होत आहे…",
+    "editListing": "मशीनरी लिस्टिंग संपादित करा",
+    "editListingSubtitle": "किंमत, प्रमाण, तपशील, सवलत आणि इतर लिस्टिंग माहिती बदला.",
+    "saveChanges": "बदल जतन करा",
+    "bulkDiscounts": "मोठ्या भाड्यासाठी सवलत",
+    "bulkDiscountsSubtitle": "अनेक मशीन भाड्याने घेतल्यास शेतकऱ्यांना सवलत द्या.",
+    "addDiscount": "सवलत जोडा",
+    "minimumUnits": "किमान युनिट्स",
+    "discountPercent": "सवलत %",
+    "removeDiscount": "सवलत काढा"
   },
   "sellerLand": {
     "sellerHub": "विक्रेता केंद्र",

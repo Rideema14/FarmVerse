@@ -7,6 +7,7 @@ import { parsePagination, buildPaginationMeta } from '../../common/utils/paginat
 import { checkAvailability } from './machineryAvailability.service';
 import type { User } from '@prisma/client';
 import type { MachineryCreateInput, MachineryUpdateInput, MachineryQuery, DiscountTierInput } from './machinery.validation';
+import { translateMachineryContent, mergeMachineryTranslations } from './machineryTranslation.service';
 
 const MACHINERY_INCLUDE_SUMMARY = {
   images: { orderBy: { sortOrder: 'asc' as const } },
@@ -164,9 +165,15 @@ export async function createMachinery(seller: User, data: MachineryCreateInput) 
   const clash = await prisma.machinery.findUnique({ where: { slug: baseSlug } });
   const slug = clash ? slugifyUnique(machineryData.name) : baseSlug;
 
+  // Translate seller-entered content once at publish time. The canonical
+  // English text stays in name/description; translations are cached on the
+  // listing so language switching works for every newly-created listing.
+  const translations = await translateMachineryContent(machineryData.name, machineryData.description);
+
   return prisma.machinery.create({
     data: {
       ...machineryData,
+      translations: translations ?? undefined,
       slug,
       sellerId: seller.id,
       discountTiers: discountTiers && discountTiers.length > 0 ? { create: discountTiers } : undefined,
@@ -185,6 +192,17 @@ export async function updateMachinery(id: string, user: User, data: MachineryUpd
     const baseSlug = slugify(machineryData.name);
     const clash = await prisma.machinery.findFirst({ where: { slug: baseSlug, NOT: { id } } });
     updateData.slug = clash ? slugifyUnique(machineryData.name) : baseSlug;
+  }
+
+  if (machineryData.name !== undefined || machineryData.description !== undefined) {
+    const refreshed = await translateMachineryContent(
+      machineryData.name ?? machinery.name,
+      machineryData.description ?? machinery.description ?? undefined,
+    );
+    updateData.translations = mergeMachineryTranslations(
+      machinery.translations,
+      refreshed,
+    );
   }
 
   return prisma.machinery.update({ where: { id }, data: updateData, include: MACHINERY_INCLUDE_SUMMARY });

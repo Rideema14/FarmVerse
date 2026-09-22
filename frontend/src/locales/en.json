@@ -685,7 +685,17 @@
     "loadDataFailed": "Could not load your machinery data.",
     "updateListingFailed": "Could not update this listing.",
     "deleteListingFailed": "Could not delete this listing. Deactivate it instead if it has bookings.",
-    "updateBookingFailed": "Could not update this booking."
+    "updateBookingFailed": "Could not update this booking.",
+    "updateListing": "Updating listing…",
+    "editListing": "Edit Machinery Listing",
+    "editListingSubtitle": "Change price, quantity, details, discounts and other listing information.",
+    "saveChanges": "Save Changes",
+    "bulkDiscounts": "Bulk rental discounts",
+    "bulkDiscountsSubtitle": "Offer a discount when farmers rent multiple machines.",
+    "addDiscount": "Add discount",
+    "minimumUnits": "Minimum units",
+    "discountPercent": "Discount %",
+    "removeDiscount": "Remove discount"
   },
   "sellerLand": {
     "sellerHub": "Seller Hub",

@@ -923,7 +923,17 @@
     "loadDataFailed": "તમારો મશીનરી ડેટા લોડ થઈ શક્યો નથી.",
     "updateListingFailed": "આ યાદી અપડેટ થઈ શકી નથી.",
     "deleteListingFailed": "આ યાદી કાઢી શકાઈ નથી. જો તેમાં બુકિંગ હોય તો તેને નિષ્ક્રિય કરો.",
-    "updateBookingFailed": "આ બુકિંગ અપડેટ થઈ શકી નથી."
+    "updateBookingFailed": "આ બુકિંગ અપડેટ થઈ શકી નથી.",
+    "updateListing": "લિસ્ટિંગ અપડેટ થઈ રહ્યું છે…",
+    "editListing": "મશીનરી લિસ્ટિંગ સંપાદિત કરો",
+    "editListingSubtitle": "કિંમત, જથ્થો, વિગતો, ડિસ્કાઉન્ટ અને અન્ય લિસ્ટિંગ માહિતી બદલો.",
+    "saveChanges": "ફેરફારો સાચવો",
+    "bulkDiscounts": "થોક ભાડા ડિસ્કાઉન્ટ",
+    "bulkDiscountsSubtitle": "ઘણી મશીનો ભાડે લેતી વખતે ખેડૂતોને ડિસ્કાઉન્ટ આપો.",
+    "addDiscount": "ડિસ્કાઉન્ટ ઉમેરો",
+    "minimumUnits": "ન્યૂનતમ યુનિટ્સ",
+    "discountPercent": "ડિસ્કાઉન્ટ %",
+    "removeDiscount": "ડિસ્કાઉન્ટ દૂર કરો"
   },
   "sellerLand": {
     "sellerHub": "વિક્રેતા કેન્દ્ર",
