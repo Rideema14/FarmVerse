@@ -5,6 +5,7 @@ Indian farmers. **This is the frontend only** — mock data throughout,
 built so a backend can be dropped in later without UI rewrites (see
 `docs/API_INTEGRATION.md`).
 
+
 ## Stack
 
 React 19 · Vite · TypeScript · Tailwind CSS v4 · React Router 7 ·

@@ -22,6 +22,7 @@ import {
 import type { PaginationMeta } from '@/services/productService'
 import { getApiErrorMessage } from '@/services/api'
 import { useAuth } from './AuthContext'
+import { useLanguage } from './LanguageContext'
 
 interface LandContextValue {
   listings: BackendLandItem[]
@@ -57,6 +58,7 @@ const LandContext = createContext<LandContextValue | null>(null)
 
 export function LandProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   
   const [listings, setListings] = useState<BackendLandItem[]>([])
   const [sellerListings, setSellerListings] = useState<BackendLandItem[]>([])
@@ -79,7 +81,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
       setListings(res.items)
       setMeta(res.meta)
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Failed to fetch land listings')
+      const msg = getApiErrorMessage(err, t('landErrors.fetchListingsFailed'))
       setError(msg)
     } finally {
       setIsLoading(false)
@@ -101,7 +103,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
         setSelectedListing(local)
         return local
       }
-      const msg = getApiErrorMessage(err, 'Land listing not found')
+      const msg = getApiErrorMessage(err, t('landErrors.listingNotFound'))
       setError(msg)
       return null
     } finally {
@@ -139,7 +141,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
         setVisitRequests((prev) => [newVisit, ...prev.filter((v) => v.landId !== landId)])
         return newVisit
       } catch (err) {
-        const msg = getApiErrorMessage(err, 'Failed to send visit request')
+        const msg = getApiErrorMessage(err, t('landErrors.sendVisitFailed'))
         throw new Error(msg)
       } finally {
         setIsActionLoading(false)
@@ -155,7 +157,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
       const updated = await apiUpdateVisitStatus(visitId, { status: 'CANCELLED' })
       setVisitRequests((prev) => prev.map((v) => (v.id === visitId ? updated : v)))
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Failed to cancel visit request')
+      const msg = getApiErrorMessage(err, t('landErrors.cancelVisitFailed'))
       throw new Error(msg)
     } finally {
       setIsActionLoading(false)
@@ -201,7 +203,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
         setListings((prev) => [created!, ...prev])
         return created!
       } catch (err) {
-        const msg = getApiErrorMessage(err, 'Failed to create land listing')
+        const msg = getApiErrorMessage(err, t('landErrors.createFailed'))
         throw new Error(msg)
       } finally {
         setIsActionLoading(false)
@@ -222,7 +224,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
       }
       return updated
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Failed to update land listing')
+      const msg = getApiErrorMessage(err, t('landErrors.updateFailed'))
       throw new Error(msg)
     } finally {
       setIsActionLoading(false)
@@ -237,7 +239,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
       setSellerListings((prev) => prev.filter((item) => item.id !== id))
       setListings((prev) => prev.filter((item) => item.id !== id))
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Failed to delete land listing')
+      const msg = getApiErrorMessage(err, t('landErrors.deleteFailed'))
       throw new Error(msg)
     } finally {
       setIsActionLoading(false)
@@ -256,7 +258,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
         setSelectedListing((prev) => (prev ? { ...prev, images: [...(prev.images || []), ...newImages] } : prev))
       }
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Failed to upload images')
+      const msg = getApiErrorMessage(err, t('landErrors.uploadImagesFailed'))
       throw new Error(msg)
     } finally {
       setIsActionLoading(false)
@@ -275,7 +277,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
         setSelectedListing((prev) => (prev ? { ...prev, images: (prev.images || []).filter((img) => img.id !== imageId) } : prev))
       }
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Failed to remove image')
+      const msg = getApiErrorMessage(err, t('landErrors.removeImageFailed'))
       throw new Error(msg)
     } finally {
       setIsActionLoading(false)
@@ -329,7 +331,7 @@ export function LandProvider({ children }: { children: ReactNode }) {
         setVisitRequests((prev) => prev.map((v) => (v.id === visitId ? updated : v)))
         return updated
       } catch (err) {
-        const msg = getApiErrorMessage(err, 'Failed to update visit status')
+        const msg = getApiErrorMessage(err, t('landErrors.updateVisitStatusFailed'))
         throw new Error(msg)
       } finally {
         setIsActionLoading(false)

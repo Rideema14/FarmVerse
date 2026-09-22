@@ -41,7 +41,7 @@ export default function AddMachineryListingPage() {
         if (cats.length > 0) setCategoryId((prev) => prev || cats[0].id)
       })
       .catch(() => {
-        if (!cancelled) setError('Could not load machinery categories.')
+        if (!cancelled) setError(t('addMachinery.categoriesLoadFailed'))
       })
       .finally(() => {
         if (!cancelled) setIsLoadingCategories(false)
@@ -84,7 +84,7 @@ export default function AddMachineryListingPage() {
       }
       setPublished(true)
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not publish this listing. Please try again.'))
+      setError(getApiErrorMessage(err, t('addMachinery.publishFailed')))
     } finally {
       setIsPublishing(false)
     }
@@ -97,9 +97,9 @@ export default function AddMachineryListingPage() {
           <Tractor className="h-8 w-8" aria-hidden="true" />
         </span>
         <h1 className="text-xl font-bold text-ink-900">{t('addMachinery.publish')}</h1>
-        <p className="mt-1 text-sm text-ink-500">{name} is now available for rent on FarmVerse.</p>
+        <p className="mt-1 text-sm text-ink-500">{t('addMachinery.publishSuccessMsg', { name })}</p>
         <Button className="mt-6" onClick={() => navigate('/machinery')}>
-          View Machinery Rental
+          {t('addMachinery.viewMachineryRental')}
         </Button>
       </div>
     )
@@ -110,7 +110,7 @@ export default function AddMachineryListingPage() {
       <LoadingOverlay
         isLoading={isPublishing}
         title={t('addMachinery.publishing')}
-        message="Uploading equipment photo and creating listing for rent."
+        message={t('addMachinery.uploadingMessage')}
       />
       <Link to="/seller" className="mb-4 flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
@@ -121,7 +121,7 @@ export default function AddMachineryListingPage() {
 
       <form onSubmit={handleSubmit}>
         {isLoadingCategories ? (
-          <p className="mb-4 text-sm text-ink-400">Loading categories…</p>
+          <p className="mb-4 text-sm text-ink-400">{t('addMachinery.loadingCategories')}</p>
         ) : (
           <SelectField id="category" label={t('addMachinery.category')} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
             {categories.map((c) => (
@@ -157,7 +157,7 @@ export default function AddMachineryListingPage() {
 
         <label className="mb-4 flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-ink-200 py-8 text-ink-500 hover:border-brand-300">
           {imagePreviewUrl ? (
-            <img src={imagePreviewUrl} alt="Machinery preview" className="h-20 w-20 rounded-xl object-cover" />
+            <img src={imagePreviewUrl} alt={t('addMachinery.machineryPreviewAlt')} className="h-20 w-20 rounded-xl object-cover" />
           ) : (
             <ImagePlus className="h-8 w-8" aria-hidden="true" />
           )}

@@ -256,7 +256,7 @@ export default function LandMarketplacePage() {
                   <input
                     type="number"
                     min="0"
-                    placeholder="Any"
+                    placeholder={t('land.anyPlaceholder')}
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     className="h-10 w-full rounded-lg border border-white/10 bg-white pl-7 pr-3 text-[13px] font-bold text-[#1E281A] outline-none placeholder:font-normal placeholder:text-[#9EA298] focus:border-[#D5B957]"
@@ -281,7 +281,7 @@ export default function LandMarketplacePage() {
                 <input
                   type="number"
                   min="0"
-                  placeholder="Any"
+                  placeholder={t('land.anyPlaceholder')}
                   value={maxArea}
                   onChange={(e) => setMaxArea(e.target.value)}
                   className="h-10 w-full rounded-lg border border-white/10 bg-white px-3 text-[13px] font-bold text-[#1E281A] outline-none placeholder:font-normal placeholder:text-[#9EA298] focus:border-[#D5B957]"

@@ -386,7 +386,8 @@
     "view": "देखें",
     "sale": "बिक्री",
     "lease": "पट्टा",
-    "perYear": "/वर्ष"
+    "perYear": "/वर्ष",
+    "anyPlaceholder": "कोई भी"
   },
   "machinery": {
     "title": "मशीनरी किराया",
@@ -672,7 +673,11 @@
     "confirm": "पुष्टि करें",
     "reject": "अस्वीकार करें",
     "markActive": "सक्रिय चिह्नित करें",
-    "markCompleted": "पूर्ण चिह्नित करें"
+    "markCompleted": "पूर्ण चिह्नित करें",
+    "loadDataFailed": "आपका मशीनरी डेटा लोड नहीं हो सका।",
+    "updateListingFailed": "यह लिस्टिंग अपडेट नहीं हो सकी।",
+    "deleteListingFailed": "यह लिस्टिंग हटाई नहीं जा सकी। अगर इसमें बुकिंग हैं तो इसे निष्क्रिय करें।",
+    "updateBookingFailed": "यह बुकिंग अपडेट नहीं हो सकी।"
   },
   "sellerLand": {
     "sellerHub": "विक्रेता हब",
@@ -716,7 +721,11 @@
     "statusAccepted": "स्वीकृत",
     "statusRejected": "अस्वीकृत",
     "statusCompleted": "पूर्ण",
-    "statusCancelled": "रद्द"
+    "statusCancelled": "रद्द",
+    "landPlotFallback": "भूमि प्लॉट",
+    "updateListingStatusFailed": "लिस्टिंग की स्थिति अपडेट नहीं हो सकी",
+    "deleteListingFailed": "लिस्टिंग हटाई नहीं जा सकी",
+    "updateVisitRequestStatusFailed": "दौरे के अनुरोध की स्थिति अपडेट नहीं हो सकी"
   },
   "addMachinery": {
     "title": "किराए के लिए मशीनरी सूचीबद्ध करें",
@@ -736,7 +745,14 @@
     "addPhoto": "फोटो अपलोड करने के लिए टैप करें",
     "photoAdded": "फोटो जोड़ी गई — बदलने के लिए टैप करें",
     "publish": "मशीन प्रकाशित करें",
-    "publishing": "प्रकाशित हो रहा है..."
+    "publishing": "प्रकाशित हो रहा है...",
+    "loadingCategories": "श्रेणियां लोड हो रही हैं…",
+    "categoriesLoadFailed": "मशीनरी श्रेणियां लोड नहीं हो सकीं।",
+    "publishFailed": "यह लिस्टिंग प्रकाशित नहीं हो सकी। कृपया फिर कोशिश करें।",
+    "publishSuccessMsg": "{name} अब FarmVerse पर किराए के लिए उपलब्ध है।",
+    "viewMachineryRental": "मशीनरी किराया देखें",
+    "uploadingMessage": "उपकरण की फोटो अपलोड हो रही है और किराए के लिए लिस्टिंग बनाई जा रही है।",
+    "machineryPreviewAlt": "मशीनरी पूर्वावलोकन"
   },
   "addLand": {
     "title": "कृषि भूमि लिस्टिंग पोस्ट करें",
@@ -758,7 +774,16 @@
     "uploadPhotos": "भूमि फोटो अपलोड करें",
     "tapToBrowse": "अपने डिवाइस से चित्र चुनने के लिए टैप करें",
     "publish": "भूमि लिस्टिंग पोस्ट करें",
-    "publishing": "प्रकाशित हो रहा है..."
+    "publishing": "प्रकाशित हो रहा है...",
+    "requiredFieldsError": "कृपया सभी आवश्यक फ़ील्ड भरें।",
+    "publishFailedGeneric": "भूमि लिस्टिंग प्रकाशित नहीं हो सकी",
+    "uploadingMessage": "प्लॉट की फोटो अपलोड हो रही हैं और FarmVerse मार्केटप्लेस पर प्रकाशित की जा रही हैं।",
+    "areaPlaceholder": "उदा. 5.5",
+    "locationPlaceholder": "उदा. बहोरीबंद, कटनी हाईवे",
+    "cityPlaceholder": "उदा. कटनी",
+    "statePlaceholder": "उदा. मध्य प्रदेश",
+    "pricePlaceholder": "उदा. 1850000",
+    "waterSourcePlaceholder": "उदा. बोरवेल + नहर"
   },
   "landing": {
     "navHome": "होम",
@@ -881,7 +906,8 @@
     "statusAccepted": "दौरा विक्रेता द्वारा स्वीकृत",
     "statusRejected": "दौरा अनुरोध अस्वीकृत",
     "statusCompleted": "दौरा पूर्ण हुआ",
-    "statusCancelled": "दौरा अनुरोध रद्द"
+    "statusCancelled": "दौरा अनुरोध रद्द",
+    "removeImageTitle": "छवि हटाएं"
   },
   "landVisit": {
     "backTo": "{title} पर वापस जाएं",
@@ -921,7 +947,9 @@
     "statusApproved": "स्वीकृत",
     "statusRejected": "अस्वीकृत",
     "statusCompleted": "पूर्ण",
-    "statusCancelled": "रद्द"
+    "statusCancelled": "रद्द",
+    "fallbackTitle": "कृषि भूमि प्लॉट",
+    "fallbackLocation": "प्लॉट में स्थान विवरण"
   },
   "machineryDetails": {
     "backToMachinery": "मशीनरी रेंटल पर वापस जाएं",
@@ -939,13 +967,24 @@
     "bookNow": "अभी बुक करें",
     "loginToBook": "बुक करने के लिए लॉगिन करें",
     "notAvailable": "यह मशीन अभी किराए पर उपलब्ध नहीं है।",
-    "reviewsCount": "({count} समीक्षाएं)"
+    "reviewsCount": "({count} समीक्षाएं)",
+    "errorPastDate": "वह प्रारंभ तिथि पहले ही बीत चुकी है। कृपया आज या बाद की तारीख चुनें।",
+    "errorDateOrder": "कृपया अपनी तारीखें जांचें — प्रारंभ तिथि अंतिम तिथि से पहले होनी चाहिए।",
+    "errorNotEnoughUnits": "उन तारीखों के लिए पर्याप्त मशीनें उपलब्ध नहीं हैं। अलग तारीखें या कम संख्या आज़माएं।",
+    "errorValidation": "फॉर्म में कुछ सही नहीं लग रहा है। कृपया अपनी तारीखें जांचें और फिर कोशिश करें।",
+    "paymentIncomplete": "बुकिंग बन गई है लेकिन भुगतान पूरा नहीं हुआ। आप 'मेरी बुकिंग' से भुगतान कर सकते हैं।",
+    "bookingFailed": "बुकिंग पूरी नहीं हो सकी। कृपया फिर कोशिश करें।"
   },
   "machineryBookings": {
     "title": "मेरे किराए",
     "emptyTitle": "आपने अभी तक कुछ भी बुक नहीं किया है",
     "findMachines": "किराए के लिए मशीनें खोजें",
-    "machinesCount": "{count} मशीनें"
+    "machinesCount": "{count} मशीनें",
+    "statusPending": "लंबित",
+    "statusConfirmed": "पुष्टि हो गई",
+    "statusActive": "सक्रिय",
+    "statusCompleted": "पूर्ण",
+    "statusCancelled": "रद्द"
   },
   "mandiAlerts": {
     "title": "मूल्य अलर्ट",
@@ -1173,5 +1212,17 @@
     "cropHealthy": "फसल स्वस्थ दिख रही है",
     "issueDetected": "समस्या पहचानी गई",
     "issueDetectedWith": "समस्या पहचानी गई: {disease}"
+  },
+  "landErrors": {
+    "fetchListingsFailed": "भूमि लिस्टिंग प्राप्त नहीं हो सकी",
+    "listingNotFound": "भूमि लिस्टिंग नहीं मिली",
+    "sendVisitFailed": "दौरे का अनुरोध नहीं भेजा जा सका",
+    "cancelVisitFailed": "दौरे का अनुरोध रद्द नहीं हो सका",
+    "createFailed": "भूमि लिस्टिंग नहीं बन सकी",
+    "updateFailed": "भूमि लिस्टिंग अपडेट नहीं हो सकी",
+    "deleteFailed": "भूमि लिस्टिंग हटाई नहीं जा सकी",
+    "uploadImagesFailed": "छवियां अपलोड नहीं हो सकीं",
+    "removeImageFailed": "छवि हटाई नहीं जा सकी",
+    "updateVisitStatusFailed": "दौरे की स्थिति अपडेट नहीं हो सकी"
   }
 }

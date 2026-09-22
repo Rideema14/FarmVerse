@@ -40,3 +40,16 @@ export function formatPercentChange(value: number): string {
   const sign = value > 0 ? '+' : ''
   return `${sign}${value.toFixed(1)}%`
 }
+
+/** Maps an app language code (en/hi/mr/pa/gu) to the matching Intl/BCP-47
+ *  locale so dates render with the right script and digit conventions. */
+export function toIntlLocale(language: string): string {
+  const map: Record<string, string> = {
+    en: 'en-IN',
+    hi: 'hi-IN',
+    mr: 'mr-IN',
+    pa: 'pa-IN',
+    gu: 'gu-IN',
+  }
+  return map[language] ?? 'en-IN'
+}

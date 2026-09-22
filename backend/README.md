@@ -6,6 +6,7 @@ refresh tokens), **email OTP** verification, **Google Sign-In**, **Razorpay**
 payments, **Cloudinary** image storage, and **Socket.IO** for live order-status
 updates.
 
+
 ## What's implemented
 
 | Module | Covers |

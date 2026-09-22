@@ -445,7 +445,8 @@
     "view": "જુઓ",
     "sale": "વેચાણ",
     "lease": "ભાડે",
-    "perYear": "/વર્ષ"
+    "perYear": "/વર્ષ",
+    "anyPlaceholder": "કોઈપણ"
   },
   "machinery": {
     "directVerifiedRentals": "ચકાસાયેલ ભાડા મશીનરી",
@@ -590,7 +591,8 @@
     "statusAccepted": "વિક્રેતા દ્વારા મંજૂર",
     "statusRejected": "મુલાકાત વિનંતી નકારાઈ",
     "statusCompleted": "મુલાકાત પૂર્ણ",
-    "statusCancelled": "મુલાકાત વિનંતી રદ"
+    "statusCancelled": "મુલાકાત વિનંતી રદ",
+    "removeImageTitle": "છબી દૂર કરો"
   },
   "landVisit": {
     "backTo": "{title} પર પાછા જાઓ",
@@ -630,7 +632,9 @@
     "statusApproved": "મંજૂર",
     "statusRejected": "નકારાયેલ",
     "statusCompleted": "પૂર્ણ",
-    "statusCancelled": "રદ થયેલ"
+    "statusCancelled": "રદ થયેલ",
+    "fallbackTitle": "ખેતીની જમીનનો પ્લોટ",
+    "fallbackLocation": "પ્લોટમાં સ્થાનની વિગતો"
   },
   "machineryDetails": {
     "backToMachinery": "મશીનરી પર પાછા જાઓ",
@@ -648,13 +652,24 @@
     "bookNow": "હમણાં બુક કરો",
     "loginToBook": "બુક કરવા માટે લૉગિન કરો",
     "notAvailable": "આ મશીન હાલમાં ભાડે ઉપલબ્ધ નથી.",
-    "reviewsCount": "({count} સમીક્ષાઓ)"
+    "reviewsCount": "({count} સમીક્ષાઓ)",
+    "errorPastDate": "તે શરૂઆતની તારીખ પહેલેથી જ પસાર થઈ ગઈ છે. કૃપા કરીને આજની અથવા પછીની તારીખ પસંદ કરો.",
+    "errorDateOrder": "કૃપા કરીને તમારી તારીખો તપાસો — શરૂઆતની તારીખ અંતિમ તારીખ પહેલાં હોવી જોઈએ.",
+    "errorNotEnoughUnits": "તે તારીખો માટે પૂરતી મશીનો ઉપલબ્ધ નથી. અલગ તારીખો અથવા ઓછી સંખ્યા અજમાવો.",
+    "errorValidation": "ફોર્મમાં કંઈક બરાબર લાગતું નથી. કૃપા કરીને તમારી તારીખો તપાસો અને ફરી પ્રયાસ કરો.",
+    "paymentIncomplete": "બુકિંગ બની ગયું છે પણ ચુકવણી પૂર્ણ થઈ નથી. તમે 'મારી બુકિંગ' માંથી ચુકવણી કરી શકો છો.",
+    "bookingFailed": "બુકિંગ પૂર્ણ થઈ શકી નથી. કૃપા કરીને ફરી પ્રયાસ કરો."
   },
   "machineryBookings": {
     "title": "મારા ભાડા",
     "emptyTitle": "તમે હજુ સુધી કંઈ બુક કર્યું નથી",
     "findMachines": "ભાડે મશીન શોધો",
-    "machinesCount": "{count} મશીનો"
+    "machinesCount": "{count} મશીનો",
+    "statusPending": "બાકી",
+    "statusConfirmed": "પુષ્ટિ થયેલ",
+    "statusActive": "સક્રિય",
+    "statusCompleted": "પૂર્ણ",
+    "statusCancelled": "રદ"
   },
   "mandiAlerts": {
     "title": "ભાવ એલર્ટ",
@@ -904,7 +919,11 @@
     "confirm": "મંજૂર કરો",
     "reject": "નકારો",
     "markActive": "સક્રિય કરો",
-    "markCompleted": "પૂર્ણ"
+    "markCompleted": "પૂર્ણ",
+    "loadDataFailed": "તમારો મશીનરી ડેટા લોડ થઈ શક્યો નથી.",
+    "updateListingFailed": "આ યાદી અપડેટ થઈ શકી નથી.",
+    "deleteListingFailed": "આ યાદી કાઢી શકાઈ નથી. જો તેમાં બુકિંગ હોય તો તેને નિષ્ક્રિય કરો.",
+    "updateBookingFailed": "આ બુકિંગ અપડેટ થઈ શકી નથી."
   },
   "sellerLand": {
     "sellerHub": "વિક્રેતા કેન્દ્ર",
@@ -948,7 +967,11 @@
     "statusAccepted": "મંજૂર",
     "statusRejected": "નકારાયેલ",
     "statusCompleted": "પૂર્ણ",
-    "statusCancelled": "રદ થયેલ"
+    "statusCancelled": "રદ થયેલ",
+    "landPlotFallback": "જમીન પ્લોટ",
+    "updateListingStatusFailed": "યાદીની સ્થિતિ અપડેટ થઈ શકી નથી",
+    "deleteListingFailed": "યાદી કાઢી શકાઈ નથી",
+    "updateVisitRequestStatusFailed": "મુલાકાત વિનંતીની સ્થિતિ અપડેટ થઈ શકી નથી"
   },
   "addMachinery": {
     "title": "મશીનરી ઉમેરો",
@@ -968,7 +991,14 @@
     "addPhoto": "ફોટો ઉમેરો",
     "photoAdded": "ફોટો ઉમેરાયો",
     "publish": "પ્રકાશિત કરો",
-    "publishing": "પ્રકાશિત થઈ રહ્યું છે..."
+    "publishing": "પ્રકાશિત થઈ રહ્યું છે...",
+    "loadingCategories": "શ્રેણીઓ લોડ થઈ રહી છે…",
+    "categoriesLoadFailed": "મશીનરી શ્રેણીઓ લોડ થઈ શકી નથી.",
+    "publishFailed": "આ યાદી પ્રકાશિત થઈ શકી નથી. કૃપા કરીને ફરી પ્રયાસ કરો.",
+    "publishSuccessMsg": "{name} હવે FarmVerse પર ભાડે ઉપલબ્ધ છે.",
+    "viewMachineryRental": "મશીનરી ભાડું જુઓ",
+    "uploadingMessage": "સાધનનો ફોટો અપલોડ થઈ રહ્યો છે અને ભાડા માટે યાદી બનાવવામાં આવી રહી છે.",
+    "machineryPreviewAlt": "મશીનરી પૂર્વાવલોકન"
   },
   "addLand": {
     "title": "જમીન ઉમેરો",
@@ -990,7 +1020,16 @@
     "uploadPhotos": "ફોટા અપલોડ કરો",
     "tapToBrowse": "ફોટો પસંદ કરવા ટેપ કરો",
     "publish": "જમીન પ્રકાશિત કરો",
-    "publishing": "પ્રકાશિત થઈ રહ્યું છે..."
+    "publishing": "પ્રકાશિત થઈ રહ્યું છે...",
+    "requiredFieldsError": "કૃપા કરીને બધા જરૂરી ફીલ્ડ ભરો.",
+    "publishFailedGeneric": "જમીનની યાદી પ્રકાશિત થઈ શકી નથી",
+    "uploadingMessage": "પ્લોટના ફોટા અપલોડ થઈ રહ્યા છે અને FarmVerse માર્કેટપ્લેસ પર પ્રકાશિત થઈ રહ્યા છે.",
+    "areaPlaceholder": "દા.ત. 5.5",
+    "locationPlaceholder": "દા.ત. બહોરીબંદ, કટની હાઈવે",
+    "cityPlaceholder": "દા.ત. કટની",
+    "statePlaceholder": "દા.ત. મધ્ય પ્રદેશ",
+    "pricePlaceholder": "દા.ત. 1850000",
+    "waterSourcePlaceholder": "દા.ત. બોરવેલ + કેનાલ"
   },
   "landing": {
     "navHome": "મુખ્ય પૃષ્ઠ",
@@ -1177,5 +1216,17 @@
     "cropHealthy": "પાક સ્વસ્થ દેખાય છે",
     "issueDetected": "સમસ્યા જણાઈ",
     "issueDetectedWith": "સમસ્યા જણાઈ: {disease}"
+  },
+  "landErrors": {
+    "fetchListingsFailed": "જમીનની યાદી મેળવી શકાઈ નથી",
+    "listingNotFound": "જમીનની યાદી મળી નથી",
+    "sendVisitFailed": "મુલાકાત વિનંતી મોકલી શકાઈ નથી",
+    "cancelVisitFailed": "મુલાકાત વિનંતી રદ કરી શકાઈ નથી",
+    "createFailed": "જમીનની યાદી બનાવી શકાઈ નથી",
+    "updateFailed": "જમીનની યાદી અપડેટ થઈ શકી નથી",
+    "deleteFailed": "જમીનની યાદી કાઢી શકાઈ નથી",
+    "uploadImagesFailed": "છબીઓ અપલોડ થઈ શકી નથી",
+    "removeImageFailed": "છબી કાઢી શકાઈ નથી",
+    "updateVisitStatusFailed": "મુલાકાતની સ્થિતિ અપડેટ થઈ શકી નથી"
   }
 }

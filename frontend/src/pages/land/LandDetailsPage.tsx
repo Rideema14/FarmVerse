@@ -22,7 +22,7 @@ import { Button } from '@/components/common/Button'
 import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
-import { formatINR } from '@/utils/format'
+import { formatINR, toIntlLocale } from '@/utils/format'
 import { formatLocationName, formatSoilName, formatWaterSource } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
@@ -31,6 +31,7 @@ export default function LandDetailsPage() {
   const { getListingBySlug, selectedListing, getVisitForLand, cancelVisitRequest, uploadImages, removeImage, deleteLand, isActionLoading } = useLand()
   const { user } = useAuth()
   const { t, language } = useLanguage()
+  const localeCode = toIntlLocale(language)
   const navigate = useNavigate()
 
   const [activeImageIndex, setActiveImageIndex] = useState(0)
@@ -95,7 +96,7 @@ export default function LandDetailsPage() {
     try {
       await cancelVisitRequest(existingVisit.id)
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to cancel visit request')
+      setActionError(err instanceof Error ? err.message : t('landErrors.cancelVisitFailed'))
     } finally {
       setCancelling(false)
     }
@@ -108,7 +109,7 @@ export default function LandDetailsPage() {
       await deleteLand(land.id)
       navigate('/land')
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to delete listing')
+      setActionError(err instanceof Error ? err.message : t('sellerLand.deleteListingFailed'))
     }
   }
 
@@ -119,7 +120,7 @@ export default function LandDetailsPage() {
     try {
       await uploadImages(land.id, files)
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to upload images')
+      setActionError(err instanceof Error ? err.message : t('landErrors.uploadImagesFailed'))
     }
   }
 
@@ -129,7 +130,7 @@ export default function LandDetailsPage() {
       await removeImage(land.id, imageId)
       setActiveImageIndex(0)
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to remove image')
+      setActionError(err instanceof Error ? err.message : t('landErrors.removeImageFailed'))
     }
   }
 
@@ -191,7 +192,7 @@ export default function LandDetailsPage() {
                     type="button"
                     onClick={() => handleRemoveImage(img.id)}
                     className="absolute -top-1 -right-1 hidden h-5 w-5 items-center justify-center rounded-full bg-danger-600 text-white shadow group-hover:flex"
-                    title="Remove Image"
+                    title={t('landDetails.removeImageTitle')}
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -294,7 +295,7 @@ export default function LandDetailsPage() {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2 font-bold text-sm">
                 <CalendarClock className="h-5 w-5" />
-                <span>{t('landDetails.visitRequestedFor', { date: new Date(existingVisit.visitDate).toLocaleDateString(), time: existingVisit.visitTime })}</span>
+                <span>{t('landDetails.visitRequestedFor', { date: new Date(existingVisit.visitDate).toLocaleDateString(localeCode), time: existingVisit.visitTime })}</span>
               </div>
               <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase">
                 {existingVisit.status}

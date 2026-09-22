@@ -65,6 +65,8 @@ export default defineConfig({
         // cause of the "old bundle references a chunk that no longer
         // exists" error, on top of the browser-cache case lazyWithRetry
         // already handles.
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+
         cleanupOutdatedCaches: true,
       },
     }),

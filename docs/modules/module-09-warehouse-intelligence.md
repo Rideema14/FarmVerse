@@ -1,0 +1,2100 @@
+# Module 9 — Warehouse Intelligence
+
+## Part 1 status: Foundation & Data Model — Done
+
+This part implements only the domain model and repository (data-access)
+layer for warehouse intelligence. It does **not** implement APIs,
+controllers, routes, capacity allocation, cost calculation, spoilage
+prediction, or any integration with Module 8 (Sell vs Store) — see
+"Explicitly out of scope" below.
+
+## Prisma models added
+
+| Model | Purpose | publicId? |
+| --- | --- | --- |
+| `Warehouse` | A physical storage facility, owned by exactly one `User` or `Fpo` | yes |
+| `WarehouseStorageUnit` | A chamber/section within a warehouse, with its own capacity and climate profile | yes |
+| `WarehouseCropCapability` | Configured "can crop X be stored here" record — never AI-inferred | no (plain config/join row, like `FarmerCrop`) |
+| `StorageReservation` | Foundation record that capacity is intended to be reserved — no capacity math yet | yes |
+| `StorageRate` | Configured pricing row — no cost calculation yet | yes |
+
+## Enums added
+
+- `WarehouseStatus` (`ACTIVE`, `INACTIVE`, `SUSPENDED`)
+- `WarehouseOwnerType` (`USER`, `FPO`) — mirrors `LotOwnerType`'s rationale
+- `StorageType` (`AMBIENT`, `COLD_STORAGE`, `CONTROLLED_ATMOSPHERE`, `SILO`, `WAREHOUSE_GODOWN`, `OTHER`) — shared by `Warehouse.warehouseType` and `WarehouseStorageUnit.storageType`
+- `CropStorageCompatibility` (`COMPATIBLE`, `NOT_RECOMMENDED`, `INCOMPATIBLE`)
+- `StorageReservationStatus` (`PENDING`, `CONFIRMED`, `CANCELLED`, `EXPIRED`, `COMPLETED`)
+- `StorageRateType` (`PER_DAY`, `PER_WEEK`, `PER_MONTH`, `PER_QUANTITY_PER_DAY`)
+
+Reused rather than duplicated: `VerificationStatus` (Module 1) for
+`Warehouse.verificationStatus`, and `QuantityUnit` (Module 4) for every
+capacity/quantity/billing-unit field.
+
+## Relationship shape
+
+```
+User / Fpo  (exactly one — see WarehouseOwnerType)
+  └── Warehouse
+        ├── WarehouseStorageUnit[]      — chambers/sections
+        ├── WarehouseCropCapability[]   — configured, not AI-derived
+        ├── StorageReservation[]        — foundation only, no capacity math
+        └── StorageRate[]               — configured pricing, no cost calc
+
+CropLot ── StorageReservation[]
+Crop    ── WarehouseCropCapability[], StorageRate[]
+```
+
+Inverse relations added (additive only): `User.ownedWarehouses`,
+`Fpo.ownedWarehouses`, `Crop.warehouseCapabilities`, `Crop.storageRates`,
+`CropLot.storageReservations`. No existing field, index, or relation on
+any Module 1–8 model was changed.
+
+## Ownership design
+
+A warehouse is owned by exactly one of a `User` (an individual
+`WAREHOUSE_OPERATOR`, mirroring how role alone never grants access — see
+`FpoAdmin`'s own comment) or an `Fpo`, recorded as `ownerType` +
+`ownerUserId`/`ownerFpoId`. This mirrors `CropLot`'s
+`ownerType`/`farmerId`/`fpoId` pattern rather than inventing a new
+ownership abstraction. Enforcing "exactly one of the two is set" is left
+to a future service layer, exactly as `CropLot`'s farmer/fpo pairing
+legality is enforced in `lots.service.ts`, never at the database level —
+Postgres has no portable constraint for this that matches the rest of the
+project's conventions.
+
+## Reservation lifecycle foundation
+
+`StorageReservationStatus` defines the lifecycle
+(`PENDING → CONFIRMED → COMPLETED`, with `CANCELLED`/`EXPIRED` as
+alternate exits), but Part 1 only provides:
+
+- `create()` — always writes a `PENDING` row
+- `updateStatus()` — a plain column write, not a guarded state-machine
+  transition
+
+Nothing in Part 1 reads or decrements `WarehouseStorageUnit.availableCapacity`
+when a reservation is created. The concurrency-safe, atomic
+capacity-allocation transaction (mirroring
+`CropLotRepository.adjustAvailableQuantity()`'s own guarded
+`updateMany`/`gte` pattern) is explicit future work.
+
+## Repository layer
+
+`backend/src/modules/warehouse-intelligence/`:
+
+- `warehouse.types.ts` — clean DTOs (`WarehouseDTO`, `WarehouseStorageUnitDTO`,
+  `WarehouseCapability`, `StorageReservationRecord`, `StorageRateDefinition`)
+  and mapper functions; raw Prisma rows are never exposed past this module.
+- `warehouse.repository.ts` — `WarehouseRepository`: `findById`,
+  `findByPublicId`, `list` (bounded pagination, max 100/page), `create`,
+  `update`.
+- `warehouse-storage.repository.ts` — `WarehouseStorageRepository`:
+  `findByPublicId`, `listByWarehouse`, `create`, `update`.
+- `warehouse-capability.repository.ts` — `WarehouseCapabilityRepository`:
+  `add`, `deactivate` (soft `isActive` flip, never a delete), `listByWarehouse`,
+  `findCompatible`.
+- `storage-reservation.repository.ts` — `StorageReservationRepository`:
+  `findByPublicId`, `listByLot`, `listByWarehouse`, `create`, `updateStatus`.
+- `storage-rate.repository.ts` — `StorageRateRepository`: `create`,
+  `listActive`, `findApplicable` (effective-date-window query).
+
+## Data integrity decisions
+
+- All capacity, temperature/humidity range, and rate fields use `Decimal`
+  (`@db.Decimal`), never floating point — matching `CropLot.quantityKg`'s
+  own convention.
+- `Warehouse.status` (lifecycle enum, can express `SUSPENDED`) and
+  `Warehouse.isActive` (fast listing/filter flag) are deliberately kept as
+  two separate fields, in the same spirit as `Fpo.active` alongside
+  `Fpo.accountStatus` — kept in sync by a future service layer, never
+  derived automatically here.
+- `WarehouseStorageUnit` is unique per `(warehouseId, code)`.
+- `WarehouseCropCapability` is unique per `(warehouseId, storageUnitId,
+  cropId)`. Note: Postgres composite unique indexes do not deduplicate
+  across `NULL`s, so this only prevents duplicates for a *specific*
+  `storageUnitId`; a duplicate warehouse-wide (`storageUnitId` null) row
+  for the same crop is not blocked at the database level and is left to
+  a future service-layer guard — the same trade-off already accepted for
+  ownership pairing above.
+- Foreign keys use `Restrict` throughout for anything transactional or
+  historical (warehouse ownership, reservations, rates, capability→crop),
+  and `Cascade` only for a warehouse's own physical sub-components
+  (storage units, and capability rows scoped to those units) — mirroring
+  `CropLot`'s own Restrict-vs-Cascade choices.
+- `StorageRate.currency` defaults to `"INR"`. No other model in this
+  schema carries a currency column (the project is INR-only); it's kept
+  here only because this part's spec calls for it explicitly.
+
+## Tests
+
+`backend/tests/unit/warehouse-intelligence.repository.test.ts` — 19 tests
+against a mocked `PrismaClient` (same pattern as
+`price-forecasting.repository.test.ts`, including the `Prisma.Decimal`
+stand-in needed because the generated client isn't available in this
+sandbox). Covers: warehouse creation/ownership mapping, public-ID lookup,
+bounded-pagination clamping, storage-unit capacity defaulting and Decimal
+conversion, capability uniqueness/compatibility filtering and soft
+deactivation, reservation creation always starting `PENDING`, and rate
+lookup by effective-date window.
+
+## Explicitly NOT implemented in Part 1
+
+REST APIs, controllers, routes, Swagger endpoints, warehouse search,
+nearby-warehouse recommendations, capacity allocation, atomic capacity
+reservation, storage cost calculation, spoilage prediction, AI
+recommendations, Sell vs Store integration, forecast integration,
+notifications, cron jobs, GPS tracking.
+
+## Remaining for future Warehouse Intelligence parts
+
+- Controllers, routes, and request/response schemas
+- Service layer enforcing ownership-pairing and authorization
+- Atomic, concurrency-safe capacity reservation (guarded `updateMany`,
+  mirroring `CropLotRepository.adjustAvailableQuantity()`)
+- Storage cost calculation from `StorageRate`
+- Warehouse search / nearby-warehouse recommendations
+- Integration with the Sell vs Store decision engine (Module 8) and
+  Price Forecasting (Module 7)
+- Spoilage/AI-assisted recommendations (kept strictly out of
+  `WarehouseCropCapability`, which stores configured data only)
+
+---
+
+# Part 2 — Storage Availability & Capacity Management
+
+Part 2 adds the read/query layer Part 1 deliberately left out: turning the
+persisted `WarehouseStorageUnit`/`WarehouseCropCapability` rows into
+factual, deterministic answers to "is there room, and where", plus the one
+mutation endpoint (`PATCH .../capacity`) that Part 1's own repository
+`update()` method was already built to support but had no route.
+
+## Files created
+
+- `src/modules/warehouse-intelligence/warehouse-intelligence.config.ts` —
+  centralized thresholds (utilization threshold, max/default radius,
+  candidate cap, cache TTL, cache coordinate rounding).
+- `src/modules/warehouse-intelligence/warehouse-capacity.ts` — pure,
+  deterministic domain functions: `toKg`, `aggregateStorageUnitsToKg`,
+  `calculateUtilizationPercentage`, `capacityStatus`,
+  `canAccommodateQuantity`, `resolveCropCompatibility`.
+- `src/modules/warehouse-intelligence/warehouse-availability.service.ts` —
+  `WarehouseAvailabilityService`: `getWarehouseDetail`,
+  `getStorageAvailability` (aliased as `getAvailability`), `searchNearby`,
+  `updateStorageUnitCapacity`.
+- `src/modules/warehouse-intelligence/warehouse-intelligence.schemas.ts` —
+  Zod schemas for all four endpoints.
+- `src/modules/warehouse-intelligence/warehouse-intelligence.controller.ts`
+  and `warehouse-intelligence.routes.ts` — Express wiring + Swagger docs.
+- `src/modules/warehouse-intelligence/warehouse-cache.ts` — optional Redis
+  caching for nearby search, mirroring `market-cache.ts`'s
+  fail-open convention, plus coordinate rounding for cache keys.
+- `backend/tests/unit/warehouse-capacity.test.ts` (27 tests) and
+  `warehouse-availability.service.test.ts` (23 tests).
+
+## Files modified
+
+- `prisma/schema.prisma` — one index added
+  (`@@index([latitude, longitude])` on `Warehouse`); no new models or
+  columns, since Part 1's `totalCapacity`/`availableCapacity`/
+  `capacityUnit`/`compatibility` fields already cover everything Part 2
+  needs to answer honestly.
+- `src/modules/warehouse-intelligence/warehouse.types.ts` — added
+  `WarehouseWithCapacity` and the availability/nearby-search DTOs,
+  without touching the Part 1 types.
+- `src/modules/warehouse-intelligence/warehouse.repository.ts` — added
+  `findByPublicIdWithCapacity()` and `findNearbyCandidates()` (bounding
+  box in SQL, bounded `take`).
+- `src/common/errors.ts` — new `ErrorCode`s (`WAREHOUSE_NOT_FOUND`,
+  `STORAGE_UNIT_NOT_FOUND`, `INVALID_RADIUS`, `INVALID_CAPACITY`,
+  `INSUFFICIENT_STORAGE_CAPACITY`, `STORAGE_COMPATIBILITY_UNKNOWN`,
+  `CROP_NOT_SUPPORTED_BY_WAREHOUSE`) and a `WarehouseDomainError` class.
+  `INVALID_LOCATION`, `INVALID_QUANTITY`, and `UNSUPPORTED_UNIT` are
+  reused as-is rather than duplicated.
+- `src/modules/audit/audit.service.ts` — added the
+  `WAREHOUSE_CAPACITY_UPDATED` audit action.
+- `src/config/posthog.ts` — added `warehouse_search` and
+  `warehouse_availability_viewed` to the event allow-list.
+- `src/app.ts` — constructed the three Part 1 repositories +
+  `WarehouseAvailabilityService` inline (same pattern as
+  `marketIntelligenceRepository`) and mounted the router at
+  `/api/warehouses`.
+
+## Prisma changes / migrations
+
+`20260904010000_add_warehouse_intelligence_part2/migration.sql` — index
+only:
+
+```sql
+CREATE INDEX IF NOT EXISTS "warehouses_latitude_longitude_idx" ON "warehouses" ("latitude", "longitude");
+```
+
+## Capacity calculation design
+
+Everything is normalized internally to KG using
+`modules/fpo/unit-conversion.ts`'s existing `convertQuantityToKg` (the
+same "internal aggregation base unit is KG" convention Module 3 already
+established) — this is a fixed, unambiguous KG↔QTL↔TONNE factor already
+trusted elsewhere in the codebase, not the "silent ambiguous unit
+conversion" the build spec warns against (that concern is about
+converting between incompatible unit *systems*, which never arises here
+since `QuantityUnit` only ever expresses weight).
+
+- `aggregateStorageUnitsToKg()` sums only `isActive` storage units and
+  returns `null` — not zero — when there are none, so "no capacity
+  configured" is never confused with "configured, zero capacity".
+- `calculateUtilizationPercentage()` = occupied / total × 100, clamped to
+  [0, 100], `null` for a missing/zero/negative total.
+- `canAccommodateQuantity()` treats an exact fit as accommodating (`>=`),
+  matching `CropLot`'s own available-quantity comparison convention.
+
+## Availability state definitions
+
+`AVAILABLE` / `LIMITED` / `FULL` / `UNAVAILABLE`, computed by
+`capacityStatus()`:
+
+- `UNAVAILABLE` — no capacity configured, or a zero/negative/invalid
+  total (both "unknown" and "misconfigured" collapse to the same honest
+  answer).
+- `FULL` — available capacity is exactly zero.
+- `LIMITED` — utilization ≥ `LIMITED_UTILIZATION_THRESHOLD_PERCENT`
+  (80% by default, centralized in `warehouse-intelligence.config.ts`,
+  not hardcoded per call site).
+- `AVAILABLE` — otherwise.
+
+Crop compatibility is `SUPPORTED` / `UNSUPPORTED` / `UNKNOWN`, resolved
+only from configured `WarehouseCropCapability` rows
+(`resolveCropCompatibility()`). `NOT_RECOMMENDED` and `INCOMPATIBLE` both
+map to `UNSUPPORTED` for hard fit/no-fit gating; no matching row is
+`UNKNOWN`, which is never upgraded to `SUPPORTED` — a requested quantity
+against an `UNKNOWN`-compatibility crop returns `canAccommodate: null`,
+never `true`.
+
+## Nearby search strategy
+
+Bounding box in SQL (`WarehouseRepository.findNearbyCandidates`, ~111 km
+per degree of latitude, capped at `NEAREST_CANDIDATE_LIMIT` candidates)
+followed by an exact Haversine pass and radius cut in the service —
+mirroring Module 6's own nearby-market search, except the box filter runs
+in the database `WHERE` clause here (new `(latitude, longitude)` index)
+rather than in memory, per this part's "avoid loading every warehouse"
+requirement. Maximum radius is 500 km (`INVALID_RADIUS` otherwise).
+
+Deterministic sort order: (1) `canAccommodate` (confirmed fit first —
+`null`/unknown sorts with the non-fitting group, never assumed to fit),
+(2) capacity status rank (`AVAILABLE` > `LIMITED` > `FULL` >
+`UNAVAILABLE`), (3) distance ascending, (4) available capacity
+descending, (5) `publicId` ascending as a final tiebreaker.
+
+## Crop storage compatibility behavior
+
+Reused Part 1's `WarehouseCropCapability` model as-is — no new model.
+Compatibility resolution prefers a storage-unit-scoped row over the
+warehouse-wide (`storageUnitId: null`) row for that specific unit; see
+`resolveCropCompatibility()`'s own comment for the exact precedence rule.
+
+## API endpoints added
+
+All mounted at `/api/warehouses`, authenticated, open to
+`FARMER`/`FPO_ADMIN`/`WAREHOUSE_OPERATOR`/`ADMIN` for reads:
+
+- `GET /api/warehouses/nearby`
+- `GET /api/warehouses/:warehouseId`
+- `GET /api/warehouses/:warehouseId/availability`
+- `PATCH /api/warehouses/:warehouseId/storage-units/:storageUnitId/capacity`
+  (`ADMIN`, or the `WAREHOUSE_OPERATOR` who owns this warehouse — checked
+  in the service, not just by role)
+
+## Authorization behavior
+
+- Non-`ADMIN` roles only ever see/search operationally `ACTIVE`,
+  `isActive` warehouses (plus their own, if they're the owner).
+- A warehouse a caller can't see returns `404` (`WAREHOUSE_NOT_FOUND`),
+  never `403` — so a suspended/inactive warehouse's existence isn't
+  leaked to an outsider, matching this codebase's existing
+  not-found-for-unauthorized convention.
+- Capacity mutation additionally requires warehouse ownership
+  (`ownerUserId` match) for a `WAREHOUSE_OPERATOR`.
+
+## Module 8 integration boundary created
+
+`WarehouseAvailabilityService.getStorageAvailability()` (aliased
+`getAvailability()`) is the intended call site for a future Module 8
+integration — it returns only DTOs, never a raw Prisma row, so Module 8
+would never need to import a Warehouse Prisma model to use it. **Module 8
+itself was not touched in this part** — `sell-store-input-resolver.
+service.ts` still reports storage as unavailable/`STORAGE_DATA` missing,
+exactly as before.
+
+## Tests added and results
+
+- `warehouse-capacity.test.ts` — 27 tests, pure domain functions
+  (aggregation, utilization, status, fit, compatibility). **All pass.**
+- `warehouse-availability.service.test.ts` — 23 tests against
+  fake/mocked repositories: not-found handling, visibility/authorization,
+  quantity/unit validation, unit conversion through the fit check,
+  compatibility gating (`UNSUPPORTED` → `false`, `UNKNOWN` → `null`),
+  radius/location validation, admin-vs-non-admin candidate scoping,
+  exact-Haversine radius exclusion, null-coordinate skip, deterministic
+  sort order, empty-result (non-error) search, and the capacity-update
+  mutation's validation/ownership/audit/cache-invalidation paths. **All
+  pass.**
+- Full `npm test` (`tests/unit`): **26 of 28 suites / 358 of 373 tests
+  pass.** The 2 failing suites
+  (`buyer-matching.service.test.ts`, `sell-store-orchestration.service.
+  test.ts`) are **pre-existing and untouched by this part** — every
+  failure is `TypeError: Prisma.Decimal is not a constructor`, the same
+  generated-Prisma-client gap documented below, in modules this part
+  never modified.
+
+## Verification results
+
+- `npm install` — succeeded.
+- `npx prisma format` / `validate` / `generate` — **failed**:
+  `Failed to fetch ... https://binaries.prisma.sh/... - 403 Forbidden`.
+  This sandbox's network egress allowlist doesn't include
+  `binaries.prisma.sh`, so the Prisma query/schema engine binaries can't
+  download — this is the same pre-existing limitation Part 1's own test
+  file already documents (`prisma/README-engines.md`), not something
+  this part introduced.
+- `npx tsc --noEmit` — the generated `@prisma/client` in `node_modules`
+  predates Module 9 entirely (it has no `Warehouse`, `QuantityUnit`,
+  `Decimal`, etc.), so every file that imports a Module 9 (or Module
+  1–8) Prisma type reports "has no exported member" and cascades into
+  downstream implicit-`any` errors. This is a codebase-wide, pre-existing
+  effect of the same engine-download gap — confirmed by the fact that
+  unrelated, untouched modules (`buyer-matching`, `fpo`, `lots`,
+  `market-data`, `market-intelligence`, `price-forecasting`, `quality`)
+  show the identical failure pattern. Filtering to only the new
+  `warehouse-intelligence` files, every error is one of: (a) the same
+  "no exported member" gap, or (b) two implicit-`any` callback parameters
+  that are only untyped *because* the types they'd otherwise infer from
+  are themselves unresolved for the same reason — both would disappear
+  automatically once `prisma generate` can run with real engine binaries.
+  **No other implementation-level type errors were found in the new
+  code.**
+- `npm test` (Jest, `isolatedModules: true` — transpile-only, no
+  type-checking) — genuinely **runs**, since it never needs the missing
+  engine binary for fake-repository unit tests: 358/373 pass, with the 15
+  failures pre-existing and unrelated (see above).
+- Migration validation, `npm run test:db`, and a live
+  `prisma migrate deploy` against a real database were **not run** —
+  they need a reachable Postgres instance and working engine binaries,
+  neither available in this sandbox.
+
+## Explicitly NOT implemented in Part 2
+
+Booking/reservation workflow, storage contracts, payments, logistics,
+transport pricing, automatic warehouse allocation, AI recommendations,
+forecasting, spoilage prediction, IoT/temperature monitoring, fabricated
+capacity or seed warehouses, and any change to the Sell vs Store decision
+engine's logic or output. Also deferred, as smaller scoped gaps: capacity
+management by an `FPO_ADMIN` on an FPO-owned warehouse (needs an FPO
+membership check this part didn't wire in — `ADMIN` and the owning
+`WAREHOUSE_OPERATOR` can manage capacity today), and changing an existing
+storage unit's `capacityUnit` through the capacity-update endpoint
+(rejected outright — relabeling an existing figure's unit is a
+data-integrity operation, not a capacity update).
+
+## Pre-existing failures / environment limitations
+
+- Prisma engine binaries cannot download in this sandbox
+  (`binaries.prisma.sh` isn't in the network egress allowlist) — see
+  Verification above. This blocks `prisma generate`/`validate`/`format`
+  and any live-database test, and is the root cause of every `tsc`
+  error and of the two pre-existing failing Jest suites. It predates this
+  part entirely.
+
+## Part 3 status: Storage Conditions, Crop Suitability & Storage Constraints — Done
+
+Answers a different question than Part 2: not "is there enough room?"
+(capacity) but "is this warehouse's *kind* of storage right for this
+crop?" (suitability). The two are computed and reported independently —
+neither endpoint collapses them into one opaque yes/no.
+
+### What already existed vs. what this part adds
+
+Part 1 already persisted the warehouse side of this comparison:
+`WarehouseStorageUnit.storageType`/`temperatureControlled`/
+`minTemperature`/`maxTemperature`/`humidityControlled`/`minHumidity`/
+`maxHumidity`. This part adds only the five declared capability flags
+that were missing (`ventilationAvailable`, `coldStorageAvailable`,
+`controlledAtmosphereAvailable`, `pestControlAvailable`,
+`moistureControlAvailable` — nullable, `null` = never configured/unknown,
+never defaulted to `false`) plus the crop side, which had no equivalent
+at all: `CropStorageRequirement`, one optional row per crop, never
+auto-created. A crop with no row is reported as UNKNOWN, not silently
+assumed compatible — Part 1's existing `WarehouseCropCapability.
+compatibility` (a manually configured per-warehouse-per-crop judgement)
+is untouched and serves a different purpose; this part's engine is a
+computed, deterministic comparison, not a second copy of that field.
+
+### Prisma changes (non-destructive)
+
+- `WarehouseStorageUnit` — 5 new nullable boolean columns (see above).
+- `CropStorageRequirement` (new model) — `cropId` unique;
+  `preferredTemperatureMin/Max`, `preferredHumidityMin/Max` (`Decimal?`);
+  `requiresVentilation/ColdStorage/ControlledAtmosphere/PestControl/
+  MoistureControl` (`Boolean?`); `compatibleStorageTypes` (`StorageType[]`,
+  default `[]` = "no restriction configured", never "compatible with
+  nothing"); `maximumRecommendedStorageDays` (`Int?`, guidance only, never
+  used for spoilage prediction); `notes`.
+- No `SuitabilityStatus`/etc. Prisma enum was added — suitability is
+  computed at read time, never persisted, so it is a plain TypeScript
+  union (`storage-suitability.types.ts`), mirroring how Part 2's
+  `CapacityStatus`/`CropCompatibilityState` are TS-only, not Prisma
+  enums.
+
+### Deterministic suitability engine
+
+`storage-suitability.engine.ts` is pure (no Prisma, no Redis, no AI, no
+sleeping) and independently unit-tested (`tests/unit/storage-suitability.
+engine.test.ts`). It evaluates up to 8 factors per (crop requirement,
+storage-unit conditions) pair: `STORAGE_TYPE`, `TEMPERATURE_RANGE`,
+`HUMIDITY_RANGE`, `COLD_STORAGE`, `CONTROLLED_ATMOSPHERE`, `VENTILATION`,
+`PEST_CONTROL`, `MOISTURE_CONTROL`.
+
+- **Range comparison** (temperature/humidity): `FULL_MATCH` /
+  `PARTIAL_MATCH` / `NO_MATCH` / `UNKNOWN` / `NOT_REQUIRED`.
+  `NOT_REQUIRED` (the crop never configured a preference) is a distinct
+  outcome from `UNKNOWN` (the crop *did* configure a preference but the
+  warehouse's own range isn't known) — conflating the two was caught and
+  fixed during testing (see Tests below); an unconfigured crop
+  preference must never gate the whole result to UNKNOWN.
+- **Boolean capabilities**: the exact build-spec truth table —
+  required+available → `SATISFIED`; required+unavailable →
+  `UNSATISFIED`; required+`null` → `UNKNOWN`; not required → `NOT_REQUIRED`
+  regardless of warehouse data (never penalize a warehouse for a
+  capability the crop didn't ask for).
+- **Storage type**: `COMPATIBLE` / `INCOMPATIBLE` / `NOT_REQUIRED` (empty
+  `compatibleStorageTypes` = not restricted).
+
+**Criticality policy** (centralized in `STORAGE_SUITABILITY_CONFIG`,
+`warehouse-intelligence.config.ts` — never scattered as magic
+strings/if-else): `STORAGE_TYPE`, `TEMPERATURE_RANGE`, `COLD_STORAGE`,
+`CONTROLLED_ATMOSPHERE` are critical; `HUMIDITY_RANGE`, `VENTILATION`,
+`PEST_CONTROL`, `MOISTURE_CONTROL` are not. This is a deterministic
+data-completeness/severity policy, not a scientific claim about any crop.
+
+**Status**: critical factor unmet → `UNSUITABLE`; else critical factor
+unknown → `UNKNOWN`; else any non-critical unmet/unknown →
+`CONDITIONALLY_SUITABLE`; else `SUITABLE`.
+
+**Confidence**: `null` whenever status is `UNKNOWN`; otherwise the
+fraction of applicable (non-omitted) factors with a known outcome,
+rounded to 2 decimals. Never a spoilage probability.
+
+Two fixed, non-AI results cover the "no data at all" cases: a crop with
+no `CropStorageRequirement` row → `UNKNOWN` /
+`INSUFFICIENT_CROP_STORAGE_REQUIREMENTS`; a warehouse with no active
+storage units → `UNKNOWN` / `INSUFFICIENT_WAREHOUSE_CONDITION_DATA`.
+
+### Warehouse-level composition
+
+A warehouse can have several storage units with different conditions.
+`WarehouseSuitabilityService` evaluates every active unit and returns the
+best result (`SUITABLE` > `CONDITIONALLY_SUITABLE` > `UNKNOWN` >
+`UNSUITABLE`, tie-broken by confidence then storage-unit `publicId`),
+reporting both which unit produced it (`evaluatedStorageUnit`) and how
+many were actually compared (`evaluatedStorageUnitCount`) — so "the only
+option" and "the best of several" are never confused.
+
+### Capacity + suitability composition
+
+`GET /api/warehouses/:warehouseId/storage-eligibility` calls Part 2's
+`WarehouseAvailabilityService` for capacity and this part's suitability
+engine independently, then combines them into `overallEligibility`
+(`ELIGIBLE` / `INSUFFICIENT_CAPACITY` / `UNSUITABLE` / `UNKNOWN`) using a
+fixed priority — `suitability UNSUITABLE` always wins over a capacity
+result, then known-insufficient capacity, then either side being unknown,
+else `ELIGIBLE` — documented in the service's own comment. Both raw
+results (`capacity`, `suitability`) are always present in the response so
+a rejection's actual cause is never hidden.
+
+### API endpoints added
+
+- `GET /api/warehouses/:warehouseId/suitability?cropId=` — read, same
+  role set as Part 2's availability endpoint (FARMER/FPO_ADMIN/
+  WAREHOUSE_OPERATOR/ADMIN).
+- `GET /api/warehouses/:warehouseId/storage-eligibility?cropId=&quantity=&unit=`
+  — read, same role set; `quantity`/`unit` optional (must be paired).
+- `PATCH /api/warehouses/:warehouseId/storage-units/:storageUnitId/conditions`
+  — ADMIN or the owning WAREHOUSE_OPERATOR (mirrors the existing
+  capacity-update endpoint's authorization exactly); rejects an update
+  that would invert a temperature/humidity range.
+- `PUT /api/warehouses/crop-storage-requirements/:cropId` — ADMIN only;
+  always an upsert (one row per crop, no version history — see the
+  model's own schema comment).
+
+No booking, ranking, recommendation, or Sell vs Store integration
+endpoint was added — those are separate, later parts.
+
+### Authorization
+
+Unchanged read-role set for the two GET endpoints. Configuration writes
+reuse the exact same "ADMIN, or the WAREHOUSE_OPERATOR who owns this
+specific warehouse" rule Part 2 already established for capacity updates
+— no new role was invented.
+
+### Observability & audit
+
+`warehouse_suitability_checked` / `warehouse_storage_eligibility_checked`
+PostHog events carry only the resulting status, never coordinates or lot
+data (added to `posthog.ts`'s existing allow-list — an event not on that
+list is silently dropped, defense in depth). `WAREHOUSE_STORAGE_
+CONDITIONS_UPDATED` and `CROP_STORAGE_REQUIREMENT_UPDATED` audit actions
+cover the two configuration writes only; the two read endpoints are never
+audited, matching this module's existing read/write audit split.
+
+### Module 8 integration boundary
+
+Not touched in this part (explicitly out of scope — see Part 6). The
+service methods this part adds (`getSuitability`, `getStorageEligibility`)
+already return plain DTOs (never a raw Prisma row), so a future Module 8
+integration can depend on `WarehouseSuitabilityService` without importing
+any Warehouse Prisma model — the same decoupling discipline
+`WarehouseAvailabilityService.getStorageAvailability()` already
+established for Part 2.
+
+### Tests
+
+`tests/unit/storage-suitability.engine.test.ts` — pure engine: range
+comparison (full/partial/no match, unknown both ways, `NOT_REQUIRED` vs.
+`UNKNOWN`), boolean truth table, storage-type compatibility, full
+suitability classification (all four statuses), confidence bounds,
+determinism, and a named regression test for the
+`NOT_REQUIRED`-vs-`UNKNOWN` bug described below.
+
+`tests/unit/warehouse-suitability.service.test.ts` — orchestration with
+in-memory fakes: missing crop requirements, missing warehouse condition
+data, best-of-several-storage-units selection (and that inactive units
+are excluded from both the pick and the reported count), 404-for-
+unauthorized, and all four `overallEligibility` compositions.
+
+**A real bug was caught during testing and fixed before delivery**: the
+first version of `compareRange()` returned `UNKNOWN` whenever the crop's
+preferred range was unset, which — because `TEMPERATURE_RANGE` is a
+critical factor — incorrectly forced the *entire* result to `UNKNOWN`
+for any crop that had simply never configured a temperature preference,
+even when every other factor (e.g. required cold storage) was fully
+known and satisfied. Fixed by giving range comparison its own
+`NOT_REQUIRED` outcome, distinct from `UNKNOWN`, exactly mirroring how
+boolean requirements already distinguished "not required" from "required
+but unknown". A regression test locks this in.
+
+### Verification
+
+This sandbox received only a curated subset of the repository (the
+Module 9 files plus a handful of shared files needed for context) with
+no `package.json`, `node_modules`, or database — `npm install`,
+`prisma generate/validate/format`, a full `tsc --noEmit`, and `npm test`
+could not be run as project-wide commands. What was actually done
+instead:
+
+- Every new/modified file was syntax-checked with `esbuild` — no syntax
+  errors.
+- The pure engine's logic was exercised directly (a standalone
+  `ts-node` script exercising every function and status branch) — this
+  is how the `NOT_REQUIRED`/`UNKNOWN` bug above was actually caught, and
+  the corresponding Jest test now encodes the same check.
+- A scoped `tsc --noEmit` was run over every Part 3 file plus the Part
+  1/2 files they touch, using local type stubs for `@prisma/client` and
+  the two modules this excerpt doesn't include (`auth.types`,
+  `reference-data.service`) — with those stubs, Part 3's own files
+  (`storage-suitability.engine.ts`, `storage-suitability.types.ts`,
+  `warehouse-suitability.types.ts`, `crop-storage-requirement.
+  repository.ts`, `warehouse-suitability.service.ts`, the config/schema/
+  storage-repository edits) type-check with **zero errors**. The only
+  remaining errors after filtering out "module not found" noise from
+  files this excerpt never included (`express`, `zod`, `config/env`,
+  `config/redis`, `middleware/*`, etc.) were pre-existing Part 1/2 code
+  this part did not touch, caused entirely by the stub types being
+  cruder than a real generated Prisma client. All verification scaffolding
+  (stub `node_modules`, temporary `tsconfig`, stub files) was deleted
+  before delivery — none of it is part of the final file set.
+- A live migration apply, `prisma migrate deploy`/`diff`, and the full
+  existing Jest suite were not run, since this environment has no
+  database and no installed test runner — this mirrors the exact
+  Prisma-engine-download limitation Part 2's own verification section
+  above already documents, just with the added constraint that this
+  particular sandbox received no `node_modules` at all.
+
+### Explicitly NOT implemented in Part 3
+
+Spoilage prediction, crop deterioration prediction, AI/LLM usage,
+real-time IoT/sensor integration, automatic storage recommendation,
+warehouse ranking, booking/reservation, storage contracts, payments,
+transport/logistics, fabricated crop requirements or warehouse
+conditions, and any assumption that unknown data means compatible. Also
+out of scope, matching this part's own instructions: Sell vs Store
+(Module 8) integration, and warehouse ranking/recommendation across
+multiple warehouses — both are later, separate Module 9 parts.
+
+## Part 4 status: Warehouse Suitability & Risk Analysis — Done
+
+Answers a broader question than Part 3: not just "are the declared
+storage conditions right for this crop?" but "should this
+warehouse/crop/quantity/duration combination be considered suitable at
+all?" — folding in crop compatibility (Part 1), capacity (Part 2), and
+environmental suitability (Part 3) alongside two genuinely new factors,
+into one deterministic, typed, explainable result.
+
+### Reused vs. new
+
+Reused without modification: Part 2's `WarehouseAvailabilityService.
+getStorageAvailability()` (capacity status, `canAccommodate`, and crop
+compatibility all come from this single call — never recomputed) and
+Part 3's `WarehouseSuitabilityService.getSuitability()` (environmental
+suitability). New in this part: `compareDuration()` (compares a
+requested duration against `WarehouseCropCapability.
+maxStorageDurationDays`, Part 1's existing configured field — no new
+schema) and `evaluateOperationalStatus()` (reads `Warehouse.status`/
+`isActive` directly — no new status system, per this part's own "do not
+introduce a new status system if one already exists" instruction). One
+small, additive extension was made to Part 2's own pure-functions file:
+`resolveMaxStorageDurationDays()` in `warehouse-capacity.ts`, sitting
+right next to `resolveCropCompatibility()` and using the exact same
+unit-scoped-overrides-warehouse-wide resolution order, rather than a
+second, differently-ordered lookup living somewhere else.
+
+**No new Prisma models, fields, or migration** — every fact this part
+reasons about was already persisted by Parts 1–3.
+
+### Suitability states — reusing Part 3's enum, not inventing a parallel one
+
+This part's own spec proposes `SUITABLE` / `CONDITIONALLY_SUITABLE` /
+`UNSUITABLE` / `INSUFFICIENT_DATA`. Per the spec's own "use existing
+enums if they already exist" instruction, Part 3's `SuitabilityStatus`
+(`SUITABLE` / `CONDITIONALLY_SUITABLE` / `UNSUITABLE` / `UNKNOWN`) is
+reused as-is — `UNKNOWN` plays exactly the role `INSUFFICIENT_DATA` was
+asked for. Introducing a second, near-identical four-value enum for the
+same concept would be exactly the kind of scattered, inconsistent
+domain-state duplication this codebase's existing conventions (and this
+part's own "centralize this classification logic" instruction) argue
+against.
+
+### Factors evaluated
+
+| Factor | Source | Outcome |
+|---|---|---|
+| Crop compatibility | Part 1 `WarehouseCropCapability` (via Part 2) | `SUPPORTED` / `UNSUPPORTED` / `UNKNOWN` |
+| Capacity feasibility | Part 2 | `canAccommodate` or capacity `status` |
+| Duration compatibility | Part 1 `maxStorageDurationDays` (new comparison) | `SUPPORTED` / `EXCEEDS_MAXIMUM` / `NOT_APPLICABLE` |
+| Environmental compatibility | Part 3 | `SUITABLE` / `CONDITIONALLY_SUITABLE` / `UNSUITABLE` / `UNKNOWN` |
+| Warehouse operational status | `Warehouse.status`/`isActive` (new) | `OPERATIONAL` / `UNAVAILABLE` |
+
+Operational status is the one factor that is never "unknown" — it is
+always directly readable from persisted fields.
+
+### Risks and constraints (typed, centralized, never prose-generated)
+
+`warehouse-risk-analysis.engine.ts`'s `evaluateWarehouseSuitabilityRisk()`
+is pure (no Prisma/Redis/AI) and returns typed `WarehouseRisk[]`
+(`code`, `severity` LOW/MEDIUM/HIGH/CRITICAL, `blocking`, a fixed
+template `explanation`) and `WarehouseConstraint[]` (`code`, `blocking`,
+`explanation`) as two separate arrays, per this part's explicit
+"return structured constraints separately from risks" instruction, even
+where a single underlying fact (e.g. explicit crop incompatibility)
+produces one entry in each. `blockingIssues` is the concatenation of
+every `blocking: true` risk and constraint, so a caller never has to
+re-derive "what's actually stopping this" from severity alone. A
+`WAREHOUSE_DATA_INCOMPLETE` (LOW, non-blocking) risk is added whenever
+overall confidence falls below a centralized threshold even if no single
+factor was decisive enough to add a more specific risk on its own.
+`WAREHOUSE_DATA_STALE` (suggested in the build spec) was deliberately
+**not** implemented — there is no configured staleness threshold or
+"last verified" timestamp anywhere in the existing warehouse data model,
+and inventing one would be exactly the kind of fabricated policy this
+module's conventions rule out.
+
+### Scoring and weight rebalancing
+
+`SCORE_WEIGHTS` (`WAREHOUSE_RISK_ANALYSIS_CONFIG`,
+`warehouse-intelligence.config.ts`): crop compatibility 25, capacity
+feasibility 25, environmental compatibility 25, warehouse operational
+status 15, duration compatibility 10 — summing to 100 when every factor
+is applicable. "Data completeness" is **not** a sixth scored factor: it
+is already expressed through `confidence` (see below), and scoring it a
+second time would double-count the same data-availability signal under
+two names — a deliberate, documented deviation from the build spec's
+suggested factor list. Any factor that cannot be evaluated (or, for
+duration, was never requested / has no configured maximum) is omitted
+and every remaining weight is rebalanced proportionally
+(`computeWeightedScore()`) — never a fabricated neutral midpoint.
+`factorsUsed`/`omittedFactors` are always returned. If a *critical*
+factor (crop compatibility, capacity, or environmental compatibility —
+`CRITICAL_ANALYSIS_FACTORS`) is the one omitted, `suitabilityScore` and
+`confidence` are both forced to `null` and the overall status becomes
+`UNKNOWN`, regardless of how favorable the rebalanced score of the
+remaining factors would otherwise look — rebalancing never substitutes
+for genuinely missing critical information.
+
+### Confidence
+
+`null` whenever a critical factor is unknown; otherwise the fraction of
+total possible weight actually evaluated (0–1, 2 decimals) —
+deterministic, reproducible, never an AI confidence score. A fully
+SUITABLE result with an inapplicable (not-requested) duration factor
+still reports confidence `0.9`, not `1` — omission always has a
+completeness cost, even when it doesn't change the status.
+
+### Result contract
+
+`WarehouseSuitabilityAnalysisResult`: `warehouseId`, `cropId`,
+`suitability`, `suitabilityScore`, `confidence`, `blockingIssues`,
+`risks`, `constraints`, `factorsUsed`, `omittedFactors`, plus the raw
+per-factor outcomes (`cropCompatibility`, `durationCompatibility`,
+`environmentalCompatibility`, `operationalStatus`), `availabilitySummary`
+(capacity status/totals/`canAccommodate`, mirroring Part 3's eligibility
+DTO), `evaluatedAt`, and a fixed `disclaimer`. Never a raw Prisma record.
+
+### API
+
+`GET /api/warehouses/:warehouseId/suitability-analysis?cropId=&quantity=&unit=&durationDays=`
+— read-only, same role set as Parts 2/3's read endpoints
+(FARMER/FPO_ADMIN/WAREHOUSE_OPERATOR/ADMIN). `quantity`/`unit` must be
+paired (reuses the existing `requireQuantityUnitPair` refinement);
+`durationDays` is independently optional. A non-positive `durationDays`
+is rejected with the new `INVALID_DURATION` domain error before any
+repository call. No `POST /analyze-suitability` mutation-shaped endpoint
+was added — the spec offered it only as an alternative for when request
+duration/quantity are needed, and a `GET` with query parameters already
+covers that without introducing a write-shaped verb for a read
+operation.
+
+### Lot support — intentionally partial, and why
+
+The spec asks for analysis against either a `Crop` or a `CropLot`. This
+repository excerpt does not include Module 4's lot data-access layer
+(only `app.ts`'s import lines hint that a `CropLotRepository` exists),
+and guessing at its exact method/field names to wire a live dependency
+here would risk a silent runtime mismatch against the real file. Rather
+than fabricate that integration, `AnalyzeSuitabilityInput` accepts
+already-resolved `cropId`/`quantity`/`durationDays` directly; a future
+caller that has a lot loaded (most plausibly Module 8, in a later part)
+can pass its values straight through. No lot-scoped HTTP endpoint was
+added. This is a scope limitation, not a design decision — flagged
+explicitly rather than papered over.
+
+### Observability & audit
+
+`warehouse_suitability_analyzed` PostHog event carries only the
+resulting status and whether a blocking issue was found — no
+coordinates, no lot data (added to `posthog.ts`'s allow-list; an event
+not on that list is silently dropped). No audit event: this is a
+read/analysis operation, matching this part's own "do not audit ordinary
+read/analysis requests" instruction and this module's existing
+read-vs-write audit split.
+
+### N+1 / query-count note
+
+`analyzeSuitability()` makes three warehouse-scoped calls per request
+(Part 2's availability call, Part 3's suitability call, and one direct
+`findByPublicIdWithCapacity` for duration/operational-status data) —
+each reusing an existing, already-tested method rather than duplicating
+its logic. This is three fixed calls per request, not a query inside a
+loop over any collection, so it does not violate the "avoid N+1" rule;
+it is a deliberate reuse-over-micro-optimization tradeoff, documented
+here rather than justified by inventing a fourth combined repository
+method this pass didn't need.
+
+### Tests
+
+`tests/unit/warehouse-risk-analysis.engine.test.ts` — pure engine:
+duration comparison (not-applicable both ways, supported, exceeded),
+operational status, per-factor scoring including omission, weighted-score
+rebalancing (including "omit everything → null score" and 0–100
+bounds), confidence (critical-unknown → null; fraction of evaluated
+weight; full confidence only when every factor including duration was
+evaluated), and the full suitability classification for every risk type,
+including a multi-issue case and a determinism check.
+
+`tests/unit/warehouse-risk-analysis.service.test.ts` — orchestration
+with in-memory fakes: clean SUITABLE composition, crop-unsupported
+propagation from Part 2, operational-unavailability override, Part 3
+`UNKNOWN` propagation (never silently upgraded), `INVALID_DURATION`
+rejected before any repository call, duration-limit resolution from a
+`WarehouseCropCapability` row, and a determinism check across repeated
+calls.
+
+**A real bug was caught during testing and fixed before delivery**: the
+first draft of the "perfect case" test asserted confidence `1` for a
+fully-SUITABLE result — but duration wasn't requested in that scenario,
+so it is legitimately omitted (`NOT_APPLICABLE`, weight 10), and the
+correct confidence is `0.9` (90 of 100 weight evaluated). Investigating
+this confirmed the *engine's* omission/rebalancing math was correct and
+the *test's* expectation was wrong; the test was corrected and a second
+test was added asserting confidence `1` only when duration is also
+requested and evaluated, so both branches are now explicitly covered.
+
+### Verification
+
+Same sandbox constraints as Part 3 (no `package.json`/`node_modules`/
+database in this environment) — `npm install`, `prisma generate`, and a
+project-wide `npm test`/`tsc` could not be run. What was actually done:
+
+- Every new/modified file syntax-checked with `esbuild` — no errors.
+- The pure engine's logic exercised directly via a standalone `ts-node`
+  script covering every function and every suitability branch (this is
+  how the confidence-expectation bug above was caught).
+- A scoped `tsc --noEmit` over every Part 4 file plus the Part 1–3 files
+  they touch, using the same local `@prisma/client`/`auth.types`/
+  `reference-data.service` stubs as Part 3's verification (this time
+  with `Warehouse` and `WarehouseCropCapability` given explicit fields
+  rather than a bare index signature, after that crude shape produced
+  two false-positive structural-typing errors during the first pass) —
+  **zero genuine errors** in Part 4's own files after that fix; every
+  remaining error was "module not found" noise from files this excerpt
+  never included (`express`, `zod`, `config/env`, `config/redis`,
+  `middleware/*`, `auth.repository`, `auth.middleware`,
+  `market-intelligence/analytics`, `fpo/unit-conversion`) or one
+  pre-existing implicit-`any` in Part 2's own `updateStorageCapacityBody`
+  schema (untouched by this part, and itself just another symptom of the
+  missing real `zod` types). All verification scaffolding was deleted
+  before packaging.
+- A live migration apply and the full existing Jest suite were not run
+  (no database, no installed test runner in this sandbox) — this part
+  added no migration at all, so there is nothing new to apply regardless.
+
+### Explicitly NOT implemented in Part 4
+
+AI/ML/LLM usage of any kind, fabricated warehouse capabilities or
+environmental conditions, fabricated storage costs, duplicated capacity
+or environmental-suitability logic (both are called through their
+existing Part 2/3 service methods), booking/reservation/payment
+workflows, and any treatment of unknown data as compatible. Also
+explicitly out of scope, matching this part's own instructions:
+multi-warehouse ranking/recommendation (Part 5) and Sell vs Store
+integration (Part 6) — neither was touched.
+
+## Part 5 status: Warehouse Recommendation & Ranking Engine — Done
+
+Given a crop (and optionally a location/quantity/duration), finds
+candidate warehouses, evaluates each through Part 4 (never re-deriving
+suitability), excludes anything Part 4 found `UNSUITABLE`, keeps
+`UNKNOWN` candidates structurally separate rather than mixed in with a
+caveat, and ranks the rest with a deterministic, weight-rebalanced score
+plus a template-built explanation.
+
+### Reused vs. new
+
+Reused without modification: Part 4's `WarehouseSuitabilityAnalysisService.
+analyzeSuitability()` (the entire suitability/risk/constraint/score
+determination for each candidate — never re-implemented), Part 1's
+`StorageRateRepository.findApplicable()` (configured pricing rows), and
+Module 6's `haversineKm()`. Two small, genuine deduplications were made
+rather than copy-pasted: `computeBoundingBox()` was extracted from Part
+2's `WarehouseAvailabilityService.searchNearby()` into
+`warehouse-capacity.ts` and Part 2 was refactored to call it too (same
+formula, now in one place instead of two that could quietly drift), and
+`computeRebalancedWeightedScore()` was extracted into a new
+`weighted-scoring.ts` shared by Part 4's suitability score and this
+part's ranking score, since both needed byte-for-byte the same
+"omit-and-proportionally-rebalance" algorithm. Both refactors were
+re-verified against the exact same test inputs before and after to
+confirm zero behavior change.
+
+**New in this part**: `warehouse.findCandidatesByCrop()` (a bounded,
+indexed repository query for the no-location search path — Part 2 had
+no equivalent, since its own nearby search always requires
+coordinates), and the entire ranking/cost-estimation/tie-breaking/
+explanation engine.
+
+**No new Prisma models, fields, or migration.**
+
+### Candidate discovery
+
+With `latitude`/`longitude` (+ optional `radiusKm`, default 50 km, max
+500 km — same ceiling Module 6 already uses): bounding box →
+`findNearbyCandidates()` (Part 2's own bounded, indexed query, reused
+as-is) → exact Haversine cut → sorted by distance. Without a location:
+`findCandidatesByCrop()`, a new bounded query filtering in SQL on an
+active `WarehouseCropCapability` row for the crop (never "load every
+warehouse and filter in memory"). Either way, results are capped at
+`MAX_EVALUATED_CANDIDATES` (20) before the expensive per-candidate Part
+4 analysis — see the "N+1 / query-count" note below for why that cap
+exists and is necessary here specifically.
+
+### Suitability filtering
+
+Every capped candidate is analyzed via Part 4 (in parallel,
+`Promise.all`). `UNSUITABLE` → excluded, counted in
+`excludedCandidateCount`, never appears anywhere in the response body.
+`UNKNOWN` → placed in `unevaluableCandidates` (warehouse identity + the
+risk codes that made it unevaluable), never in `recommendations` — per
+this part's explicit "do not mix them with recommended warehouses
+without clearly indicating uncertainty" instruction.
+`SUITABLE`/`CONDITIONALLY_SUITABLE` → proceed to ranking.
+
+### Ranking factors and weights
+
+`WAREHOUSE_RECOMMENDATION_CONFIG.RANKING_WEIGHTS` — distance 30 /
+suitability 30 / capacity 20 / cost 20 — adopted directly from the build
+spec's own worked example rather than invented. Per-factor scoring
+(`warehouse-recommendation.engine.ts`, all pure functions):
+
+- **Distance**: linear 100→0 from 0 km to the search radius; omitted
+  entirely for a location-less search or a warehouse with no
+  coordinates (never inferred).
+- **Suitability**: Part 4's own `suitabilityScore` reused directly, not
+  recomputed — this factor *is* Part 4's result, deliberately.
+- **Capacity headroom**: distinct from Part 4's own binary
+  canAccommodate score — this one differentiates *how much* room a
+  candidate has among several that already fit: exactly enough scores
+  50, double the requested quantity (configurable saturation ratio)
+  scores 100. Falls back to Part 4's reused status-based score when no
+  quantity was requested.
+- **Cost**: scored *relative to the other candidates actually evaluated
+  this request* (cheapest → 100, priciest → 0) — there is no absolute
+  "good price" anywhere in this schema to score against, mirroring
+  Module 6's own relative price-percentile convention rather than
+  inventing an absolute scale.
+
+Weight rebalancing (`computeRankingScore`, via the shared
+`computeRebalancedWeightedScore`) happens **per candidate** — a
+candidate missing only a cost estimate has its remaining three weights
+rebalanced to sum to 100 for that candidate specifically, exactly as the
+build spec's own worked example describes.
+
+### Storage cost estimation
+
+`estimateStorageCost()` is `null` unless quantity, unit, a requested
+duration, *and* an applicable configured `StorageRate` for that
+warehouse all exist together — never a fabricated rate, handling fee,
+insurance, transport, or tax. Supports all four existing `StorageRateType`
+values: `PER_QUANTITY_PER_DAY` (converted to a per-KG rate via the same
+trusted KG-normalization `warehouse-capacity.ts` already uses elsewhere
+— not a new/ambiguous unit conversion), flat `PER_DAY`, and `PER_WEEK`/
+`PER_MONTH` billed in whole periods (`Math.ceil`). `assumptions` states
+in plain language exactly which inputs and rounding were used. Rate
+resolution (`resolveApplicableRate`) prefers a crop-specific rate over a
+warehouse-wide one — the same specific-overrides-general order
+`resolveCropCompatibility()`/`resolveMaxStorageDurationDays()` already
+use — but does **not** resolve a storage-unit-scoped rate override,
+since Part 4 already picks the best storage unit internally without
+exposing which one; re-deriving that choice here to key a rate lookup
+would itself be the "duplicate suitability logic" this part is told to
+avoid. Documented simplification, not silent.
+
+### Deterministic tie-breaking
+
+`compareForRanking()` implements the build spec's exact order:
+rankingScore desc → suitabilityScore desc (nulls last) → total
+non-blocking risk severity asc → distanceKm asc (an unknown distance is
+never assumed closest) → availableCapacityKg desc → warehouse publicId
+asc as the final, always-decisive step. Never relies on incoming
+array/database order — verified with a reversed-input stability test.
+
+### Explanations
+
+`buildRecommendationExplanation()` is a fixed string template — no LLM
+— that only names factors actually present in that candidate's own
+`factorsUsed`; an omitted factor (e.g. no cost estimate) is never
+claimed as a strength.
+
+### Result contract
+
+`WarehouseRecommendationResult` (per candidate): `warehouse`, `rank`,
+`rankingScore`, `suitability`/`suitabilityScore`/`confidence` (from Part
+4), `distanceKm`, `availableCapacityKg`, `estimatedStorageCost`,
+`risks`/`constraints` (from Part 4), `factorsUsed`/`omittedFactors`,
+`explanation`, `evaluatedAt`. `WarehouseRecommendationResponse`:
+`recommendations`, `unevaluableCandidates`, `evaluatedCandidateCount`,
+`suitableCandidateCount`, `excludedCandidateCount`, `searchMetadata`,
+`disclaimer`. Never a raw Prisma record.
+
+### No-result handling
+
+A search that finds zero matches returns **`200` with empty arrays and
+full `searchMetadata`/counts, not a `NO_SUITABLE_WAREHOUSES_FOUND`/
+`NO_NEARBY_WAREHOUSES_FOUND` error** — confirmed against Part 2's own
+`searchNearby()`, which already returns `{ results: [] }` rather than
+throwing on zero matches; a valid request that legitimately finds
+nothing is not an exceptional condition in this codebase's existing
+convention, and the response's own counts/metadata already make the
+"why empty" honest and explicit, satisfying this part's "do not return
+misleading empty recommendations... without metadata" requirement
+without introducing an inconsistent error-on-empty pattern found nowhere
+else in this module.
+
+### API
+
+`POST /api/warehouses/recommend` — `cropId` required; `latitude`/
+`longitude` optional but must be given together (`radiusKm` only valid
+alongside them); `quantity`/`unit` optional but paired; `durationDays`
+independently optional. Same authentication as every other endpoint in
+this router; no new role introduced. `POST` (not `GET`) because the
+spec's own suggested shape takes a request body, and a location +
+quantity + duration search has enough optional structure that query
+strings would be awkward — consistent with the spec's own "Potential
+conceptual endpoint: `POST /api/warehouses/recommend`" suggestion.
+
+### Caching
+
+Reuses Part 2's exact `getWarehouseCache`/`setWarehouseCache`/
+`roundCoordinateForCacheKey` utilities (short TTL, coordinate-rounded
+cache keys — never precise coordinates persisted to Redis) — no new
+caching mechanism introduced.
+
+### Observability
+
+`warehouse_recommendation_requested` (at the start, privacy-safe: only
+`hasLocation` and the crop id) and `warehouse_recommendation_generated`
+(candidate counts, never coordinates or per-candidate details) — both
+added to `posthog.ts`'s allow-list. No audit event — this is a read/
+analysis operation, matching this module's established read-vs-write
+audit split.
+
+### N+1 / query-count note
+
+This part compounds Part 4's own already-documented "three warehouse-
+scoped calls per analysis" tradeoff across up to `MAX_EVALUATED_
+CANDIDATES` (20) candidates evaluated concurrently via `Promise.all` —
+up to ~60 queries per recommendation request, plus one `findApplicable`
+rate lookup per surviving (non-excluded, non-unevaluable) candidate.
+This is bounded, not proportional to the warehouse table's total size,
+and is a deliberate reuse-over-optimization tradeoff (the alternative
+would require a bulk-suitability method inside Part 4, which is exactly
+the "do not duplicate suitability logic" this part is told to avoid).
+Flagged explicitly here as a real cost, not hidden — a future
+performance pass could add a batch-oriented Part 4 method if this
+becomes a measured bottleneck, but that is out of this part's scope.
+
+### Tests
+
+`tests/unit/warehouse-recommendation.engine.test.ts` — every pure
+function: distance/capacity-headroom/relative-cost scoring (including
+all-null and all-equal edge cases), ranking-score rebalancing, cost
+estimation for all four rate types plus missing-quantity/duration cases,
+risk severity summing, and the full tie-break order including a
+reversed-input stability check.
+
+`tests/unit/warehouse-recommendation.service.test.ts` — orchestration
+with in-memory fakes: ranking two suitable candidates while excluding an
+unsuitable one, `UNKNOWN` candidates kept separate, empty-result
+metadata (not an error) when there are no candidates at all, cost
+estimation appearing only when quantity+unit+duration+rate all coincide
+(and staying `null` otherwise even with a configured rate), and a
+determinism check across repeated calls.
+
+**Both refactors (`computeBoundingBox`, `computeRebalancedWeightedScore`)
+were verified via a standalone `ts-node` script comparing Part 4's exact
+suitability-score output before and after extracting the shared utility,
+against the same fixed input used in Part 4's own manual verification —
+identical output, confirming zero behavior change from the
+deduplication.**
+
+### Verification
+
+Same sandbox constraints as Parts 3/4 — esbuild syntax checks on every
+new/modified file, a standalone `ts-node` functional run of every pure
+engine function (all passed on the first run — no bug this time, unlike
+Parts 3/4), and a scoped `tsc --noEmit` over every Part 5 file plus the
+Part 1/2/4 files it touches, using the same local stubs as before (this
+time also stubbing `market-intelligence/analytics.ts`'s `haversineKm`
+export, which this excerpt doesn't include) — zero genuine errors; every
+remaining error was the same already-catalogued "module not found"
+noise or the one pre-existing Part 2 implicit-`any`. All scaffolding
+deleted before packaging.
+
+### Explicitly NOT implemented in Part 5
+
+AI/ML/LLM usage, fabricated warehouse information, fabricated distances,
+fabricated storage costs, duplicated capacity or suitability logic (both
+called through Parts 2/4's existing methods), PostGIS (this schema has
+no PostGIS extension configured — bounding-box + Haversine in
+application code, matching Part 2's own established approach), and any
+booking/reservation workflow. Also explicitly out of scope, matching
+this part's own instructions: Sell vs Store integration (Part 6), which
+remains separate.
+
+## Part 6 status: Warehouse Intelligence Integration with Sell vs Store — Module 9 side complete; Module 8 side requires a manual, minimal edit this pass could not safely make
+
+**Read this section before assuming Part 6 is "done" in the same sense
+as Parts 1–5.** The Module 9-owned half of this integration — the
+provider interface, the real implementation, the honest no-op fallback,
+and full tests — is complete, real, and verified. The Module 8-owned
+half (actually consuming it) was **not** edited, and that limitation is
+explained in detail below rather than glossed over.
+
+### Why Module 8 itself was not modified
+
+This repository excerpt never included Module 8's actual source files.
+`app.ts` shows their import paths and exact constructor call sites
+(`DecisionInputResolverService`, `DecisionEngineService`,
+`SellStoreOrchestrationService`, `SellStoreDecisionRepository`,
+`SellStoreAIProvider`/`UnavailableSellStoreAIProvider`), which is enough
+to see that `DecisionInputResolverService` currently takes exactly three
+constructor arguments (`cropLotRepository`, `qualityRepository`,
+`marketIntelligenceRepository`) — but not enough to see
+`SellStoreInputSnapshot`'s exact shape, `ResolvedDecisionInput`'s
+availability-flag types, or `DecisionEngineService`'s scoring internals,
+all of which this part's own instructions explicitly require inspecting
+("the actual repository implementation is the source of truth") before
+touching. Guessing at those internals and editing files this pass cannot
+see would risk silently producing code that doesn't compile against, or
+actively breaks, the real Module 8 — exactly the "do not fabricate"
+and "do not redesign Module 8" outcomes this part's own hard rules
+forbid. This is the same category of limitation Part 4 already
+disclosed for Module 4's `CropLotRepository` (referenced but not
+included), just for a module that isn't referenced with even that much
+detail anywhere in this excerpt beyond `app.ts`'s import/construction
+lines.
+
+### What was actually built (Module 9 side — complete, tested, real)
+
+- **`storage-intelligence-provider.ts`** — the `StorageIntelligenceProvider`
+  interface (`resolveStorageContext(request): Promise<StorageDecisionContext>`)
+  and the `StorageDecisionContext` normalized DTO (`availability`,
+  `suitableWarehouseCount`, `bestWarehouseAvailable`, `estimatedCost`,
+  `costPerUnit`, `currency`, `feasibleDurationDays`, `risks`,
+  `constraints`, `confidence`, `dataTimestamp`, `factorsUsed`,
+  `omittedFactors` — exactly the build spec's own contract, with
+  risks/constraints narrowed to plain string codes rather than full
+  objects per the spec's own "do not expose full warehouse Prisma
+  models" instruction applied consistently). Also exports
+  `UnavailableStorageIntelligenceProvider`, an honest no-op that always
+  returns `availability: null` and every other field
+  null/empty/zero — modeled directly on this exact codebase's own
+  established `UnavailableSellStoreAIProvider`/`UnavailableQualityAIProvider`
+  naming and role (visible via `app.ts`'s own comments on them, even
+  without their source).
+- **`storage-intelligence-provider.service.ts`** —
+  `WarehouseStorageIntelligenceProvider`, the real implementation. It is
+  deliberately thin: it calls Part 5's `WarehouseRecommendationService.
+  recommend()` (which itself calls Part 4 per candidate) and reshapes
+  the result — no suitability or ranking logic is re-implemented here.
+- **Availability semantics** (the build spec's own critical
+  distinction): `true` when at least one candidate came back
+  SUITABLE/CONDITIONALLY_SUITABLE; `false` when candidates were
+  evaluated and confirmed none qualify, *or* no candidate warehouse
+  exists for the crop at all (`evaluatedCandidateCount === 0` — itself a
+  confirmed fact, not a data gap); `null` only when at least one
+  candidate came back genuinely unevaluable (Part 4's `UNKNOWN`) and
+  none were confirmed suitable — "we don't know" is never collapsed into
+  either "no" or "yes".
+- **Cost/duration**: `estimatedCost`/`costPerUnit`/`currency` come
+  straight from the best-ranked candidate's own `estimatedStorageCost`
+  (itself already null unless real rate+quantity+duration data exists —
+  see Part 5); `costPerUnit` is derived by dividing by the same
+  candidate's `quantityUsedKg`, never independently computed.
+  `feasibleDurationDays` only echoes the requested duration back when a
+  duration was actually requested and the best candidate carries no
+  `MAXIMUM_STORAGE_DURATION_EXCEEDED` constraint — otherwise `null`.
+- **Wired into `app.ts`** (safe, since `app.ts` is fully visible and
+  editable): a new optional `storageIntelligenceProvider` field on
+  `AppDependencies` (same optional/default pattern as
+  `sellStoreAiProvider`), constructed as the real
+  `WarehouseStorageIntelligenceProvider` by default (unlike the AI
+  advisory layer, Module 9 is fully implemented in this codebase, so
+  there's no reason to default to the Unavailable stub here), and
+  exposed via `app.locals.storageIntelligenceProvider` as a safe interim
+  handoff point — visible to Module 8's code without this pass having to
+  guess at or edit Module 8's constructor.
+
+### What Module 8 needs — exact, minimal instructions for whoever has that source
+
+1. **`DecisionInputResolverService`** — add a fourth constructor
+   parameter, `private readonly storageIntelligence: StorageIntelligenceProvider`
+   (import from `../warehouse-intelligence/storage-intelligence-provider`).
+   In whatever method currently sets the storage fields of
+   `SellStoreInputSnapshot` to "unavailable" (per this part's own
+   description: `storage: { availability, costPerUnit, durationDays,
+   constraints, spoilageRisk }`), replace that with:
+   `const storage = await this.storageIntelligence.resolveStorageContext({ cropId: lot.cropId, quantity: lot.availableQuantityKg, unit: "KG", latitude: farmLatitude, longitude: farmLongitude, requestingUser: { id: actorId, role: actorRole } });`
+   then map `storage.availability` → `ResolvedDecisionInput`'s existing
+   storage-availability field (widening it to a tri-state if it is
+   currently a plain boolean — see point 3), `storage.costPerUnit` →
+   `costPerUnit`, `storage.feasibleDurationDays` → `durationDays`,
+   `storage.constraints` → `constraints`. **`spoilageRisk` has no Module
+   9 equivalent and must stay whatever Module 8 already does for it** —
+   Module 9 explicitly never predicts spoilage (a hard rule across every
+   part of Module 9), so nothing here should populate that field.
+2. **Graceful degradation**: wrap the `resolveStorageContext` call in a
+   try/catch; on an unexpected throw, capture it with the existing
+   Sentry pattern and fall back to `new UnavailableStorageIntelligenceProvider()
+   .resolveStorageContext(...)`'s output (all-null) rather than failing
+   the whole Sell vs Store request — per this part's own "storage
+   intelligence being unavailable must not fail an entire request"
+   instruction.
+3. **`ResolvedDecisionInput` availability typing**: if the existing
+   storage-availability field is a plain `boolean`, it cannot represent
+   "unknown" without lying — it needs to become `boolean | null`
+   (mirroring `StorageDecisionContext.availability`'s own three-state
+   design), and `DecisionEngineService` needs a small update so that
+   `null` omits storage factors from scoring (with weight rebalancing,
+   matching Module 6/Part 4's existing pattern) rather than the engine
+   treating `null` as falsy/`false`.
+4. **Snapshot immutability**: persist the resolved `StorageDecisionContext`
+   object itself (or the mapped subset) inside `SellStoreInputSnapshot`
+   at decision-generation time, never re-fetched for a historical
+   decision — this requires no new code beyond storing what
+   `resolveStorageContext()` already returned for that request.
+5. **Dependency injection**: in `app.ts`, change
+   `new DecisionInputResolverService(deps.cropLotRepository, deps.qualityRepository, marketIntelligenceRepository)`
+   to add `storageIntelligenceProvider` (already constructed just above
+   that line — see "Wired into `app.ts`" above) as the fourth argument,
+   and delete the interim `app.locals.storageIntelligenceProvider` line
+   once this is done.
+
+None of this requires touching `DecisionEngineService`'s market/quality
+scoring logic, `SellStoreOrchestrationService`'s persistence flow, or
+any existing Module 8 API contract beyond the additive typing change in
+point 3.
+
+### Tests
+
+`tests/unit/storage-intelligence-provider.test.ts` covers: the
+Unavailable provider always returning `null` availability; the real
+provider's three availability branches (confirmed available, confirmed
+unavailable via all-excluded, confirmed unavailable via zero candidates,
+and genuinely unknown via an unevaluable candidate); cost-per-unit
+derivation; `feasibleDurationDays` being null exactly when a duration
+constraint was violated; and a full "everything stays null/empty on an
+empty result, nothing fabricated" check. All branches were additionally
+verified functionally via a standalone `ts-node` script before the Jest
+tests were finalized — zero bugs found this time (unlike Parts 3 and 4,
+where the equivalent manual run caught a real logic error before
+delivery).
+
+### Verification
+
+Same sandbox constraints as every earlier part. Both new Part 6 files
+were syntax-checked with `esbuild`, functionally verified end-to-end via
+`ts-node` (see above), and included in a scoped `tsc --noEmit` pass
+alongside every other Part 1–5 file using the same local stubs already
+established — zero genuine errors. `app.ts`'s own new lines follow the
+exact structural pattern already used for `sellStoreAiProvider` (an
+optional dependency defaulted with `??`), so while a full type-check of
+`app.ts` itself isn't possible in this sandbox (it would require stubs
+for every one of this application's ~10 other modules), the change is a
+narrow, precedented pattern match rather than novel logic.
+
+### Explicitly confirmed
+
+- Module 9 remains solely responsible for warehouse intelligence — no
+  suitability, ranking, or availability logic was duplicated into the
+  new provider files; both call straight through to Parts 4/5.
+- Module 8 remains solely responsible for Sell vs Store decisions — its
+  actual decision/scoring/persistence logic was not touched, because it
+  was never accessible to touch safely.
+- No AI/LLM was added anywhere in this integration.
+- No fake storage data, costs, or availability were created —
+  `WarehouseStorageIntelligenceProvider` only ever reshapes real Part
+  4/5 output, and `UnavailableStorageIntelligenceProvider` is honestly
+  all-null rather than a plausible-looking fake.
+- No circular dependency was introduced: `warehouse-intelligence` has no
+  import of anything from a `sell-vs-store` module, in either direction.
+- This is **not** a complete Part 6 in the same sense Parts 1–5 are
+  complete for this codebase — the Module 8-side wiring above is real
+  work still required, by someone with access to Module 8's actual
+  source, before Module 8 will actually consume any of this.
+
+
+## Warehouse Ecosystem Ingestion Layer status: Provider/Normalization/Validation/Sync — Done (Government & Private Partner sources are honestly UNAVAILABLE, not implemented against a real API)
+
+### Architecture
+
+```
+FARMLINK   GOVERNMENT   PRIVATE PARTNER
+    \           |            /
+     \          |           /
+      WAREHOUSE PROVIDER LAYER      (providers/warehouse-data-provider.ts,
+              |                      farmlink-/government-/partner-warehouse-provider.ts)
+              v
+      WarehouseProviderRegistry     (failure isolation per provider)
+              |
+              v
+      NORMALIZATION                 (warehouse-normalization.service.ts)
+              |
+              v
+      VALIDATION                    (warehouse-validation.service.ts)
+              |
+              v
+      DUPLICATE DETECTION           (warehouse-duplicate-detection.service.ts)
+              |
+              v
+      WarehouseSyncService          (warehouse-sync.service.ts — orchestrator)
+              |
+              v
+      FARMLINK WAREHOUSE DB         (Warehouse, WarehouseStorageUnit,
+              |                      WarehouseSourceReference)
+              v
+   Existing Warehouse Intelligence (Parts 1-5, completely unmodified)
+              |
+              v
+   StorageIntelligenceProvider  ->  Sell vs Store  ->  Farmer Decision
+```
+
+This is a data-ingestion layer sitting entirely **above** the existing
+Warehouse Intelligence module. Nothing below "FARMLINK WAREHOUSE DB" in
+the diagram was changed: search, availability, suitability, risk
+analysis, recommendations, `StorageIntelligenceProvider`, and Sell vs
+Store all continue reading plain `Warehouse` / `WarehouseStorageUnit`
+rows exactly as Parts 1-5 left them. This layer's only job is to get more
+(real, or honestly-absent) rows into that table safely.
+
+**Why this is a different abstraction from `StorageIntelligenceProvider`**
+(`storage-intelligence-provider.ts`): that one is consumer-facing — it
+answers "can this crop be stored here" for Sell vs Store, reading only
+the FarmLink Warehouse DB. `WarehouseDataProvider` (this layer) is
+ingestion-facing — it answers "where did this warehouse row come from."
+Sell vs Store never calls a `WarehouseDataProvider`, directly or
+indirectly, and never will: external-source complexity stops at the
+normalization boundary.
+
+### Provider architecture
+
+Three providers, one `WarehouseProviderRegistry`:
+
+- **`FarmLinkWarehouseProvider`** (`providers/farmlink-warehouse-provider.ts`)
+  — deliberately a no-op that always returns `SUCCESS` with zero records.
+  FarmLink is already the canonical store for its own warehouses (created
+  through the existing Part 1 create flow); reading them back out only to
+  normalize/validate/upsert them into the same table would be pure
+  ceremony. It still exists as a registry entry (rather than being
+  omitted) so the registry's "one status per source type" shape stays
+  uniform, and so a future need (e.g. republishing FarmLink warehouses to
+  a partner feed) has an obvious place to grow into.
+- **`UnavailableGovernmentWarehouseProvider`** /
+  **`UnavailablePartnerWarehouseProvider`** (`providers/government-warehouse-provider.ts`,
+  `providers/partner-warehouse-provider.ts`) — no real government or
+  private-partner warehouse API is configured, guessed at, or scraped.
+  Both always return an explicit `{ status: "UNAVAILABLE", errors: [{ code:
+  "..._SOURCE_NOT_CONFIGURED" }] }` result. This is never treated as a
+  system failure. `WAREHOUSE_GOVERNMENT_PROVIDER_*` /
+  `WAREHOUSE_PARTNER_PROVIDER_*` env vars (config/env.ts) are wired
+  through today so that the day a real endpoint exists, only that one
+  provider class's `fetchWarehouses()` body needs to change.
+- **`WarehouseProviderRegistry`** (`providers/warehouse-provider-registry.ts`)
+  — runs every provider in parallel; a provider that throws is converted
+  into a `FAILED` result (logged + sent to Sentry) rather than crashing
+  the run. Government failing never stops FarmLink or Partner from being
+  processed.
+
+### Normalization
+
+`warehouse-normalization.service.ts` is a pure, synchronous transform
+from `ExternalWarehouseRecord` (the canonical, provider-neutral contract
+every provider must translate into — never a Prisma model, never a raw
+external API shape) to `NormalizedWarehouseRecord`. Rules:
+
+- Every string field is trimmed; empty/whitespace-only becomes `null`.
+- Capacity unit resolution reuses `QUANTITY_ALIASES` from
+  `modules/fpo/unit-conversion.ts` (exported additively for this reason)
+  — deliberately not a second conversion table. An unresolvable unit
+  (e.g. "bags", which has no fixed weight) drops the capacity entirely
+  (`{ totalKg: null, availableKg: null }`) with an `UNSUPPORTED_CAPACITY_UNIT`
+  warning, never a guess.
+- An unparseable numeric string (e.g. `"about 500"`) produces `null` for
+  that field plus an `UNPARSEABLE_NUMBER` warning, never a thrown
+  exception and never a truncated/guessed number.
+- Storage-type hints are matched against a small explicit alias table
+  (`STORAGE_TYPE_ALIASES`); anything unrecognized returns `null`, never
+  `StorageType.OTHER` — `OTHER` means "a real, distinct type we simply
+  don't enumerate," which free text alone can never confidently
+  establish.
+- Coordinates, contact info, and temperature values are passed through
+  as-is if present and finite, `null` otherwise. Nothing is defaulted,
+  geocoded, or inferred.
+
+### Validation
+
+`warehouse-validation.service.ts` returns one of three levels:
+
+- **VALID** — no errors, no warnings.
+- **PARTIAL** — no errors, but the record carries at least one warning
+  (e.g. an unsupported capacity unit, or a malformed pincode). Still
+  persisted.
+- **INVALID** — at least one error (missing name, missing state/district,
+  out-of-range latitude/longitude, one coordinate present without the
+  other, negative/NaN/Infinity capacity, available capacity exceeding
+  total capacity, or minimum temperature exceeding maximum). Never
+  persisted; the sync service counts it as `skipped`.
+
+Optional fields missing on their own are never an error — a record with
+no coordinates, no capacity, and no contact info can still be `VALID` as
+long as its required identity (external id, provider id, name, state,
+district) is present.
+
+### Duplicate detection
+
+`warehouse-duplicate-detection.service.ts` implements exactly two
+deterministic "safe to auto-link" signals, and two conservative
+"report, never merge" signals:
+
+| Signal | Result |
+|---|---|
+| Exact latitude+longitude match against an existing warehouse | `MATCHED` |
+| Exact name + state + district match (case-insensitive) | `MATCHED` |
+| Name matches but state/district differ | `POSSIBLE_DUPLICATE` |
+| Pincode matches but name differs | `POSSIBLE_DUPLICATE` |
+| None of the above | `UNMATCHED` |
+
+`MATCHED` causes the sync service to attach a new `WarehouseSourceReference`
+to the *existing* warehouse and create nothing new. `POSSIBLE_DUPLICATE`
+still creates an independent new warehouse — it is flagged in the sync
+summary's `duplicatesFlagged` count for a human to reconcile, never
+silently merged into the candidate it named. `UNMATCHED` creates a new,
+unrelated warehouse normally.
+
+### Data model (additive only)
+
+- `WarehouseOwnerType` gained two new enum members, `GOVERNMENT` and
+  `PRIVATE_PARTNER`, for warehouses ingested from an external source with
+  no FarmLink user/FPO behind them (`ownerUserId`/`ownerFpoId` stay
+  `null` for these rows). Existing `USER`/`FPO` rows are completely
+  unaffected.
+- `Warehouse` gained one new optional column, `pincode String?`, used
+  only as a duplicate-detection signal.
+- A new model, **`WarehouseSourceReference`** (`warehouse_source_references`
+  table), is the provenance/idempotency record: `(warehouseId, sourceType,
+  providerId, externalId, sourceUpdatedAt, lastSyncedAt, metadata)`, unique
+  on `(providerId, externalId)` — the key the sync service upserts
+  against, exactly per this spec's Part 12. This is deliberately a
+  *separate table* rather than columns bolted onto `Warehouse`: a single
+  warehouse can end up known to more than one external source at once
+  (e.g. both a government registry and a private partner), and a
+  FarmLink-created warehouse should never be forced to carry an
+  artificial external id just because this table exists. A FarmLink-owned
+  warehouse simply has zero rows here — that absence *is* the "sourceType
+  = FARMLINK" fact; nothing is backfilled for existing warehouses.
+- Migration `20260906000000_add_warehouse_ingestion` is additive-only: no
+  existing column, index, table, or enum value is altered or dropped.
+
+### Field ownership / update policy
+
+- **Same provider + externalId seen again** (an existing
+  `WarehouseSourceReference` row): that provider owns these fields, so
+  they're refreshed — but only with whatever the new fetch actually
+  supplied (`record.field ?? warehouse.field`); a field the new fetch
+  happened to omit keeps its previously-known value rather than being
+  nulled out. The associated "declared capacity" `WarehouseStorageUnit`
+  (code `"SOURCE"`) is refreshed the same way; if this fetch carried no
+  capacity at all, an existing unit is left untouched rather than zeroed.
+- **Deterministically `MATCHED` to a different existing warehouse**
+  (first time this provider/externalId pair has been seen, but the
+  record lines up with a warehouse that already exists under a different
+  identity — possibly FarmLink-owned): only a new
+  `WarehouseSourceReference` is attached. The existing warehouse's fields
+  and storage units are never touched — this sync run doesn't own that
+  data.
+- **`UNMATCHED` / `POSSIBLE_DUPLICATE`**: a brand-new `Warehouse` +
+  (if capacity present) one `WarehouseStorageUnit` + one
+  `WarehouseSourceReference` are created together in one transaction.
+
+`StorageRate` is never created or touched by this layer — external
+sources may describe capacity, never FarmLink pricing (Part 21).
+Warehouses this layer creates default to `status: ACTIVE`,
+`verificationStatus: PENDING` exactly like any other new `Warehouse`
+row — a `GOVERNMENT`/`PRIVATE_PARTNER` `sourceType` never implies
+FarmLink verification.
+
+### Synchronization & transaction safety
+
+`WarehouseSyncService.run()` (`warehouse-sync.service.ts`) is the
+orchestrator: registry fetch -> per-record normalize -> validate ->
+dedupe -> persist. Each record is normalized, validated, and persisted
+independently inside its **own** `prisma.$transaction` — one malformed
+or failing record is caught, counted, and skipped; it never rolls back
+or blocks any other record in the same provider's batch, let alone the
+whole run. A provider reporting `UNAVAILABLE` or `FAILED` produces a
+`skipped`/`failed`-free provider summary with that status and moves on to
+the next provider.
+
+### Existing Warehouse Engine integration
+
+Nothing in Parts 1-5 (search, availability, suitability, risk analysis,
+recommendations) or `StorageIntelligenceProvider`/`storage-intelligence-provider.service.ts`
+was modified. Every row this layer creates is a plain `Warehouse` +
+`WarehouseStorageUnit` row using the exact same shape Parts 1-5 already
+read — an externally-sourced warehouse becomes searchable/available/
+recommendable the moment it's created, with no special-casing anywhere
+downstream. Sell vs Store continues to depend only on
+`StorageIntelligenceProvider`, never on anything in this file or the
+`providers/` folder, directly or indirectly.
+
+### Authorization
+
+`POST /api/admin/warehouses/sync` (`warehouse-ingestion.routes.ts`,
+mounted at `/api/admin/warehouses` in `app.ts`) is its own router, gated
+`requireAnyRole("ADMIN")` — deliberately not folded into the existing
+`/api/warehouses` router (reachable by FARMER/FPO_ADMIN/WAREHOUSE_OPERATOR/
+ADMIN), since nothing in the ingestion layer should ever be reachable by
+a normal farmer. No new authorization system was introduced; this reuses
+the existing `createAuthMiddleware`/`requireAnyRole` exactly as every
+other ADMIN-only route in this codebase does.
+
+### Observability
+
+- **PostHog**: `warehouse_provider_sync_requested`, `_completed`, `_partial`,
+  `warehouse_provider_failed`, `warehouse_record_normalization_failed`,
+  `warehouse_record_validation_failed` — added to the `ALLOWED_EVENTS`
+  allow-list in `config/posthog.ts`. No coordinates, credentials, or raw
+  provider payloads are ever sent.
+- **Sentry**: a provider throwing, or a record failing to persist, is
+  captured via `captureException` with `{ module: "warehouse_ingestion",
+  operation, providerId, providerType }` context — never a raw payload.
+- **Audit**: `WAREHOUSE_PROVIDER_SYNC_INITIATED` and `_COMPLETED` (added
+  to `AuditAction` in `audit.service.ts`) bracket every sync run, with
+  provider/status totals in the completion event's metadata. There is no
+  "provider configuration changed" audit action — this implementation has
+  no runtime-mutable provider configuration, only env-var-gated enable/
+  disable flags, which are deploy-time, not an in-app action.
+
+### What was deliberately not built
+
+- No real Government or Private Partner API integration — no endpoint
+  was guessed, scraped, or fabricated. Both providers are honest
+  `UNAVAILABLE` stubs, fully wired for a future real implementation.
+- No `GET /api/admin/warehouses/sync/status` endpoint — this
+  implementation keeps no persisted sync-run history (no new "ingestion
+  run" table was added to avoid unjustified schema ceremony); the sync
+  summary is returned directly from the `POST /sync` call instead.
+- No AI/LLM, no logistics optimization, no transport estimation, no
+  fabricated storage pricing, no web scraping, no second
+  `StorageIntelligenceProvider`, no rewrite of any existing warehouse
+  repository or service.
+
+### Tests
+
+`tests/unit/warehouse-normalization.service.test.ts`,
+`warehouse-validation.service.test.ts`, `warehouse-providers.test.ts`,
+`warehouse-duplicate-detection.service.test.ts`, and
+`warehouse-sync.service.test.ts` — 39 tests covering: unit normalization
+(capacity conversion, unsupported units, unparseable numbers, unrecognized
+storage types, missing-data preservation); validation levels and every
+INVALID rule; provider success/unavailable/failure-isolation; duplicate
+detection's four match states; and the sync service end-to-end (create,
+idempotent update-not-duplicate, field-ownership on refresh, link-without-
+overwrite on a deterministic match, create-and-flag on a possible
+duplicate, skip-invalid-continue-others, provider failure isolation,
+FarmLink-provider records never persisted through this path, and audit
+event recording).
+
+### Verification
+
+Same sandbox constraint as every earlier part of this module: the
+generated Prisma client's query engine binary could not be downloaded in
+this environment (`binaries.prisma.sh` returns 403 here), so
+`npx prisma generate` produces a client stub with no real model types.
+`npx tsc --noEmit` on this layer's files shows only that exact class of
+error (`"@prisma/client" has no exported member 'StorageType'/'WarehouseSourceType'`,
+`Prisma.InputJsonValue`/`Prisma.JsonNull` not found) — the same category
+already present on every pre-existing Warehouse Intelligence file
+(`warehouse.repository.ts`, `warehouse-availability.service.ts`, etc.),
+confirming this is an environment limitation, not something introduced
+by this layer. No other errors were found. `npm test` (unit): 45 of 48
+suites / 597 of 613 tests pass; the 3 failing suites
+(`sell-store-orchestration.service.test.ts`, `buyer-matching.service.test.ts`,
+`warehouse-recommendation.service.test.ts`) fail on `Prisma.Decimal is not
+a constructor` — the same pre-existing, unrelated environment limitation,
+present before this layer's changes and untouched by them.
+
+## Government Warehouse Data Ingestion status: WDRA CSV importer + FCI/IISFM live provider — Done, with one honestly-unresolved caveat (FCI live response shape)
+
+Completes the WDRA and FCI/IISFM government data sources for the
+Warehouse Ecosystem Ingestion Layer above, reusing its provider
+abstraction, normalization, validation, duplicate detection, source-
+reference/provenance and sync service exactly as they already existed —
+no parallel persistence path, no rewrite of Module 9.
+
+### WDRA (Warehousing Development and Regulatory Authority) CSV dataset
+
+**Where the CSV comes from**: a dataset you export from the official WDRA
+portal yourself and pass to the importer as a local file — this importer
+never scrapes the WDRA website.
+
+**How to run it**:
+
+```bash
+npm run warehouse:import-wdra -- path/to/wdra.csv
+```
+
+Safe to re-run against the same or an updated export at any time.
+
+**Expected CSV columns** (exact header names): `WHM Name`, `WH Name`,
+`WH ID`, `Address`, `District`, `State`, `Capacity(in MT)`,
+`Registration Date`, `Registration Valid Upto`, `Contact No.`, `Status`,
+`Remarks`.
+
+**Column mapping**: `WH ID` → `externalId` (provider identity is
+`providerId="wdra"`, `providerType="GOVERNMENT"`); `WH Name` → `Warehouse.name`;
+`Address`/`District`/`State` → the matching `Warehouse` location fields;
+`Capacity(in MT)` → the storage unit's total capacity. `WHM Name`,
+`Registration Date`, `Registration Valid Upto`, `Contact No.`, and
+`Remarks` have no first-class column on `Warehouse` and are preserved as
+`WarehouseSourceReference.metadata` instead of being discarded.
+
+**Status mapping**: `Active`/`Inactive`/`Suspended` (case/whitespace-
+insensitive) → `WarehouseStatus.ACTIVE`/`INACTIVE`/`SUSPENDED` +
+`isActive` true/false, via a small explicit `STATUS_ALIASES` table added
+to `warehouse-normalization.service.ts` — this is a new, generic
+capability added to the shared normalization/sync layer (it previously
+never touched `Warehouse.status`/`isActive` at all), not a WDRA-specific
+branch. An unrecognized status string normalizes to `null` with a
+warning rather than being guessed, and `null` (from an unrecognized
+string, or a source that reports no status this run) leaves the
+warehouse's existing/default status untouched on update, or applies the
+schema's own `ACTIVE`/`isActive:true` default on create.
+
+**Capacity conversion**: `Capacity(in MT)` is passed through as raw text
+with a fixed `"MT"` unit; the existing shared `QUANTITY_ALIASES` table
+(`modules/fpo/unit-conversion.ts`) resolves `MT → TONNE → KG` — no
+second, WDRA-specific conversion routine was written. An unparseable
+capacity (e.g. `"N/A"`) never guesses a number: it's stored as `null`
+with an `UNPARSEABLE_NUMBER` warning and the row is still otherwise
+imported (`PARTIAL`, not `INVALID`).
+
+**Storage type**: WDRA's export has no reliable storage-type column, so
+one is never guessed — `storageType` is left unset, and the existing
+`AMBIENT` schema default (already used by every other provider that
+supplies none) applies on create exactly as it would for any other
+source.
+
+**Idempotency**: the importer builds one in-memory `WarehouseDataProvider`
+from the CSV and hands it to the *existing* `WarehouseProviderRegistry` /
+`WarehouseSyncService` — idempotency, create-vs-update, and source-
+reference upserts come entirely from that existing pipeline's
+`WarehouseSourceReference` `unique(providerId, externalId)` logic, not
+from anything new. Re-running the importer against the same file, or a
+duplicate `WH ID` within one file, updates rather than duplicates.
+
+**Files**: `wdra-record-mapper.ts` (pure CSV-row → `ExternalWarehouseRecord`
+mapping), `wdra-csv-parser.ts` (quote-aware CSV line splitting + row
+streaming), `wdra-csv-import.ts` (the CLI entry point wiring the two
+above into the existing sync pipeline).
+
+### FCI/IISFM live government provider
+
+**Official endpoint**: `https://api.iisfm.nic.in/DepotsWithCap` — public,
+no documented API key requirement, so none is required by this
+implementation either (`FciIisfmWarehouseProvider`).
+
+**Provider ID**: `providerId="fci-iisfm"`, `providerType="GOVERNMENT"` —
+this now fills the `GOVERNMENT` slot in `app.ts`'s provider registry,
+replacing `UnavailableGovernmentWarehouseProvider` there (that class is
+kept, undeleted, as the honest-UNAVAILABLE template for a possible future
+*second* government source, e.g. NABARD — explicitly out of scope here).
+
+**Environment variables**: reuses the existing
+`WAREHOUSE_GOVERNMENT_PROVIDER_ENABLED`/`_TIMEOUT_MS`/`_MAX_RETRIES` (no
+new provider-specific timeout/retry variables); adds
+`FCI_IISFM_API_BASE_URL` (default `https://api.iisfm.nic.in`) and
+`FCI_IISFM_DEPOTS_ENDPOINT` (default `/DepotsWithCap`), split so the path
+can change independently of the host, mirroring `MARKET_DATA_GOV_BASE_URL`.
+
+**Sync behavior**: bounded retries with exponential backoff on
+transient/network failures, fails fast (no retry) on a non-retryable
+4xx, a content-length/body-size cap, strict JSON-parse and response-
+shape validation, and structured error logging with no payload or
+credential ever included. A malformed or unrecognized response shape
+returns an explicit `FAILED` provider result — it never fabricates
+warehouse records. Flows through the exact same normalization →
+validation → duplicate-detection → `WarehouseSyncService` pipeline as
+every other provider; FCI/IISFM and WDRA are kept as distinct source
+identities (`fci-iisfm` + Depot Code vs. `wdra` + WH ID) and are never
+auto-merged.
+
+**⚠️ Known limitation — the live response shape is unconfirmed**: the
+exact JSON casing/shape `/DepotsWithCap` returns could not be verified
+from this build environment. A direct fetch of the endpoint was refused
+by its own `robots.txt`, and no public documentation of this specific
+endpoint's response body could be located via search either. Rather than
+guess a single shape and silently mis-map every field if wrong,
+`fci-iisfm-record-mapper.ts` is deliberately *tolerant*: it accepts a
+bare array or an array nested under one of several conventional wrapper
+keys, and tries several plausible per-field key-casing variants (the
+exact `"Depot Code"`/`"Depot Name"` spacing this task's own field list
+uses, plus common PascalCase/camelCase/snake_case variants). If the real
+response uses a casing this doesn't cover, the provider reports an
+explicit `FAILED` result with a `FCI_IISFM_MALFORMED_RESPONSE` error
+rather than returning zero silently-wrong records.
+
+Following directly from that: **the test fixture
+(`tests/fixtures/fci-iisfm-depots-with-cap.fixture.json`) is NOT a live
+capture** — its own `_fixtureNote` field says so. It's built from this
+task's documented field list (`Depot Code`, `Depot Name`, `Total
+Capacity`, `Covered Capacity`, `Open Capacity`, `Revenue State`, `Revenue
+District`) purely to exercise the tolerant mapper deterministically. The
+first time this provider is actually run against the live endpoint from
+a network that can reach it, replace this fixture with the real captured
+response and trim the mapper's key-casing list to match it.
+
+**What is and isn't available from this endpoint**: `Total Capacity`,
+`Covered Capacity`, `Open Capacity`, `Revenue State`, `Revenue District`,
+and a depot code/name are the only fields this ingestion assumes exist,
+per the task's own field list. No coordinates and no address are
+documented for this endpoint, so `latitude`/`longitude`/`address` are
+never invented — they stay `null`. No capacity-unit field is documented
+either, so (unlike WDRA's `"MT"`, which is fixed from its own column
+header) FCI capacity's unit is *only* resolved if the live response
+itself names one (checked under several key-casing variants); otherwise
+it's left unresolved and the shared normalization layer drops the
+capacity value with an `UNSUPPORTED_CAPACITY_UNIT` warning rather than
+assuming metric tonnes.
+
+**Files**: `providers/fci-iisfm-record-mapper.ts` (tolerant response-
+shape parser + field mapper), `providers/fci-iisfm-warehouse-provider.ts`
+(the `WarehouseDataProvider` implementation: config gating, retry/
+backoff/timeout, size cap, response validation).
+
+### Shared pipeline changes made to support both sources
+
+- `ExternalWarehouseRecord.status` (new, optional, raw text) —
+  `providers/warehouse-data-provider.ts`.
+- `STATUS_ALIASES` + `normalizeStatus()`, and a `status` field on
+  `NormalizedWarehouseRecord` — `warehouse-normalization.service.ts`.
+- `persistOne`'s create/update paths now set `Warehouse.status`/
+  `isActive` from `record.status` (falling back to the schema default on
+  create, or leaving the existing value untouched on update when the
+  source reports no status) — `warehouse-sync.service.ts`.
+- `ProviderSyncSummary.warnings` (new) — counts records that were
+  persisted but carried at least one non-fatal normalization/validation
+  warning (`PARTIAL` level), distinct from `skipped` (`INVALID`, dropped
+  entirely). Used by the WDRA importer's reporting; available to every
+  provider going forward.
+- `WDRA_IMPORT_COMPLETED` audit action (`modules/audit/audit.service.ts`)
+  — recorded once per CLI run, in addition to the existing
+  `WAREHOUSE_PROVIDER_SYNC_INITIATED`/`_COMPLETED` events
+  `WarehouseSyncService.run()` already emits.
+
+None of the above are WDRA- or FCI-specific hacks: they're small,
+generic extensions to the shared provider contract/normalization/sync
+layer, usable by any future provider exactly the same way FarmLink's own
+provider already uses the rest of that layer.
+
+### Tests added
+
+`tests/unit/wdra-record-mapper.test.ts` (column mapping, MT unit
+pass-through, no-fabricated-unit-on-empty-capacity, raw status pass-
+through, no-guessed-storage-type, metadata preservation including
+missing-optional-fields, empty-`WH ID` handling), `wdra-csv-parser.test.ts`
+(quote-aware splitting, comma-in-quoted-field, doubled-quote escaping,
+BOM stripping, blank-line skipping, short-row handling),
+`wdra-import-pipeline.test.ts` (the real WDRA mapper feeding the real
+`WarehouseSyncService`: create + source-reference creation with MT→KG
+conversion, idempotent re-import, status update across re-imports,
+duplicate `WH ID` within one file, missing-`WH ID` row skipped without
+stopping the rest), `fci-iisfm-record-mapper.test.ts` (wrapper-key
+unwrapping, bare-array acceptance, malformed-shape reporting, field
+mapping, capacity-unit never invented unless the response supplies one,
+no invented coordinates/address, dropped-when-no-depot-code, camelCase/
+snake_case tolerance), `fci-iisfm-warehouse-provider.test.ts` (disabled →
+`UNAVAILABLE` without a network call, successful parse, malformed-shape
+→ `FAILED`, non-JSON body → `FAILED`, fail-fast on non-retryable 404,
+bounded retry-then-succeed on a transient 503, bounded retry-then-give-up
+after `WAREHOUSE_GOVERNMENT_PROVIDER_MAX_RETRIES`, timeout treated as
+retryable, response-size cap, no credential/payload in error output).
+Plus additions to the existing `warehouse-normalization.service.test.ts`
+(status alias mapping, case/whitespace handling, unrecognized-status
+warning, no-status-no-warning) and `warehouse-sync.service.test.ts`
+(status/isActive on create for all three states, default-when-no-status,
+status update across re-syncs, status preserved when a later fetch omits
+it, `ProviderSyncSummary.warnings` counting a `PARTIAL` record).
+
+### Verification
+
+Ran in a full environment this time (`npm install` succeeded; the same
+`binaries.prisma.sh` 403 as every earlier part of this module still
+blocks a real Prisma query engine, so the generated client remains a
+type-stub — see below).
+
+- **Full `npm test`**: 71 of 75 suites / 987 of 1004 tests pass. All 49
+  warehouse-ingestion tests (5 new suites + additions to 2 existing
+  ones) pass. The 4 failing suites
+  (`sell-store-orchestration.service.test.ts`,
+  `buyer-matching.service.test.ts`, `rbac.security.test.ts`,
+  `warehouse-recommendation.service.test.ts`) are pre-existing and
+  unrelated to this work — 2 fail on `Prisma.Decimal is not a
+  constructor` (the same Prisma-stub limitation noted throughout this
+  module), 1 is an RBAC status-code expectation, and 1 is a
+  recommendation-ranking assertion in a file this ingestion work never
+  touches. Confirmed by inspecting each failing file's imports/diffs:
+  none reference anything changed for WDRA/FCI.
+- **`npx tsc --noEmit`**: the *only* errors in every new file
+  (`wdra-record-mapper.ts`, `wdra-csv-parser.ts`, `wdra-csv-import.ts`,
+  `providers/fci-iisfm-record-mapper.ts`,
+  `providers/fci-iisfm-warehouse-provider.ts`) are zero — clean. The
+  modified shared files (`warehouse-normalization.service.ts`,
+  `warehouse-sync.service.ts`) show only the same pre-existing
+  `"@prisma/client" has no exported member '...'` class of error already
+  present on every other Warehouse Intelligence file, for the same
+  reason (the Prisma client stub).
+- **`npx eslint`**: zero errors, zero warnings on every new/modified file
+  in this change. (One pre-existing lint error exists in the repository,
+  in `modules/transporters/vehicle.service.ts` — untouched by this work.)
+- **WDRA import, actually run**: no CSV was supplied for this task
+  (`FarmLink-main.zip` contained only the ingestion instructions, not a
+  WDRA dataset), so `npm run warehouse:import-wdra` could not be run
+  against a real ~7,775-row file, and no live Postgres was available in
+  this sandbox to persist against either way. In place of that, a
+  synthetic 5-row CSV covering every documented edge case (Active,
+  lowercase `"active"`, Inactive, Suspended, an unparseable `"N/A"`
+  capacity, and a missing `WH ID`) was run through the real
+  `readCsvRows` → `mapWdraCsvRowToExternalRecord` →
+  `normalizeExternalWarehouseRecord` → `validateNormalizedWarehouseRecord`
+  chain end-to-end. Results were exactly as designed: correct MT→KG
+  conversion (2500 MT → 2,500,000 kg), correct case-insensitive status
+  mapping for all three states, `PARTIAL`+`UNPARSEABLE_NUMBER` (not a
+  guessed number) for the unparseable capacity, and `INVALID`+
+  `MISSING_EXTERNAL_ID` for the row with no `WH ID`. Once you provide the
+  real dataset, `npm run warehouse:import-wdra -- path/to/wdra.csv`
+  against a real database is the remaining step to fully close this out.
+- **FCI/IISFM live smoke test**: **not run, and not fabricated as
+  passing.** `https://api.iisfm.nic.in/DepotsWithCap` could not be
+  reached from this sandbox (blocked by the endpoint's own `robots.txt`
+  on a direct fetch; the host isn't reachable from this environment's
+  bash network at all). The provider and its mapper were instead
+  exercised against a clearly-labeled non-live fixture (see above) with
+  a mocked `fetch`, covering success, malformed shape, non-JSON body,
+  non-2xx handling, retry/backoff/timeout, and the response-size cap.
+  The first real run against the live endpoint from a network that can
+  reach it is the way to confirm the mapper's key-casing tolerance
+  actually matches reality — see the "known limitation" note above.
+
+### Report
+
+```text
+WDRA importer: PASS (logic verified end-to-end against a synthetic CSV; not run against a real dataset or a live DB — none was provided/available)
+WDRA rows processed: 5 (synthetic smoke test)
+WDRA created: n/a (no live DB in this sandbox)
+WDRA updated: n/a
+WDRA skipped/errors: 1 of 5 (missing WH ID, by design)
+
+FCI provider: PASS (unit-tested against a tolerant mapper + fixture; implementation complete)
+FCI live request: NOT RUN (endpoint unreachable from this sandbox — see limitation above)
+FCI records parsed: 2 of 3 in the fixture (1 correctly dropped for a missing Depot Code)
+FCI records synced: n/a (no live DB)
+
+Tests: 987 of 1004 passing (49/49 new); 4 pre-existing, unrelated failures (see above)
+Typecheck: clean on every new/modified file; pre-existing Prisma-stub errors elsewhere, unchanged
+Lint: 0 errors / 0 warnings on every new/modified file
+Migration status: none required — no schema changes; Warehouse/WarehouseStorageUnit/WarehouseSourceReference and existing enums (WarehouseStatus, StorageType) were reused as-is
+
+Files changed:
+  backend/src/modules/warehouse-intelligence/wdra-record-mapper.ts (new)
+  backend/src/modules/warehouse-intelligence/wdra-csv-parser.ts (new)
+  backend/src/modules/warehouse-intelligence/wdra-csv-import.ts (new)
+  backend/src/modules/warehouse-intelligence/providers/fci-iisfm-record-mapper.ts (new)
+  backend/src/modules/warehouse-intelligence/providers/fci-iisfm-warehouse-provider.ts (new)
+  backend/src/modules/warehouse-intelligence/providers/warehouse-data-provider.ts (modified: + status field)
+  backend/src/modules/warehouse-intelligence/warehouse-normalization.service.ts (modified: + status normalization)
+  backend/src/modules/warehouse-intelligence/warehouse-sync.service.ts (modified: + status/isActive persistence, + warnings count)
+  backend/src/modules/warehouse-intelligence/providers/government-warehouse-provider.ts (modified: docstring only)
+  backend/src/app.ts (modified: FciIisfmWarehouseProvider registered in place of the UNAVAILABLE placeholder)
+  backend/src/modules/audit/audit.service.ts (modified: + WDRA_IMPORT_COMPLETED action)
+  backend/src/config/env.ts (modified: + FCI_IISFM_API_BASE_URL/_DEPOTS_ENDPOINT)
+  backend/.env.example (modified: same, + updated warehouse-section comment)
+  backend/package.json (modified: + warehouse:import-wdra script)
+  backend/tests/fixtures/fci-iisfm-depots-with-cap.fixture.json (new — NOT a live capture, see above)
+  backend/tests/unit/wdra-record-mapper.test.ts (new)
+  backend/tests/unit/wdra-csv-parser.test.ts (new)
+  backend/tests/unit/wdra-import-pipeline.test.ts (new)
+  backend/tests/unit/fci-iisfm-record-mapper.test.ts (new)
+  backend/tests/unit/fci-iisfm-warehouse-provider.test.ts (new)
+  backend/tests/unit/warehouse-normalization.service.test.ts (modified: + status tests)
+  backend/tests/unit/warehouse-sync.service.test.ts (modified: + status/warnings tests)
+  docs/modules/module-09-warehouse-intelligence.md (this section)
+```
+
+### Explicitly NOT implemented (per this task's own scope boundary)
+
+NABARD, frontend warehouse UI, warehouse map UI, and cross-provider
+geospatial matching — none were touched, exactly as instructed.
+
+## Warehouse Ecosystem Ingestion Layer — daily FCI/IISFM sync + `unchanged` tracking (this task)
+
+This task's own instructions were to inspect and reuse the existing
+ingestion pipeline, not redesign it — and after inspection, the FCI/IISFM
+provider, mapper, `WarehouseSyncService`, duplicate detection, and manual
+admin sync endpoint documented above already satisfied nearly every
+requirement (identity via `providerId + externalId`, update-not-recreate,
+never fabricating `sourceUpdatedAt`, never touching FarmLink-owned rows,
+per-record failure isolation). Two things were actually missing:
+
+1. **No automatic cron existed at all.** The only way to run a warehouse
+   sync was the existing `POST /api/admin/warehouses/sync` admin endpoint.
+2. **No `unchanged` outcome.** `WarehouseSyncService.persistOne()`
+   unconditionally issued a `warehouse.update()` (and counted it as
+   `updated`) for every record whose `WarehouseSourceReference` already
+   existed — even when the incoming data was byte-for-byte identical to
+   what was already stored. This directly contradicts the ingestion
+   spec's "do not perform unnecessary database UPDATE operations when the
+   incoming data is identical" requirement, and its "the sync result
+   should distinguish created/updated/unchanged" requirement.
+
+### What changed
+
+**`warehouse-sync.service.ts`** — `persistOne()` now compares every field
+it would write (name, warehouseType, state, district, address, pincode,
+latitude, longitude, status, isActive) and the source-owned storage
+unit's fields (storageType, totalCapacity, availableCapacity,
+temperatureControlled, minTemperature, maxTemperature) against what's
+already stored, using a small `valuesEqual()` helper that treats a
+Prisma `Decimal` and a plain number with the same numeric value as equal.
+A `tx.warehouse.update()` / `tx.warehouseStorageUnit.update()` is now only
+issued when something actually differs. `WarehouseSourceReference`
+bookkeeping (`lastSyncedAt`, `sourceUpdatedAt`, `metadata`) is still
+refreshed unconditionally on every run, changed or not — "FarmLink last
+successfully processed this source record" is true regardless of whether
+the record's own data moved. `ProviderSyncSummary`/`WarehouseSyncSummary`
+gained an `unchanged: number` field alongside `created`/`updated`. A
+record whose Warehouse row is missing entirely (an orphaned source
+reference — not expected in practice) is conservatively still reported as
+`updated`, never a confident `unchanged`.
+
+**`warehouse-sync-cron.guard.ts` (new)** — two small, pure,
+dependency-free pieces extracted so the required environment/concurrency
+behavior is independently unit-testable without exercising the whole
+`server.ts` composition root (which — like the existing market-data cron
+it sits next to — has no test coverage of its own):
+
+- `decideWarehouseSyncCronScheduling({ isProduction, governmentProviderEnabled })`
+  — the yes/no decision of whether to call `cron.schedule` at all. Returns
+  `{ schedule: true }` only when both conditions hold; otherwise
+  `{ schedule: false, reason: "NOT_PRODUCTION" | "PROVIDER_DISABLED" }`.
+  `server.ts` evaluates this once at startup, *before* `cron.schedule` is
+  ever called — so development/test never registers a scheduled task,
+  rather than registering one and returning early inside the callback.
+- `withRedisLock(redis, key, ttlMs, fn)` — acquires the lock with
+  `SET key value PX ttlMs NX` (same primitive the existing market-data
+  cron already uses), runs `fn` only if acquired, and releases the lock
+  in a `finally` — but only if the value it reads back is still the token
+  it itself wrote, so a run that outlives its own TTL can never delete a
+  different instance's newer lock. A `null` Redis client (no `REDIS_URL`
+  configured, e.g. local development) always runs `fn` directly.
+
+**`server.ts`** — added the automatic daily sync, built from the same
+`WarehouseProviderRegistry`/`FciIisfmWarehouseProvider`/
+`WarehouseDuplicateDetectionService`/`WarehouseSyncService` pieces
+`app.ts` already wires for the manual admin endpoint (there is exactly
+one warehouse persistence algorithm; the cron only decides *when* to call
+it — mirrors how the existing market-data cron reuses `MarketDataService`
+rather than duplicating its logic). Scheduled via `node-cron` at
+`30 2 * * *` (02:30) with `timezone: "Asia/Kolkata"`, gated by
+`decideWarehouseSyncCronScheduling`, locked via `withRedisLock` with the
+same `warehouse-data:sync-lock` key style as `market-data:sync-lock`, and
+its `ScheduledTask.stop()` is added to the existing `shutdown()` handler
+alongside `marketSyncTask`. Startup/skip/failure are logged distinctly
+("Warehouse sync cron scheduled for 02:30 Asia/Kolkata" /
+"...not scheduled outside production" / "...not scheduled because
+government provider is disabled" / "Warehouse sync skipped: another
+instance owns the lock" / sync-completed totals / sync-failed + captured
+exception) per the spec's observability requirements. No admin-sync
+behavior changed — `WarehouseSyncService`, the registry, and
+`/api/admin/warehouses/sync` are completely untouched by this addition.
+
+### Why no schema/migration changes
+
+None were needed. `unchanged` is a summary-response concept only, not
+persisted anywhere; the cron needs no new table (it reuses the existing
+`WarehouseSourceReference`/`Warehouse`/`WarehouseStorageUnit` rows and the
+existing Redis connection). This matches the spec's own "no unnecessary
+database/schema redesign" acceptance criterion.
+
+### Tests added/changed
+
+- `warehouse-sync-cron.guard.test.ts` (new, 9 tests): all four
+  production × provider-enabled combinations for
+  `decideWarehouseSyncCronScheduling` (spec Tests 9–11), plus
+  `withRedisLock` acquiring/releasing normally, refusing to run when
+  another instance holds the lock (spec Test 12 — concurrent sync),
+  releasing on a thrown error, running directly with no Redis configured,
+  and never deleting a lock it didn't itself acquire.
+- `warehouse-sync.service.test.ts` — the existing idempotency test
+  previously asserted `updated: 1` on an identical second run; corrected
+  to assert `unchanged: 1, updated: 0` (spec Test 3). Added: a spy-based
+  test proving no `warehouse.update`/`warehouseStorageUnit.update`/
+  `.create` call is issued for an identical re-fetch; a test that
+  `lastSyncedAt` still advances on an unchanged record; a test that a
+  *genuine* capacity change is still correctly counted as `updated`, not
+  `unchanged`.
+- `wdra-import-pipeline.test.ts` — one existing test asserted
+  `updated: 1` for a duplicate-within-one-file row whose only difference
+  was a `Remarks` value that lands in `WarehouseSourceReference.metadata`,
+  never on the `Warehouse` row itself; corrected to assert
+  `updated: 0, unchanged: 1`, since that row's warehouse-facing data truly
+  didn't change.
+
+### Verification actually run
+
+- **`npm install`**: succeeded (631 packages).
+- **`npx prisma generate`**: fails in this sandbox — `binaries.prisma.sh`
+  is blocked by network egress rules here, so no real generated Prisma
+  Client (with actual model types) exists; only the default stub. This is
+  the same pre-existing sandbox limitation this document already noted
+  for the WDRA/FCI work above, not something introduced by this change.
+- **`npx tsc --noEmit`**: the only errors touching the two files this
+  task modified (`warehouse-sync.service.ts`) are the same pre-existing
+  `"@prisma/client" has no exported member 'WarehouseSourceType'/
+  'InputJsonValue'/'JsonNull'` class of error already present throughout
+  this module (Prisma-stub limitation, not a regression — verified by
+  confirming these exact call sites existed, unchanged, before this
+  task's edits). `server.ts` and the new `warehouse-sync-cron.guard.ts`
+  produce zero errors.
+- **`npx eslint`** on every changed file: 0 errors. Only pre-existing
+  `@typescript-eslint/no-explicit-any` warnings in the two test files,
+  identical in kind to warnings the untouched parts of those same files
+  already had (the fake-Prisma test doubles use `any` throughout, as
+  before).
+- **`npm test` (full suite)**: 753 of 770 passing (up from a measured
+  baseline of 741 of 758 before this task's changes — i.e. the 12 new
+  tests, all passing, with zero regressions). The same 4 suites fail
+  before and after this task's changes, for the same reasons, confirmed
+  by re-running the untouched baseline first:
+  `sell-store-orchestration.service.test.ts` and
+  `buyer-matching.service.test.ts` (`Prisma.Decimal is not a constructor`
+  — the Prisma-stub limitation above), `warehouse-recommendation.service.test.ts`
+  (a pre-existing ranking-order assertion in a file this task never
+  touches), and `wdra-csv-parser.test.ts` (looks for a fixture CSV at
+  `data/wdra/wdra-warehouses.csv` that isn't present in this checkout).
+- **Manual admin sync**: unchanged code path, exercised indirectly by the
+  full `warehouse-sync.service.test.ts` suite (still 19/19 passing) since
+  the admin controller/route call the identical `WarehouseSyncService`.
+- **No live FCI/IISFM request was made** — `WAREHOUSE_GOVERNMENT_PROVIDER_ENABLED`
+  stays `false` by default in `.env.example`, and this task made no
+  outbound call to `api.iisfm.nic.in`, consistent with "do not require
+  developers to accidentally hit the real FCI API".
+
+### Report
+
+```text
+Files changed:
+  backend/src/modules/warehouse-intelligence/warehouse-sync.service.ts (modified: + unchanged tracking, no unnecessary UPDATE on identical data)
+  backend/src/modules/warehouse-intelligence/warehouse-sync-cron.guard.ts (new: pure scheduling decision + Redis lock helper)
+  backend/src/server.ts (modified: + automatic daily warehouse sync cron, production+provider-gated, Redis-locked, graceful shutdown)
+  backend/tests/unit/warehouse-sync-cron.guard.test.ts (new, 9 tests)
+  backend/tests/unit/warehouse-sync.service.test.ts (modified: idempotency test corrected + 3 new unchanged/updated tests)
+  backend/tests/unit/wdra-import-pipeline.test.ts (modified: duplicate-row test corrected for the new unchanged outcome)
+  docs/modules/module-09-warehouse-intelligence.md (this section)
+
+What was implemented:
+  - unchanged/updated/created distinction in WarehouseSyncService.persistOne(), backed by field-level comparison against the stored Warehouse + WarehouseStorageUnit rows
+  - Automatic daily FCI/IISFM warehouse sync cron (30 2 * * * Asia/Kolkata), reusing the existing WarehouseSyncService/provider registry — no second persistence algorithm
+  - Production-only + provider-enabled cron gating, decided before cron.schedule is ever called
+  - Redis distributed lock (warehouse-data:sync-lock) preventing concurrent multi-instance sync runs, with safe TTL and never releasing another instance's lock
+  - Graceful shutdown stops the new scheduled task alongside the existing market-data one
+
+Cron behavior:
+  - NODE_ENV=production + WAREHOUSE_GOVERNMENT_PROVIDER_ENABLED=true -> scheduled, runs daily 02:30 Asia/Kolkata
+  - NODE_ENV=development or test (any provider setting) -> not scheduled
+  - NODE_ENV=production + WAREHOUSE_GOVERNMENT_PROVIDER_ENABLED=false -> not scheduled
+  - Manual admin sync (POST /api/admin/warehouses/sync) unaffected in every case
+
+Database synchronization behavior:
+  - New FCI depot (providerId=fci-iisfm, externalId=Depot Code) -> Warehouse + WarehouseSourceReference created
+  - Existing depot, data changed -> same Warehouse row updated, no new row
+  - Existing depot, data identical -> no Warehouse/WarehouseStorageUnit UPDATE issued; counted as `unchanged`; WarehouseSourceReference.lastSyncedAt still refreshed
+  - FCI API failure -> existing warehouses untouched, sync marked failed for that provider, other providers unaffected
+  - Warehouse missing from a given day's FCI response -> never deleted/deactivated (no code path does this)
+
+Tests run: npm test -> 753/770 passing (12 new, all passing; same 4 pre-existing unrelated failures as the measured baseline, 0 regressions)
+Build/typecheck result: npx tsc --noEmit clean on server.ts and warehouse-sync-cron.guard.ts; warehouse-sync.service.ts shows only the same pre-existing Prisma-stub errors already present before this task
+Lint result: npx eslint 0 errors on all changed files
+
+Assumptions or unresolved issues:
+  - No live Postgres or reachable FCI/IISFM endpoint in this sandbox, so the cron's real behavior against production data/API is unverified beyond the in-memory unit tests (same limitation already documented for the original FCI provider work above)
+  - No git commit or push was made, per this task's explicit instruction
+```
+

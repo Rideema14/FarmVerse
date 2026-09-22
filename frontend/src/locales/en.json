@@ -386,7 +386,8 @@
     "view": "View",
     "sale": "Sale",
     "lease": "Lease",
-    "perYear": "/yr"
+    "perYear": "/yr",
+    "anyPlaceholder": "Any"
   },
   "machinery": {
     "title": "Machinery Rental",
@@ -680,7 +681,11 @@
     "confirm": "Confirm",
     "reject": "Reject",
     "markActive": "Mark Active",
-    "markCompleted": "Mark Completed"
+    "markCompleted": "Mark Completed",
+    "loadDataFailed": "Could not load your machinery data.",
+    "updateListingFailed": "Could not update this listing.",
+    "deleteListingFailed": "Could not delete this listing. Deactivate it instead if it has bookings.",
+    "updateBookingFailed": "Could not update this booking."
   },
   "sellerLand": {
     "sellerHub": "Seller Hub",
@@ -724,7 +729,11 @@
     "statusAccepted": "Accepted",
     "statusRejected": "Rejected",
     "statusCompleted": "Completed",
-    "statusCancelled": "Cancelled"
+    "statusCancelled": "Cancelled",
+    "landPlotFallback": "Land Plot",
+    "updateListingStatusFailed": "Failed to update listing status",
+    "deleteListingFailed": "Failed to delete listing",
+    "updateVisitRequestStatusFailed": "Failed to update visit request status"
   },
   "addMachinery": {
     "title": "List Machinery for Rent",
@@ -744,7 +753,14 @@
     "addPhoto": "Tap to upload photo",
     "photoAdded": "Photo added — tap to change",
     "publish": "Publish Machine",
-    "publishing": "Publishing..."
+    "publishing": "Publishing...",
+    "loadingCategories": "Loading categories…",
+    "categoriesLoadFailed": "Could not load machinery categories.",
+    "publishFailed": "Could not publish this listing. Please try again.",
+    "publishSuccessMsg": "{name} is now available for rent on FarmVerse.",
+    "viewMachineryRental": "View Machinery Rental",
+    "uploadingMessage": "Uploading equipment photo and creating listing for rent.",
+    "machineryPreviewAlt": "Machinery preview"
   },
   "addLand": {
     "title": "Post Agricultural Land Listing",
@@ -766,7 +782,16 @@
     "uploadPhotos": "Upload Land Photos",
     "tapToBrowse": "Tap to browse images from your device",
     "publish": "Post Land Listing",
-    "publishing": "Publishing..."
+    "publishing": "Publishing...",
+    "requiredFieldsError": "Please fill in all required fields.",
+    "publishFailedGeneric": "Failed to publish land listing",
+    "uploadingMessage": "Uploading plot photos and publishing to FarmVerse marketplace.",
+    "areaPlaceholder": "e.g. 5.5",
+    "locationPlaceholder": "e.g. Bahoriband, Katni Highway",
+    "cityPlaceholder": "e.g. Katni",
+    "statePlaceholder": "e.g. Madhya Pradesh",
+    "pricePlaceholder": "e.g. 1850000",
+    "waterSourcePlaceholder": "e.g. Borewell + Canal"
   },
   "landing": {
     "navHome": "Home",
@@ -889,7 +914,8 @@
     "statusAccepted": "Visit Approved by Seller",
     "statusRejected": "Visit Request Rejected",
     "statusCompleted": "Visit Completed",
-    "statusCancelled": "Visit Request Cancelled"
+    "statusCancelled": "Visit Request Cancelled",
+    "removeImageTitle": "Remove Image"
   },
   "landVisit": {
     "backTo": "Back to {title}",
@@ -929,7 +955,9 @@
     "statusApproved": "Approved",
     "statusRejected": "Rejected",
     "statusCompleted": "Completed",
-    "statusCancelled": "Cancelled"
+    "statusCancelled": "Cancelled",
+    "fallbackTitle": "Agricultural Land Plot",
+    "fallbackLocation": "Location details in plot"
   },
   "machineryDetails": {
     "backToMachinery": "Back to Machinery Rental",
@@ -947,13 +975,24 @@
     "bookNow": "Book Now",
     "loginToBook": "Log In to Book",
     "notAvailable": "This machine isn't available for rent right now.",
-    "reviewsCount": "({count} reviews)"
+    "reviewsCount": "({count} reviews)",
+    "errorPastDate": "That start date has already passed. Please pick today or a later date.",
+    "errorDateOrder": "Please check your dates — the start date should come before the end date.",
+    "errorNotEnoughUnits": "Not enough machines are free for those dates. Try different dates or fewer units.",
+    "errorValidation": "Something in the form doesn't look right. Please check your dates and try again.",
+    "paymentIncomplete": "Booking created but payment did not complete. You can pay from My Bookings.",
+    "bookingFailed": "Could not complete the booking. Please try again."
   },
   "machineryBookings": {
     "title": "My Rentals",
     "emptyTitle": "You haven't booked anything yet",
     "findMachines": "Find Machines to Rent",
-    "machinesCount": "{count} machines"
+    "machinesCount": "{count} machines",
+    "statusPending": "Pending",
+    "statusConfirmed": "Confirmed",
+    "statusActive": "Active",
+    "statusCompleted": "Completed",
+    "statusCancelled": "Cancelled"
   },
   "mandiAlerts": {
     "title": "Price Alerts",
@@ -1181,5 +1220,17 @@
     "cropHealthy": "Crop appears healthy",
     "issueDetected": "Issue detected",
     "issueDetectedWith": "Issue detected: {disease}"
+  },
+  "landErrors": {
+    "fetchListingsFailed": "Failed to fetch land listings",
+    "listingNotFound": "Land listing not found",
+    "sendVisitFailed": "Failed to send visit request",
+    "cancelVisitFailed": "Failed to cancel visit request",
+    "createFailed": "Failed to create land listing",
+    "updateFailed": "Failed to update land listing",
+    "deleteFailed": "Failed to delete land listing",
+    "uploadImagesFailed": "Failed to upload images",
+    "removeImageFailed": "Failed to remove image",
+    "updateVisitStatusFailed": "Failed to update visit status"
   }
 }
