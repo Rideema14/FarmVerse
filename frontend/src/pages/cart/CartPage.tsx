@@ -8,13 +8,13 @@ import {
   ShoppingCart,
   Sprout,
   Trash2,
-  Truck,
 } from 'lucide-react'
 
 import { Button } from '@/components/common/Button'
 import { useCart } from '@/context/CartContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 
 
 /* =========================================================
@@ -37,7 +37,7 @@ export default function CartPage() {
   } = useCart()
 
   const navigate = useNavigate()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   const activeLines = lines.filter((line) => !line.savedForLater)
   const savedLines = lines.filter((line) => line.savedForLater)
@@ -286,12 +286,12 @@ export default function CartPage() {
                                       sm:text-[15px]
                                     "
                                   >
-                                    {product.name}
+                                    {formatProductName(product.name, language)}
                                   </Link>
 
                                   {line.variantName && (
                                     <p className="mt-1 text-xs text-ink-400">
-                                      {line.variantName}
+                                      {formatProductName(line.variantName, language)}
                                     </p>
                                   )}
 
@@ -578,7 +578,7 @@ export default function CartPage() {
                         <div className="min-w-0 flex-1">
 
                           <p className="line-clamp-1 text-sm font-medium text-ink-700">
-                            {product.name}
+                            {formatProductName(product.name, language)}
                           </p>
 
                           <p className="mt-0.5 text-xs text-ink-400">

@@ -1,5 +1,6 @@
 import type { TranslationKey } from '@/context/LanguageContext'
 import dynamicTranslations from './dynamic_translations.json'
+import cropTranslations from './crop_translations.json'
 /**
  * Comprehensive Crop & Commodity translations for Mandi rates and Marketplace items.
  */
@@ -5326,16 +5327,58 @@ export function formatOrderStatus(status: string, t: (key: any) => string): stri
 }
 
 export function formatCropName(name: string, language: string): string {
-  if (!name) return ''
+  if (!name || language === 'en') return name || ''
   const trimmed = name.trim()
-  const table = CROP_NAME_MAP[language]
-  if (table && table[trimmed]) {
-    return table[trimmed]
+
+  // 1. Direct dictionary match in cropTranslations
+  const customTable = (cropTranslations as Record<string, Record<string, string>>)[language]
+  if (customTable && customTable[trimmed]) {
+    return customTable[trimmed]
   }
-  // Try dynamic translations fallback
+
+  // 2. Direct dictionary match in CROP_NAME_MAP
+  const mapTable = CROP_NAME_MAP[language]
+  if (mapTable && mapTable[trimmed]) {
+    return mapTable[trimmed]
+  }
+
+  // 3. Case-insensitive match in dictionaries
+  const lowerTrimmed = trimmed.toLowerCase()
+  if (customTable) {
+    for (const [key, value] of Object.entries(customTable)) {
+      if (key.toLowerCase() === lowerTrimmed) return value
+    }
+  }
+  if (mapTable) {
+    for (const [key, value] of Object.entries(mapTable)) {
+      if (key.toLowerCase() === lowerTrimmed) return value
+    }
+  }
+
+  // 4. Sub-segment or parenthetical extraction (e.g. "Bajra(Pearl Millet/Cumbu)" or "Paddy(Dhan)")
+  const parts = trimmed.split(/[\(\)\/\-]+/).map((p) => p.trim()).filter(Boolean)
+  if (parts.length > 1) {
+    for (const part of parts) {
+      if (customTable && customTable[part]) return customTable[part]
+      if (mapTable && mapTable[part]) return mapTable[part]
+      if (customTable) {
+        const lower = part.toLowerCase()
+        for (const [key, value] of Object.entries(customTable)) {
+          if (key.toLowerCase() === lower) return value
+        }
+      }
+    }
+  }
+
+  // 5. Try dynamic translations fallback
   const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
   if (dynTable && dynTable[trimmed]) {
     return dynTable[trimmed]
+  }
+  if (dynTable) {
+    for (const [key, value] of Object.entries(dynTable)) {
+      if (key.toLowerCase() === lowerTrimmed) return value
+    }
   }
 
   return name
@@ -5382,8 +5425,15 @@ export function formatWeatherCondition(condition: string, language: string): str
 }
 
 export function formatProductName(name: string, language: string): string {
-  if (!name) return ''
+  if (!name || language === 'en') return name || ''
   const trimmed = name.trim()
+  
+  // Try crop formatter first (for commodities / crops / seeds)
+  const cropFormatted = formatCropName(trimmed, language)
+  if (cropFormatted && cropFormatted !== trimmed) {
+    return cropFormatted
+  }
+
   const table = CROP_NAME_MAP[language]
   if (table && table[trimmed]) {
     return table[trimmed]

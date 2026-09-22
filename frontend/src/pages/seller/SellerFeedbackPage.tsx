@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { MessageSquareText, Star } from 'lucide-react'
 import { sellerService, type SellerReview } from '@/services/sellerService'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatProductName } from '@/utils/localize'
 
 type RatingFilter = 'all' | 'positive' | 'neutral' | 'negative' | '1' | '2' | '3' | '4' | '5'
 type SortOrder = 'newest' | 'highest' | 'lowest'
@@ -98,7 +99,7 @@ export default function SellerFeedbackPage() {
                   <div>
                     <p className="text-sm font-semibold text-ink-900">{item.user.name}</p>
                     <p className="mt-0.5 text-xs text-ink-500">
-                      {t('sellerFeedback.feedbackFor')} <span className="font-medium text-ink-700">{item.product.name}</span>
+                      {t('sellerFeedback.feedbackFor')} <span className="font-medium text-ink-700">{formatProductName(item.product.name, language)}</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-1 rounded-full bg-gold-50 px-2.5 py-1 text-xs font-semibold text-gold-700" aria-label={`${item.rating} out of 5 stars`}>

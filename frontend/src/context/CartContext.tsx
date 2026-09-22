@@ -3,7 +3,6 @@ import { cartService } from '@/services/cartService'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import type { CartLine, Product } from '@/types'
-import { SplashScreen } from '@/components/common/SplashScreen'
 
 interface CartContextValue {
   lines: CartLine[]
@@ -23,11 +22,6 @@ interface CartContextValue {
   isConfigLoading: boolean
   getPlatformFee: (subtotal: number) => number
 }
-
-// Default values while config is loading
-const DEFAULT_PLATFORM_FEE = 49
-const DEFAULT_FREE_SHIPPING_THRESHOLD = 999
-const DEFAULT_TAX_RATE = 0.05
 
 /** Prefix used for lines that only exist optimistically (server hasn't confirmed the real itemId yet). */
 const TEMP_ITEM_PREFIX = 'temp-'

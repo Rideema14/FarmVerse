@@ -224,7 +224,7 @@ export default function ProductDetailsPage() {
                     : 'border-ink-200 text-ink-600 hover:border-brand-300',
                 )}
               >
-                {variant.name}
+                {formatProductName(variant.name, language)}
               </button>
             ))}
           </div>

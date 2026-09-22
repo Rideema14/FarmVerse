@@ -5,6 +5,7 @@ import { StatCard } from '@/components/common/StatCard'
 import { sellerService, type SellerAnalytics } from '@/services/sellerService'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR, formatNumberIN } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 
 export default function SellerAnalyticsPage() {
   const { t, language } = useLanguage()
@@ -83,7 +84,7 @@ export default function SellerAnalyticsPage() {
           <div className="divide-y divide-ink-100">
             {analytics.topProducts.map((p) => (
               <div key={p.id} className="flex items-center justify-between py-2.5 text-sm">
-                <span className="text-ink-700">{p.name}</span>
+                <span className="text-ink-700">{formatProductName(p.name, language)}</span>
                 <span className="text-ink-400">{t('sellerAnalytics.unitsCount', { count: p.unitsSold })}</span>
                 <span className="font-semibold text-ink-900">{formatINR(p.revenue)}</span>
               </div>

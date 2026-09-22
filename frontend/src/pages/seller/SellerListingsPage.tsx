@@ -4,13 +4,14 @@ import { Minus, Plus, PlusSquare, Sprout, Trash2 } from 'lucide-react'
 import { useSeller } from '@/context/SellerContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 type Tab = 'active' | 'inactive'
 
 export default function SellerListingsPage() {
   const { listings, isLoadingListings, toggleListingActive, removeListing, updateListingStock } = useSeller()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [tab, setTab] = useState<Tab>('active')
   const [busyId, setBusyId] = useState<string | null>(null)
 
@@ -112,7 +113,7 @@ export default function SellerListingsPage() {
 
               {/* Middle: Content */}
               <div className="flex flex-1 flex-col p-4">
-                <h3 className="line-clamp-1 font-semibold text-ink-900">{listing.name}</h3>
+                <h3 className="line-clamp-1 font-semibold text-ink-900">{formatProductName(listing.name, language)}</h3>
                 <p className="mt-1 text-sm font-medium text-ink-500">
                   <span className="font-bold text-ink-900">{formatINR(listing.price)}</span> / {listing.unit}
                 </p>

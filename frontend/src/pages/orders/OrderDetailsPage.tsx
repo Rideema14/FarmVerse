@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '@/services/api'
 import type { Order } from '@/types'
 import { useLanguage, type TranslationKey } from '@/context/LanguageContext'
 import { formatINR, formatDateLabel } from '@/utils/format'
+import { formatProductName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 const STAGE_KEYS: Record<string, TranslationKey> = {
@@ -32,7 +33,7 @@ const OFF_PATH_STATUSES = ['cancelled', 'returned', 'delivery_failed']
 export default function OrderDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const { refresh: refreshOrders } = useOrders()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
@@ -310,7 +311,7 @@ export default function OrderDetailsPage() {
         {order.items.map((item) => (
           <div key={item.productId} className="flex justify-between rounded-xl bg-surface-sunk px-3 py-2 text-sm">
             <span className="text-ink-700">
-              {item.name} × {item.quantity}
+              {formatProductName(item.name, language)} × {item.quantity}
             </span>
             <span className="font-medium text-ink-900">{formatINR(item.price * item.quantity)}</span>
           </div>
