@@ -89,7 +89,7 @@ export default function EditMachineryListingPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!id || !categoryId || !name.trim() || !pricePerDay) return
+    if (!id || !listing || !categoryId || !name.trim() || !pricePerDay) return
     setSaving(true)
     setError('')
     try {
