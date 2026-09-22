@@ -24,18 +24,19 @@ async function main() {
   const mandis = (await prisma.mandi.findMany({ select: { name: true }, distinct: ['name'] })).map(x => x.name);
   const crops = (await prisma.crop.findMany({ select: { name: true }, distinct: ['name'] })).map(x => x.name);
 
-  // Seller-created machinery was previously missing from the translation
-  // dictionary. Include listing names and descriptions so the same language
-  // switcher also translates machinery marketplace content.
-  const machinery = await prisma.machinery.findMany({
-    select: { name: true, description: true },
-  });
-  const machineryStrings = machinery.flatMap((x) => [x.name, x.description]).filter(Boolean);
+  const products = await prisma.product.findMany({ select: { name: true, description: true }, });
+  const seeds = await prisma.seed.findMany({ select: { name: true, description: true }, });
+  const lands = await prisma.land.findMany({ select: { title: true, description: true, location: true }, });
+  const machinery = await prisma.machinery.findMany({ select: { name: true, description: true }, });
+  const dynamicStrings = [
+    ...products.flatMap((x) => [x.name, x.description]),
+    ...seeds.flatMap((x) => [x.name, x.description]),
+    ...lands.flatMap((x) => [x.title, x.description, x.location]),
+    ...machinery.flatMap((x) => [x.name, x.description]),
+  ].filter(Boolean);
 
-  // Dedup all strings
-  const allStrings = Array.from(
-    new Set([...states, ...districts, ...mandis, ...crops, ...machineryStrings]),
-  ).filter(Boolean);
+  // Dedup all strings across every seller-created catalog and land listing.
+  const allStrings = Array.from(new Set([...states, ...districts, ...mandis, ...crops, ...dynamicStrings])).filter(Boolean);
 
   console.log(`Total unique strings to translate: ${allStrings.length}`);
 
@@ -85,32 +86,35 @@ async function main() {
     }
   }
 
-  // Persist machinery translations on each listing as well. This makes
-  // existing listings behave exactly like newly-created listings; the frontend
-  // no longer depends only on a static dictionary generated at build time.
-  const machineryRows = await prisma.machinery.findMany({
-    select: { id: true, name: true, description: true, translations: true },
-  });
-
-  for (const machine of machineryRows) {
-    const nextTranslations: Record<string, { name?: string; description?: string }> = {
-      ...(machine.translations && typeof machine.translations === 'object' ? machine.translations : {}),
-    };
-
-    for (const lang of TARGET_LANGS) {
-      nextTranslations[lang] = {
-        name: existing[lang][machine.name] || machine.name,
-        description: machine.description ? (existing[lang][machine.description] || machine.description) : undefined,
-      };
+  async function persistRows<T extends { id: string; translations: unknown }>(
+    rows: T[],
+    getFields: (row: T) => Record<string, string | null | undefined>,
+    update: (id: string, translations: Record<string, unknown>) => Promise<unknown>,
+  ) {
+    for (const row of rows) {
+      const fields = getFields(row);
+      const next: Record<string, unknown> = { ...(row.translations && typeof row.translations === 'object' ? row.translations as Record<string, unknown> : {}) };
+      for (const lang of TARGET_LANGS) {
+        next[lang] = {};
+        for (const [field, value] of Object.entries(fields)) {
+          if (value) (next[lang] as Record<string, string>)[field] = existing[lang][value] || value;
+        }
+      }
+      await update(row.id, next);
     }
-
-    await prisma.machinery.update({
-      where: { id: machine.id },
-      data: { translations: nextTranslations },
-    });
   }
 
-  console.log(`Persisted translations for ${machineryRows.length} machinery listings.`);
+  const productRows = await prisma.product.findMany({ select: { id: true, name: true, description: true, translations: true } });
+  const seedRows = await prisma.seed.findMany({ select: { id: true, name: true, description: true, translations: true } });
+  const landRows = await prisma.land.findMany({ select: { id: true, title: true, description: true, location: true, translations: true } });
+  const machineryRows = await prisma.machinery.findMany({ select: { id: true, name: true, description: true, translations: true } });
+
+  await persistRows(productRows, (r) => ({ name: r.name, description: r.description }), (id, translations) => prisma.product.update({ where: { id }, data: { translations } }));
+  await persistRows(seedRows, (r) => ({ name: r.name, description: r.description }), (id, translations) => prisma.seed.update({ where: { id }, data: { translations } }));
+  await persistRows(landRows, (r) => ({ title: r.title, description: r.description, location: r.location }), (id, translations) => prisma.land.update({ where: { id }, data: { translations } }));
+  await persistRows(machineryRows, (r) => ({ name: r.name, description: r.description }), (id, translations) => prisma.machinery.update({ where: { id }, data: { translations } }));
+
+  console.log(`Persisted translations for ${productRows.length} products, ${seedRows.length} seeds, ${landRows.length} land listings and ${machineryRows.length} machinery listings.`);
   console.log('Done mapping.');
 }
 

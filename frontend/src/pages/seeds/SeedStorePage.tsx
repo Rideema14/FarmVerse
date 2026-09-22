@@ -94,7 +94,7 @@ export default function SeedStorePage() {
                     <Sprout className="h-8 w-8 text-brand-400" strokeWidth={1.5} aria-hidden="true" />
                   )}
                 </div>
-                <p className="line-clamp-2 text-xs font-medium leading-snug text-ink-900">{formatProductName(seed.name, language)}</p>
+                <p className="line-clamp-2 text-xs font-medium leading-snug text-ink-900">{formatProductName(seed.name, language, seed.translations)}</p>
                 <div className="mt-1.5 flex items-center gap-1 text-[11px] text-ink-500">
                   <Star className="h-3 w-3 fill-gold-400 text-gold-400" aria-hidden="true" />
                   {seed.rating.toFixed(1)} · {formatCropName(seed.categoryName, language)}

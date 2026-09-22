@@ -79,6 +79,7 @@ export interface Product {
   reviewCount: number
   stock: number
   description: string
+  translations?: Record<string, { name?: string; description?: string }> | null
   specifications: { label: string; value: string }[]
   variants?: string[]
   reviews: ProductReview[]

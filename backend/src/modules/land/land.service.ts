@@ -6,6 +6,7 @@ import { slugify, slugifyUnique } from '../../common/utils/slugify';
 import { uploadBuffer, deleteAsset } from '../../config/cloudinary';
 import { parsePagination, buildPaginationMeta } from '../../common/utils/pagination';
 import type { LandCreateInput, LandUpdateInput, LandQuery, MyListingsQuery } from './land.validation';
+import { translateContent, mergeContentTranslations } from '../../common/utils/contentTranslation.service';
 
 const LAND_INCLUDE_SUMMARY = {
   images: { orderBy: { sortOrder: 'asc' as const } },
@@ -105,9 +106,10 @@ export async function createLand(seller: User, data: LandCreateInput) {
   const baseSlug = slugify(data.title);
   const clash = await prisma.land.findUnique({ where: { slug: baseSlug } });
   const slug = clash ? slugifyUnique(data.title) : baseSlug;
+  const translations = await translateContent({ title: data.title, description: data.description, location: data.location });
 
   return prisma.land.create({
-    data: { ...data, slug, sellerId: seller.id },
+    data: { ...data, slug, sellerId: seller.id, translations: Object.keys(translations).length ? translations : undefined },
     include: LAND_INCLUDE_SUMMARY,
   });
 }
@@ -120,6 +122,15 @@ export async function updateLand(id: string, user: User, data: LandUpdateInput) 
     const baseSlug = slugify(data.title);
     const clash = await prisma.land.findFirst({ where: { slug: baseSlug, NOT: { id } } });
     updateData.slug = clash ? slugifyUnique(data.title) : baseSlug;
+  }
+
+  if (data.title !== undefined || data.description !== undefined || data.location !== undefined) {
+    const refreshed = await translateContent({
+      title: data.title ?? land.title,
+      description: data.description ?? land.description,
+      location: data.location ?? land.location,
+    });
+    updateData.translations = mergeContentTranslations(land.translations, refreshed);
   }
 
   return prisma.land.update({ where: { id }, data: updateData, include: LAND_INCLUDE_SUMMARY });

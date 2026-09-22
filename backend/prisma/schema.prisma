@@ -355,6 +355,7 @@ model Product {
   name           String
   slug           String   @unique
   description    String?
+  translations   Json?
   brand          String?
   price          Decimal  @db.Decimal(12, 2)
   discountPrice  Decimal? @db.Decimal(12, 2)
@@ -993,6 +994,7 @@ model Seed {
   name                   String
   slug                   String  @unique
   description            String?
+  translations            Json?
   brand                  String?
   variety                String? // e.g. "JS-9560" — supports the spec's "seed variety comparison"
   sowingSeason           String? // e.g. "Kharif", "Rabi", "Zaid"
@@ -1417,6 +1419,7 @@ model Land {
   title       String
   slug        String       @unique
   description String?
+  translations Json?
   areaAcres   Decimal      @db.Decimal(10, 2)
   dealType    LandDealType
   price       Decimal      @db.Decimal(14, 2)

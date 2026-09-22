@@ -6,6 +6,7 @@ import { uploadBuffer, deleteAsset } from '../../config/cloudinary';
 import { parsePagination, buildPaginationMeta } from '../../common/utils/pagination';
 import type { User } from '@prisma/client';
 import type { ProductCreateInput, ProductUpdateInput, ProductQuery, VariantInput } from './catalog.validation';
+import { translateContent, mergeContentTranslations } from '../../common/utils/contentTranslation.service';
 
 const PRODUCT_INCLUDE_SUMMARY = {
   images: { orderBy: { sortOrder: 'asc' as const } },
@@ -185,12 +186,14 @@ export async function createProduct(seller: User, data: ProductCreateInput) {
   const baseSlug = slugify(productData.name);
   const clash = await prisma.product.findUnique({ where: { slug: baseSlug } });
   const slug = clash ? slugifyUnique(productData.name) : baseSlug;
+  const translations = await translateContent({ name: productData.name, description: productData.description });
 
   return prisma.product.create({
     data: {
       ...productData,
       slug,
       sellerId: seller.id,
+      translations: Object.keys(translations).length ? translations : undefined,
       variants: variants && variants.length > 0 ? { create: variants } : undefined,
     },
     include: PRODUCT_INCLUDE_SUMMARY,
@@ -216,6 +219,14 @@ export async function updateProduct(id: string, user: User, data: ProductUpdateI
   const nextDiscount = productData.discountPrice ?? (product.discountPrice ? Number(product.discountPrice) : undefined);
   if (nextDiscount && Number(nextDiscount) >= Number(nextPrice)) {
     throw ApiError.badRequest('discountPrice must be lower than price.');
+  }
+
+  if (productData.name !== undefined || productData.description !== undefined) {
+    const refreshed = await translateContent({
+      name: productData.name ?? product.name,
+      description: productData.description ?? product.description,
+    });
+    updateData.translations = mergeContentTranslations(product.translations, refreshed);
   }
 
   return prisma.product.update({ where: { id }, data: updateData, include: PRODUCT_INCLUDE_SUMMARY });

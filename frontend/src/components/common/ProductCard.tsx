@@ -255,7 +255,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
               text-[#20291C]
             "
           >
-            {formatProductName(product.name, language)}
+            {formatProductName(product.name, language, product.translations)}
           </p>
         </div>
 

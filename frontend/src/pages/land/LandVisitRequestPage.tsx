@@ -6,12 +6,13 @@ import { TextAreaField, TextField } from '@/components/common/FormField'
 import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatLandTitle, formatLandLocation } from '@/utils/localize'
 
 export default function LandVisitRequestPage() {
   const { id: slugOrId } = useParams<{ id: string }>()
   const { getListingBySlug, selectedListing, requestVisit, isActionLoading } = useLand()
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const navigate = useNavigate()
 
   const todayStr = new Date().toISOString().split('T')[0]
@@ -76,7 +77,7 @@ export default function LandVisitRequestPage() {
         className="mb-4 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
       >
         <ChevronLeft className="h-4 w-4" />
-        {t('landVisit.backTo', { title: land.title })}
+        {t('landVisit.backTo', { title: formatLandTitle(land.title, language, land.translations) })}
       </Link>
 
       <div className="mb-6 rounded-3xl border border-ink-100 bg-surface p-6 shadow-sm">
@@ -88,7 +89,7 @@ export default function LandVisitRequestPage() {
             <h1 className="text-lg font-bold text-ink-900">{t('landVisit.scheduleVisitTitle')}</h1>
             <p className="flex items-center gap-1 text-xs text-ink-500">
               <MapPin className="h-3.5 w-3.5 text-soil-500" />
-              {land.title} ({land.location})
+              {formatLandTitle(land.title, language, land.translations)} ({formatLandLocation(land.location, language, land.translations)})
             </p>
           </div>
         </div>

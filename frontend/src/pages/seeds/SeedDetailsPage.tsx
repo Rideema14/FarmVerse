@@ -7,7 +7,7 @@ import { useSeedCart } from '@/context/SeedCartContext'
 import { getApiErrorMessage } from '@/services/api'
 import { formatINR } from '@/utils/format'
 import { useLanguage } from '@/context/LanguageContext'
-import { formatCropName, formatProductName, formatSeason, formatUnit } from '@/utils/localize'
+import { formatCropName, formatProductName, formatProductDescription, formatSeason, formatUnit } from '@/utils/localize'
 
 export default function SeedDetailsPage() {
   const { t, language } = useLanguage()
@@ -73,7 +73,7 @@ export default function SeedDetailsPage() {
         )}
       </div>
 
-      <h1 className="text-xl">{formatProductName(seed.name, language)}</h1>
+      <h1 className="text-xl">{formatProductName(seed.name, language, seed.translations)}</h1>
       <p className="mt-1 flex items-center gap-1 text-xs text-ink-500">
         <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" aria-hidden="true" />
         {seed.rating.toFixed(1)} {t('seedDetails.reviewsCount', { count: seed.reviewCount })} · {formatCropName(seed.categoryName, language)}
@@ -122,7 +122,7 @@ export default function SeedDetailsPage() {
         )}
       </div>
 
-      {seed.description && <p className="mt-5 text-sm leading-relaxed text-ink-600">{seed.description}</p>}
+      {seed.description && <p className="mt-5 text-sm leading-relaxed text-ink-600">{formatProductDescription(seed.description, language, seed.translations)}</p>}
 
       <p className="mt-5 text-xs text-ink-500">{t('seedDetails.addToCartNotice')}</p>
       <Button

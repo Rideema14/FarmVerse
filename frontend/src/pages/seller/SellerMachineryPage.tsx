@@ -231,11 +231,12 @@ export default function SellerMachineryPage() {
                   {listing.available ? t('sellerMachinery.deactivate') : t('sellerMachinery.activate')}
                 </button>
                 <Link
-                  to={`/seller/edit-machinery/${listing.slug}`}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-brand-600 hover:bg-brand-50"
+                  to={`/seller/edit-machinery/${listing.id}`}
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-100"
                   aria-label={t('profile.edit')}
                 >
-                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t('profile.edit')}
                 </Link>
                 <button
                   type="button"

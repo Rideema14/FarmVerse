@@ -5498,46 +5498,120 @@ export function formatDynamicText(value: string, language: string): string {
 
 export type MachineryTranslations = Record<string, { name?: string; description?: string }>
 
+// Built-in fallback for the demo/existing machinery catalog. This is intentionally
+// kept in the frontend as well as the database so an old listing is translated
+// even when its database translation cache has not been backfilled yet. Seller
+// created listings still use their stored translations first.
+const MACHINERY_NAME_FALLBACKS: Record<string, Record<string, string>> = {
+  'mahi': { hi: 'माही', mr: 'माही', gu: 'માહી', pa: 'ਮਾਹੀ' },
+  'agrifly precision crop spraying drone (16l)': {
+    hi: 'AgriFly प्रिसिजन फसल छिड़काव ड्रोन (16 लीटर)',
+    mr: 'AgriFly अचूक पीक फवारणी ड्रोन (16 लिटर)',
+    gu: 'AgriFly પ્રિસિઝન પાક છંટકાવ ડ્રોન (16 લિટર)',
+    pa: 'AgriFly ਸਟੀਕ ਫਸਲ ਛਿੜਕਾਅ ਡਰੋਨ (16 ਲੀਟਰ)',
+  },
+  'shaktiman heavy duty rotavator (7 feet)': {
+    hi: 'Shaktiman हेवी ड्यूटी रोटावेटर (7 फीट)',
+    mr: 'Shaktiman हेवी ड्युटी रोटावेटर (7 फूट)',
+    gu: 'Shaktiman હેવી ડ્યુટી રોટાવેટર (7 ફૂટ)',
+    pa: 'Shaktiman ਹੈਵੀ ਡਿਊਟੀ ਰੋਟਾਵੇਟਰ (7 ਫੁੱਟ)',
+  },
+  'kubota harvestking multi-crop combine harvester': {
+    hi: 'Kubota HARVESTKING बहु-फसल कंबाइन हार्वेस्टर',
+    mr: 'Kubota HARVESTKING बहुपीक कंबाईन हार्वेस्टर',
+    gu: 'Kubota HARVESTKING બહુ-પાક કમ્બાઇન હાર્વેસ્ટર',
+    pa: 'Kubota HARVESTKING ਬਹੁ-ਫਸਲੀ ਕੰਬਾਈਨ ਹਾਰਵੈਸਟਰ',
+  },
+}
+
+function machineryFallback(name: string, lang: string): string | undefined {
+  const exact = MACHINERY_NAME_FALLBACKS[name.trim().toLocaleLowerCase()]?.[lang]
+  if (exact) return exact
+
+  // Translate the common machinery terms inside seller/model names too.
+  // This means an older listing such as "New Holland Tractor 55 HP" is
+  // still localized even when it was created before the translation cache
+  // existed. Brand/model words are deliberately preserved.
+  const terms: Record<string, Record<string, string>> = {
+    tractor: { hi: 'ट्रैक्टर', mr: 'ट्रॅक्टर', gu: 'ટ્રેક્ટર', pa: 'ਟਰੈਕਟਰ' },
+    harvester: { hi: 'हार्वेस्टर', mr: 'हार्वेस्टर', gu: 'હાર્વેસ્ટર', pa: 'ਹਾਰਵੈਸਟਰ' },
+    'combine harvester': { hi: 'कंबाइन हार्वेस्टर', mr: 'कंबाईन हार्वेस्टर', gu: 'કમ્બાઇન હાર્વેસ્ટર', pa: 'ਕੰਬਾਈਨ ਹਾਰਵੈਸਟਰ' },
+    rotavator: { hi: 'रोटावेटर', mr: 'रोटावेटर', gu: 'રોટાવેટર', pa: 'રોટાવેટર' },
+    cultivator: { hi: 'कल्टीवेटर', mr: 'कल्टीवेटर', gu: 'કલ્ટીવેટર', pa: 'ਕਲਟੀਵੇਟਰ' },
+    sprayer: { hi: 'स्प्रेयर', mr: 'फवारणी यंत्र', gu: 'સ્પ્રેયર', pa: 'ਸਪ੍ਰੇਅਰ' },
+    'crop spraying drone': { hi: 'फसल छिड़काव ड्रोन', mr: 'पीक फवारणी ड्रोन', gu: 'પાક છંટકાવ ડ્રોન', pa: 'ਫਸਲ ਛਿੜਕਾਅ ਡਰੋਨ' },
+    drone: { hi: 'ड्रोन', mr: 'ड्रोन', gu: 'ડ્રોન', pa: 'ਡਰੋਨ' },
+    'multi-crop': { hi: 'बहु-फसल', mr: 'बहुपीक', gu: 'બહુ-પાક', pa: 'ਬਹੁ-ਫਸਲੀ' },
+    'heavy duty': { hi: 'हेवी ड्यूटी', mr: 'हेवी ड्युटी', gu: 'હેવી ડ્યુટી', pa: 'ਹੈਵੀ ਡਿਊਟੀ' },
+    'seed drill': { hi: 'सीड ड्रिल', mr: 'सीड ड्रिल', gu: 'સીડ ડ્રિલ', pa: 'ਸੀਡ ਡ੍ਰਿਲ' },
+    thresher: { hi: 'थ्रेशर', mr: 'थ्रेशर', gu: 'થ્રેશર', pa: 'ਥ੍ਰੈਸ਼ਰ' },
+    'power tiller': { hi: 'पावर टिलर', mr: 'पॉवर टिलर', gu: 'પાવર ટીલર', pa: 'ਪਾਵਰ ਟਿਲਰ' },
+  }
+
+  let output = name
+  for (const term of Object.keys(terms).sort((a, b) => b.length - a.length)) {
+    const translated = terms[term][lang]
+    if (translated) output = output.replace(new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'), translated)
+  }
+  return output !== name ? output : undefined
+}
+
 export function formatMachineryName(name: string, language: string, translations?: MachineryTranslations): string {
-  if (!name || language === 'en') return name || ''
-  const cached = translations?.[language]?.name
+  const lang = language.toLowerCase().split('-')[0]
+  if (!name || lang === 'en') return name || ''
+  const cached = translations?.[lang]?.name
   if (cached && cached.trim() && cached.trim().toLocaleLowerCase() !== name.trim().toLocaleLowerCase()) return cached
-  return formatDynamicText(name, language)
+  const fallback = machineryFallback(name, lang)
+  if (fallback) return fallback
+  return formatDynamicText(name, lang)
 }
 
 export function formatMachineryDescription(description: string, language: string, translations?: MachineryTranslations): string {
-  if (!description || language === 'en') return description || ''
-  const cached = translations?.[language]?.description
+  const lang = language.toLowerCase().split('-')[0]
+  if (!description || lang === 'en') return description || ''
+  const cached = translations?.[lang]?.description
   if (cached && cached.trim() && cached.trim().toLocaleLowerCase() !== description.trim().toLocaleLowerCase()) return cached
-  return formatDynamicText(description, language)
+  return formatDynamicText(description, lang)
 }
 
-export function formatProductName(name: string, language: string): string {
+export type GenericContentTranslations = Record<string, Record<string, string>> | null | undefined
+
+export function formatLocalizedContent(
+  value: string,
+  language: string,
+  translations?: GenericContentTranslations,
+  field?: string,
+): string {
+  if (!value) return ''
+  const lang = language.toLowerCase().split('-')[0]
+  if (lang === 'en') return value
+  const cached = field ? translations?.[lang]?.[field] : undefined
+  if (cached && cached.trim() && cached.trim().toLocaleLowerCase() !== value.trim().toLocaleLowerCase()) return cached
+  return formatDynamicText(value, lang)
+}
+
+export function formatProductName(name: string, language: string, translations?: GenericContentTranslations): string {
   if (!name || language === 'en') return name || ''
   const trimmed = name.trim()
-  
-  // Try crop formatter first (for commodities / crops / seeds)
   const cropFormatted = formatCropName(trimmed, language)
-  if (cropFormatted && cropFormatted !== trimmed) {
-    return cropFormatted
-  }
+  if (cropFormatted && cropFormatted !== trimmed) return cropFormatted
+  return formatLocalizedContent(trimmed, language, translations, 'name')
+}
 
-  const table = CROP_NAME_MAP[language]
-  if (table && table[trimmed]) {
-    return table[trimmed]
-  }
-  if (table) {
-    const key = Object.keys(table).find((k) => k.toLowerCase() === trimmed.toLowerCase())
-    if (key) return table[key]
-  }
+export function formatProductDescription(description: string, language: string, translations?: GenericContentTranslations): string {
+  return formatLocalizedContent(description, language, translations, 'description')
+}
 
-  // Try dynamic translations fallback
-  const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
-  if (dynTable && dynTable[trimmed]) {
-    return dynTable[trimmed]
-  }
+export function formatLandTitle(title: string, language: string, translations?: GenericContentTranslations): string {
+  return formatLocalizedContent(title, language, translations, 'title')
+}
 
-  return name
+export function formatLandDescription(description: string, language: string, translations?: GenericContentTranslations): string {
+  return formatLocalizedContent(description, language, translations, 'description')
+}
+
+export function formatLandLocation(location: string, language: string, translations?: GenericContentTranslations): string {
+  return formatLocalizedContent(location, language, translations, 'location') || formatLocationName(location, language)
 }
 
 export function formatLocationName(name: string, language: string): string {

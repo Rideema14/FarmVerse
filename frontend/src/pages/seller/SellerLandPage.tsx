@@ -13,6 +13,7 @@ import {
 import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatLandTitle, formatLandLocation } from '@/utils/localize'
 import { formatINR, toIntlLocale } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { BackendVisitStatus } from '@/services/landService'
@@ -207,7 +208,7 @@ export default function SellerLandPage() {
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="truncate text-base font-bold text-ink-900">{land.title}</h3>
+                          <h3 className="truncate text-base font-bold text-ink-900">{formatLandTitle(land.title, language, land.translations)}</h3>
                           <span
                             className={cn(
                               'rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase',

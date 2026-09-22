@@ -23,7 +23,7 @@ import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR, toIntlLocale } from '@/utils/format'
-import { formatLocationName, formatSoilName, formatWaterSource } from '@/utils/localize'
+import { formatLocationName, formatLandTitle, formatLandDescription, formatSoilName, formatWaterSource } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 export default function LandDetailsPage() {
@@ -152,7 +152,7 @@ export default function LandDetailsPage() {
       <div className="relative mb-6 overflow-hidden rounded-3xl border border-ink-100 bg-surface shadow-sm">
         <div className="relative h-72 sm:h-96 w-full bg-soil-900/5">
           {activeImage ? (
-            <img src={activeImage} alt={land.title} className="h-full w-full object-cover" />
+            <img src={activeImage} alt={formatLandTitle(land.title, language, land.translations)} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-soil-900/10 via-emerald-900/5 to-soil-800/10 text-center">
               <MapPin className="h-16 w-16 text-soil-400 opacity-60" strokeWidth={1.2} />
@@ -206,7 +206,7 @@ export default function LandDetailsPage() {
       {/* Title & Price Header */}
       <div className="mb-6 flex flex-col justify-between gap-4 rounded-3xl border border-ink-100 bg-surface p-6 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-extrabold text-ink-900 sm:text-3xl">{land.title}</h1>
+          <h1 className="text-2xl font-extrabold text-ink-900 sm:text-3xl">{formatLandTitle(land.title, language, land.translations)}</h1>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-500">
             <MapPin className="h-4 w-4 text-brand-600" />
             <span>{formatLocationName(land.location, language)} {land.city ? `· ${formatLocationName(land.city, language)}` : ''} {land.state ? `, ${formatLocationName(land.state, language)}` : ''}</span>
@@ -256,7 +256,7 @@ export default function LandDetailsPage() {
       <div className="mb-6 rounded-3xl border border-ink-100 bg-surface p-6">
         <h3 className="text-base font-bold text-ink-900 mb-2">{t('landDetails.aboutFarmland')}</h3>
         <p className="whitespace-pre-line text-sm leading-relaxed text-ink-600">
-          {land.description || t('landDetails.noDescription')}
+          {formatLandDescription(land.description || '', language, land.translations) || t('landDetails.noDescription')}
         </p>
       </div>
 

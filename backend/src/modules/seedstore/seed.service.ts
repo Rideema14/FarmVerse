@@ -6,6 +6,7 @@ import { uploadBuffer, deleteAsset } from '../../config/cloudinary';
 import { parsePagination, buildPaginationMeta } from '../../common/utils/pagination';
 import type { User } from '@prisma/client';
 import type { SeedCreateInput, SeedUpdateInput, SeedQuery, SeedVariantInput } from './seed.validation';
+import { translateContent, mergeContentTranslations } from '../../common/utils/contentTranslation.service';
 
 const SEED_INCLUDE_SUMMARY = {
   images: { orderBy: { sortOrder: 'asc' as const } },
@@ -114,12 +115,14 @@ export async function createSeed(seller: User, data: SeedCreateInput) {
   const baseSlug = slugify(seedData.name);
   const clash = await prisma.seed.findUnique({ where: { slug: baseSlug } });
   const slug = clash ? slugifyUnique(seedData.name) : baseSlug;
+  const translations = await translateContent({ name: seedData.name, description: seedData.description });
 
   return prisma.seed.create({
     data: {
       ...seedData,
       slug,
       sellerId: seller.id,
+      translations: Object.keys(translations).length ? translations : undefined,
       variants: variants && variants.length > 0 ? { create: variants } : undefined,
     },
     include: SEED_INCLUDE_SUMMARY,
@@ -142,6 +145,14 @@ export async function updateSeed(id: string, user: User, data: SeedUpdateInput) 
   const nextDiscount = seedData.discountPrice ?? (seed.discountPrice ? Number(seed.discountPrice) : undefined);
   if (nextDiscount && Number(nextDiscount) >= Number(nextPrice)) {
     throw ApiError.badRequest('discountPrice must be lower than price.');
+  }
+
+  if (seedData.name !== undefined || seedData.description !== undefined) {
+    const refreshed = await translateContent({
+      name: seedData.name ?? seed.name,
+      description: seedData.description ?? seed.description,
+    });
+    updateData.translations = mergeContentTranslations(seed.translations, refreshed);
   }
 
   return prisma.seed.update({ where: { id }, data: updateData, include: SEED_INCLUDE_SUMMARY });

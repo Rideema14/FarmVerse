@@ -17,6 +17,7 @@ interface BackendProductSummary {
   slug: string
   name: string
   description?: string | null
+  translations?: Record<string, { name?: string; description?: string }> | null
   price: number | string
   discountPrice?: number | string | null
   stock: number
@@ -96,6 +97,7 @@ function mapSummary(p: BackendProductSummary): Product {
     reviewCount: p.reviewCount,
     stock: p.stock,
     description: p.description ?? '',
+    translations: p.translations ?? null,
     specifications: Object.entries(p.specifications ?? {}).map(([label, value]) => ({
       label,
       value: String(value),

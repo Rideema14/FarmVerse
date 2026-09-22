@@ -19,7 +19,7 @@ import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
-import { formatLocationName, formatSoilName, formatWaterSource } from '@/utils/localize'
+import { formatLandTitle, formatLandLocation, formatLocationName, formatSoilName, formatWaterSource } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 import type { BackendLandDealType, LandQueryParams } from '@/services/landService'
 
@@ -365,14 +365,14 @@ export default function LandMarketplacePage() {
                       {primaryImg ? (
                         <img
                           src={primaryImg}
-                          alt={land.title}
+                          alt={formatLandTitle(land.title, language, land.translations)}
                           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                           loading="lazy"
                         />
                       ) : (
                         <div className="flex h-full w-full flex-col items-center justify-center bg-[#F3F5EF] p-4 text-center">
                           <MapPin className="h-10 w-10 text-[#9EA298]" strokeWidth={1.4} />
-                          <span className="mt-2 text-[11px] font-medium text-[#6C7567]">{land.location}</span>
+                          <span className="mt-2 text-[11px] font-medium text-[#6C7567]">{formatLandLocation(land.location, language, land.translations)}</span>
                         </div>
                       )}
                       <span
@@ -387,7 +387,7 @@ export default function LandMarketplacePage() {
 
                     {/* Title */}
                     <h2 className="mt-3 line-clamp-1 text-[15px] font-extrabold text-[#1D2819] transition-colors group-hover:text-[#5c744d]">
-                      {land.title}
+                      {formatLandTitle(land.title, language, land.translations)}
                     </h2>
 
                     {/* Meta */}

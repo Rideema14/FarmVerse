@@ -35,7 +35,7 @@ export default function EditMachineryListingPage() {
   useEffect(() => {
     if (!id) return
     let cancelled = false
-    Promise.all([machineryService.getBySlug(id), machineryService.listCategories()])
+    Promise.all([machineryService.getForOwner(id), machineryService.listCategories()])
       .then(([machine, cats]) => {
         if (cancelled) return
         setListing(machine)

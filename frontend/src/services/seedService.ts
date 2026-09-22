@@ -29,6 +29,7 @@ interface BackendSeedSummary {
   slug: string
   name: string
   description?: string | null
+  translations?: Record<string, { name?: string; description?: string }> | null
   brand?: string | null
   variety?: string | null
   sowingSeason?: string | null
@@ -120,6 +121,7 @@ function mapSeedSummary(s: BackendSeedSummary): Seed {
     reviewCount: s.reviewCount,
     stock: s.stock,
     description: s.description ?? '',
+    translations: s.translations ?? null,
     specifications: Object.entries(s.specifications ?? {}).map(([label, value]) => ({
       label,
       value: String(value),

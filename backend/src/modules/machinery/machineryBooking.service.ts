@@ -10,7 +10,7 @@ import { assertAvailable, countRentalDays } from './machineryAvailability.servic
 import type { CreateBookingInput, ListBookingsQuery, UpdateBookingStatusInput, CancelBookingInput } from './machinery.validation';
 
 const BOOKING_INCLUDE_DETAIL = {
-  machinery: { select: { id: true, name: true, slug: true, sellerId: true, bufferDays: true } },
+  machinery: { select: { id: true, name: true, slug: true, sellerId: true, bufferDays: true, translations: true } },
   user: { select: { id: true, name: true, phone: true, profileImage: true } },
   address: true,
   statusHistory: { orderBy: { changedAt: 'asc' as const } },
@@ -148,7 +148,7 @@ export async function listBookings(user: User, query: ListBookingsQuery) {
     prisma.machineryBooking.findMany({
       where,
       include: {
-        machinery: { select: { id: true, name: true, slug: true, sellerId: true } },
+        machinery: { select: { id: true, name: true, slug: true, sellerId: true, translations: true } },
         user: { select: { id: true, name: true, phone: true, profileImage: true } },
         payment: { select: { status: true, method: true } },
       },

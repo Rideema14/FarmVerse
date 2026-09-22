@@ -9,6 +9,13 @@ export const list = asyncHandler(async (req, res) => {
   ApiResponse.paginated(res, items, meta);
 });
 
+export const getOneForOwner = asyncHandler(async (req, res) => {
+  if (!req.user) throw ApiError.unauthorized('Authentication required.');
+  const machinery = await machineryService.getMachineryForOwner(req.params.id, req.user);
+  const full = await machineryService.getMachineryByIdForOwner(machinery.id);
+  ApiResponse.ok(res, full);
+});
+
 export const getOne = asyncHandler(async (req, res) => {
   const machinery = await machineryService.getMachineryBySlug(req.params.slug);
   ApiResponse.ok(res, machinery);

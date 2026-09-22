@@ -81,7 +81,7 @@ interface BackendMachineryBooking {
   cancelReason?: string | null
   createdAt: string
   updatedAt: string
-  machinery?: { id: string; name: string; slug: string; sellerId: string; bufferDays?: number }
+  machinery?: { id: string; name: string; slug: string; sellerId: string; bufferDays?: number; translations?: Record<string, { name?: string; description?: string }> | null }
   user?: { id: string; name: string; phone?: string | null; profileImage?: string | null }
   payment?: { status: string; method?: string | null; razorpayOrderId?: string } | null
 }
@@ -175,6 +175,7 @@ export interface MachineryBooking {
   bookingNumber: string
   machineryId: string
   machineryName: string
+  machineryTranslations?: Record<string, { name?: string; description?: string }>
   machinerySlug: string
   machinerySellerId: string
   renterName: string
@@ -273,6 +274,7 @@ function mapBooking(b: BackendMachineryBooking): MachineryBooking {
     bookingNumber: b.bookingNumber,
     machineryId: b.machineryId,
     machineryName: b.machinery?.name ?? 'Machinery',
+    machineryTranslations: b.machinery?.translations ?? undefined,
     machinerySlug: b.machinery?.slug ?? '',
     machinerySellerId: b.machinery?.sellerId ?? '',
     renterName: b.user?.name ?? 'Farmer',
@@ -302,6 +304,11 @@ export const machineryService = {
       params: query,
     })
     return { items: res.data.data.map(mapListing), meta: res.data.meta.pagination }
+  },
+
+  async getForOwner(id: string): Promise<MachineryListing> {
+    const res = await api.get<{ data: BackendMachineryDetail }>(`/machinery/manage/${encodeURIComponent(id)}`)
+    return mapListingDetail(res.data.data)
   },
 
   async getBySlug(slug: string): Promise<MachineryListing> {

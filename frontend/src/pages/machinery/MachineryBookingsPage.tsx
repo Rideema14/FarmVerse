@@ -60,7 +60,7 @@ export default function MachineryBookingsPage() {
               <Tractor className="h-4.5 w-4.5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-ink-900">{formatMachineryName(booking.machineryName, language)}</p>
+              <p className="text-sm font-semibold text-ink-900">{formatMachineryName(booking.machineryName, language, booking.machineryTranslations)}</p>
               <p className="mt-0.5 text-xs text-ink-500">
                 {new Date(booking.startDate).toLocaleDateString(localeCode)} – {new Date(booking.endDate).toLocaleDateString(localeCode)}
                 {booking.quantity > 1 ? ` · ${t('machineryBookings.machinesCount', { count: booking.quantity })}` : ''}

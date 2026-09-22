@@ -24,6 +24,7 @@ export interface BackendLandItem {
   title: string
   slug: string
   description?: string | null
+  translations?: Record<string, { title?: string; description?: string; location?: string }> | null
   areaAcres: number | string
   dealType: BackendLandDealType
   price: number | string

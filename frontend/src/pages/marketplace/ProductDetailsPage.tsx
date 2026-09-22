@@ -11,7 +11,7 @@ import { formatINR, formatDateLabel } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { Product, ProductReview } from '@/types'
 
-import { formatProductName } from '@/utils/localize'
+import { formatProductName, formatProductDescription } from '@/utils/localize'
 
 export default function ProductDetailsPage() {
   const { id } = useParams<{ id: string }>()
@@ -183,7 +183,7 @@ export default function ProductDetailsPage() {
         </div>
       )}
 
-      <h1 className="text-xl">{formatProductName(product.name, language)}</h1>
+      <h1 className="text-xl">{formatProductName(product.name, language, product.translations)}</h1>
       <p className="mt-1 flex items-center gap-1 text-xs text-ink-500">
         <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" aria-hidden="true" />
         {product.rating} {t('product.reviewsCount', { count: product.reviewCount })}
@@ -285,7 +285,7 @@ export default function ProductDetailsPage() {
       <section className="mt-8">
         <h2 className="mb-2 text-sm font-semibold text-ink-900">{t('product.description')}</h2>
         <p className="text-sm leading-relaxed text-ink-600">
-          {product.description || t('product.noDescriptionAvailable')}
+          {formatProductDescription(product.description, language, product.translations) || t('product.noDescriptionAvailable')}
         </p>
       </section>
 

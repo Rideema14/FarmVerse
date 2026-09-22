@@ -33,6 +33,8 @@ const approvalBodySchema = z.object({ isApproved: z.boolean() });
  */
 router.get('/', optionalAuthenticate, validate({ query: machineryQuerySchema }), machineryController.list);
 
+router.get('/manage/:id', authenticate, authorize('SELLER', 'ADMIN'), validate({ params: idParamSchema }), machineryController.getOneForOwner);
+
 router.get('/:slug', validate({ params: slugParamSchema }), optionalAuthenticate, machineryController.getOne);
 
 router.post(

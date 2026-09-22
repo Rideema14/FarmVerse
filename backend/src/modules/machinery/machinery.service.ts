@@ -148,11 +148,18 @@ export async function getMachineryAvailability(machineryId: string, startDate: D
   return { ...result, requestedQuantity: quantity, isAvailable: result.availableQuantity >= quantity };
 }
 
-async function getMachineryForOwner(id: string, user: User) {
+export async function getMachineryForOwner(id: string, user: User) {
   const machinery = await prisma.machinery.findUnique({ where: { id } });
   if (!machinery) throw ApiError.notFound('Machinery listing not found.');
   assertOwnership(machinery, user);
   return machinery;
+}
+
+export async function getMachineryByIdForOwner(id: string) {
+  return prisma.machinery.findUniqueOrThrow({
+    where: { id },
+    include: { ...MACHINERY_INCLUDE_SUMMARY, seller: { select: { id: true, name: true, profileImage: true } } },
+  });
 }
 
 export async function createMachinery(seller: User, data: MachineryCreateInput) {
