@@ -89,7 +89,7 @@ export default function SeedStorePage() {
               <Link to={`/seeds/${seed.slug}`}>
                 <div className="mb-2 flex h-24 items-center justify-center overflow-hidden rounded-xl bg-surface-sunk">
                   {seed.images[0] ? (
-                    <img src={seed.images[0]} alt={seed.name} className="h-full w-full object-cover" />
+                    <img src={seed.images[0]} alt={formatProductName(seed.name, language, seed.translations)} className="h-full w-full object-cover" />
                   ) : (
                     <Sprout className="h-8 w-8 text-brand-400" strokeWidth={1.5} aria-hidden="true" />
                   )}

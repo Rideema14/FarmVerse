@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Star, Trash2 } from 'lucide-react'
 import { adminService, type AdminReview } from '@/services/adminService'
+import { useLanguage } from '@/context/LanguageContext'
+import { formatProductName } from '@/utils/localize'
 
 export default function AdminReviewsPage() {
+  const { language } = useLanguage()
   const [reviews, setReviews] = useState<AdminReview[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -45,7 +48,7 @@ export default function AdminReviewsPage() {
             <div key={review.id} className="flex items-start justify-between rounded-2xl border border-ink-100 bg-surface p-4">
               <div>
                 <p className="text-sm font-medium text-ink-900">{review.user.name}</p>
-                <p className="text-xs text-ink-400">on {review.product.name}</p>
+                <p className="text-xs text-ink-400">on {formatProductName(review.product.name, language)}</p>
                 <p className="mt-1 flex items-center gap-1 text-xs text-gold-600">
                   <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" aria-hidden="true" />
                   {review.rating}

@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/utils/cn'
 import { toIntlLocale } from '@/utils/format'
+import { formatLandTitle, formatLandLocation } from '@/utils/localize'
 import type { BackendVisitStatus } from '@/services/landService'
 
 export default function MyLandVisitsPage() {
@@ -147,11 +148,11 @@ export default function MyLandVisitsPage() {
                       {statusCfg.label}
                     </span>
                     <h3 className="mt-2 text-base font-bold text-ink-900">
-                      {visit.land?.title || t('landVisits.fallbackTitle')}
+                      {visit.land?.title ? formatLandTitle(visit.land.title, language, visit.land.translations) : t('landVisits.fallbackTitle')}
                     </h3>
                     <p className="flex items-center gap-1 text-xs text-ink-500">
                       <MapPin className="h-3.5 w-3.5 text-soil-500" />
-                      {visit.land?.location || t('landVisits.fallbackLocation')}
+                      {visit.land?.location ? formatLandLocation(visit.land.location, language, visit.land.translations) : t('landVisits.fallbackLocation')}
                     </p>
                   </div>
                   {visit.land?.slug && (

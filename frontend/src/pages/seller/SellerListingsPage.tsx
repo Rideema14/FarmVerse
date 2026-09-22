@@ -81,7 +81,7 @@ export default function SellerListingsPage() {
                 {listing.images?.[0] ? (
                   <img
                     src={listing.images[0]}
-                    alt={listing.name}
+                    alt={formatProductName(listing.name, language, listing.translations)}
                     className="h-full w-full object-cover"
                     loading="lazy"
                     decoding="async"

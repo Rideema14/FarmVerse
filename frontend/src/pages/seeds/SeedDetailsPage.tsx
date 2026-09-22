@@ -67,7 +67,7 @@ export default function SeedDetailsPage() {
 
       <div className="mb-4 flex h-56 items-center justify-center overflow-hidden rounded-2xl bg-surface-sunk">
         {seed.images[0] ? (
-          <img src={seed.images[0]} alt={seed.name} className="h-full w-full object-cover" />
+          <img src={seed.images[0]} alt={formatProductName(seed.name, language, seed.translations)} className="h-full w-full object-cover" />
         ) : (
           <Sprout className="h-16 w-16 text-brand-400" strokeWidth={1.3} aria-hidden="true" />
         )}

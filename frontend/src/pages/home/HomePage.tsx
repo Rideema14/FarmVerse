@@ -774,7 +774,7 @@ export default function HomePage() {
 
                       <img
                         src={product.images?.[0]}
-                        alt={product.name}
+                        alt={formatProductName(product.name, language, product.translations)}
                         width={350}
                         height={175}
                         loading="eager"

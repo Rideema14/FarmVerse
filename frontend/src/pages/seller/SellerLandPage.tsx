@@ -13,7 +13,7 @@ import {
 import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
-import { formatLandTitle } from '@/utils/localize'
+import { formatLandTitle, formatLandLocation } from '@/utils/localize'
 import { formatINR, toIntlLocale } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { BackendVisitStatus } from '@/services/landService'
@@ -219,7 +219,7 @@ export default function SellerLandPage() {
                           </span>
                         </div>
                         <p className="mt-0.5 text-xs text-ink-500">
-                          {land.location} · {areaNum} {t('sellerLand.acres')} · {land.dealType === 'SALE' ? t('sellerLand.forSale') : t('sellerLand.forLease')}
+                          {formatLandLocation(land.location, language, land.translations)} · {areaNum} {t('sellerLand.acres')} · {land.dealType === 'SALE' ? t('sellerLand.forSale') : t('sellerLand.forLease')}
                         </p>
                         <p className="mt-1 text-sm font-extrabold text-ink-900">
                           {formatINR(priceNum)}
@@ -303,8 +303,8 @@ export default function SellerLandPage() {
                   <div className="flex flex-wrap items-start justify-between gap-3 border-b border-ink-100 pb-3">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-ink-400">{t('sellerLand.landListingLabel')}</span>
-                      <h3 className="text-base font-bold text-ink-900">{visit.land?.title || t('sellerLand.landPlotFallback')}</h3>
-                      <p className="text-xs text-ink-500">{visit.land?.location}</p>
+                      <h3 className="text-base font-bold text-ink-900">{visit.land?.title ? formatLandTitle(visit.land.title, language, visit.land.translations) : t('sellerLand.landPlotFallback')}</h3>
+                      <p className="text-xs text-ink-500">{visit.land?.location ? formatLandLocation(visit.land.location, language, visit.land.translations) : ''}</p>
                     </div>
                     <span
                       className={cn(
