@@ -245,7 +245,7 @@ export default function CartPage() {
                               {product.imageUrl ? (
                                 <img
                                   src={product.imageUrl}
-                                  alt={formatProductName(product.name, language, product.translations)}
+                                  alt={product.name}
                                   className="
                                     h-full
                                     w-full
@@ -560,7 +560,7 @@ export default function CartPage() {
                           {product.imageUrl ? (
                             <img
                               src={product.imageUrl}
-                              alt={formatProductName(product.name, language, product.translations)}
+                              alt={product.name}
                               className="h-full w-full object-cover"
                               loading="lazy"
                               decoding="async"

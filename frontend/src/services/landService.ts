@@ -65,7 +65,6 @@ export interface BackendLandVisitRequest {
     slug: string
     sellerId: string
     location: string
-    translations?: Record<string, { title?: string; description?: string; location?: string }> | null
   }
   buyer?: {
     id: string

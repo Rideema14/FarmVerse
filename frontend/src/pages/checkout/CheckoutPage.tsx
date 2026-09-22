@@ -11,7 +11,6 @@ import { paymentService } from '@/services/paymentService'
 import { getApiErrorMessage } from '@/services/api'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatINR } from '@/utils/format'
-import { formatProductName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
 export default function CheckoutPage() {
@@ -19,7 +18,7 @@ export default function CheckoutPage() {
   const { lines, subtotal, clearCart, freeShippingThreshold, taxRate, isConfigLoading, getPlatformFee } = useCart()
   const { refresh: refreshOrders } = useOrders()
   const navigate = useNavigate()
-  const { t, language } = useLanguage()
+  const { t } = useLanguage()
   const STEPS = [t('checkout.stepAddress'), t('checkout.stepSummary'), t('checkout.stepPayment'), t('checkout.stepSuccess')]
 
   const [step, setStep] = useState(0)
@@ -129,7 +128,7 @@ export default function CheckoutPage() {
             {activeLines.map((line) => (
               <div key={line.productId} className="flex justify-between rounded-xl bg-surface-sunk px-3 py-2 text-sm">
                 <span className="text-ink-700">
-                  {line.product?.name ? formatProductName(line.product.name, language) : ''} × {line.quantity}
+                  {line.product?.name} × {line.quantity}
                 </span>
                 <span className="font-medium text-ink-900">{formatINR(line.lineTotal ?? 0)}</span>
               </div>

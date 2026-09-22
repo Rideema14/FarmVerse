@@ -156,7 +156,7 @@ export default function ProductDetailsPage() {
           <Heart className={cn('h-4 w-4', wishlisted ? 'fill-danger-500 text-danger-500' : 'text-ink-400')} aria-hidden="true" />
         </button>
         {images.length > 0 ? (
-          <img src={images[activeImage]} alt={formatProductName(product.name, language, product.translations)} className="h-full w-full object-cover" />
+          <img src={images[activeImage]} alt={product.name} className="h-full w-full object-cover" />
         ) : (
           <div className="flex flex-col items-center gap-2 text-ink-300">
             <Sprout className="h-16 w-16" strokeWidth={1.3} aria-hidden="true" />

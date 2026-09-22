@@ -16,6 +16,7 @@ interface BackendCartItem {
     discountPrice?: number | string | null
     stock: number
     isActive: boolean
+    translations?: Record<string, { name?: string; description?: string }> | null
     images: { url: string }[]
   }
   variant?: { id: string; name: string } | null

@@ -94,7 +94,7 @@ export default function SeedCartPage() {
           <div key={line.itemId} className="flex gap-3 rounded-2xl border border-ink-100 bg-surface p-3">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-sunk">
               {line.seed.imageUrl ? (
-                <img src={line.seed.imageUrl} alt={formatProductName(line.seed.name, language, line.seed.translations)} className="h-full w-full object-cover" />
+                <img src={line.seed.imageUrl} alt={line.seed.name} className="h-full w-full object-cover" />
               ) : (
                 <Sprout className="h-5 w-5 text-brand-400" aria-hidden="true" />
               )}

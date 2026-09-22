@@ -121,7 +121,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
           {image ? (
             <img
               src={image}
-              alt={formatProductName(product.name, language, product.translations)}
+              alt={product.name}
               className={cn(
                 'h-full',
                 'w-full',

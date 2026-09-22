@@ -6,7 +6,7 @@ import { parsePagination, buildPaginationMeta } from '../../common/utils/paginat
 import type { CreateVisitRequestInput, UpdateVisitStatusInput, ListVisitRequestsQuery } from './land.validation';
 
 const VISIT_INCLUDE_DETAIL = {
-  land: { select: { id: true, title: true, slug: true, sellerId: true, location: true, translations: true } },
+  land: { select: { id: true, title: true, slug: true, sellerId: true, location: true } },
   buyer: { select: { id: true, name: true, phone: true, email: true } },
 } satisfies Prisma.LandVisitRequestInclude;
 
