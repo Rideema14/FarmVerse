@@ -4,7 +4,7 @@ import ApiError from '../../common/utils/ApiError';
 import asyncHandler from '../../common/middlewares/asyncHandler';
 
 export const list = asyncHandler(async (req, res) => {
-  const { items, meta } = await productService.listProducts(req.query as any);
+  const { items, meta } = await productService.listProducts(req.query as any, req.user);
   ApiResponse.paginated(res, items, meta);
 });
 
