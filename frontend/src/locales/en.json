@@ -294,7 +294,9 @@
     "verifiedSeller": "a verified seller",
     "productInformation": "Product information",
     "noDescriptionAvailable": "No description available for this product.",
-    "customerFeedback": "Customer feedback"
+    "customerFeedback": "Customer feedback",
+    "onlyLeftInStock": "Only {count} left in stock",
+    "add": "Add"
   },
   "address": {
     "label": "Label",

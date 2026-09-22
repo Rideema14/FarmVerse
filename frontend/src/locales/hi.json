@@ -294,7 +294,9 @@
     "verifiedSeller": "एक सत्यापित विक्रेता",
     "productInformation": "उत्पाद जानकारी",
     "noDescriptionAvailable": "इस उत्पाद के लिए कोई विवरण उपलब्ध नहीं है।",
-    "customerFeedback": "ग्राहक प्रतिक्रिया"
+    "customerFeedback": "ग्राहक प्रतिक्रिया",
+    "onlyLeftInStock": "केवल {count} बचे हैं",
+    "add": "जोड़ें"
   },
   "address": {
     "label": "लेबल",

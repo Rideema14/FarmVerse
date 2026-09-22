@@ -15,7 +15,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
   const { isWishlisted, toggleWishlist } = useWishlist()
   const { quantityOf, addToCart, setQuantity, removeFromCart } = useCart()
   const { isAuthenticated } = useAuth()
-  const { language } = useLanguage()
+  const { language, t } = useLanguage()
   const navigate = useNavigate()
 
   // Tracks only "we just fired the very first add" so a second click before
@@ -180,7 +180,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
                   shadow-lg
                 "
               >
-                Out of Stock
+                {t('product.outOfStock')}
               </span>
             </div>
           )}
@@ -377,7 +377,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
         <div className="mt-2 w-full shrink-0">
           {product.stock < 10 && (
             <p className="mb-1.5 text-center text-[10px] font-bold text-[#D92D20]">
-              Only {product.stock} left in stock
+              {t('product.onlyLeftInStock').replace('{count}', String(product.stock))}
             </p>
           )}
           {inCart ? (
@@ -464,7 +464,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
               "
             >
               <Plus className="h-3.5 w-3.5" />
-              Add
+              {t('product.add')}
             </button>
           )}
         </div>

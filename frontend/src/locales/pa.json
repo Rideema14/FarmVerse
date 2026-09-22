@@ -294,7 +294,9 @@
     "verifiedSeller": "ਇੱਕ ਪ੍ਰਮਾਣਿਤ ਵਿਕਰੇਤਾ",
     "productInformation": "ਉਤਪਾਦ ਜਾਣਕਾਰੀ",
     "noDescriptionAvailable": "ਇਸ ਉਤਪਾਦ ਲਈ ਕੋਈ ਵੇਰਵਾ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
-    "customerFeedback": "ਗਾਹਕ ਫੀਡਬੈਕ"
+    "customerFeedback": "ਗਾਹਕ ਫੀਡਬੈਕ",
+    "onlyLeftInStock": "ਸਿਰਫ਼ {count} ਬਚੇ ਹਨ",
+    "add": "ਜੋੜੋ"
   },
   "address": {
     "label": "ਲੇਬਲ",
