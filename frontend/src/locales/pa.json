@@ -672,7 +672,8 @@
     "noAlerts": "ਕੋਈ ਚਾਲੂ ਅਲਰਟ ਨਹੀਂ।",
     "alertSummary": "ਭਾਅ {condition} 'ਤੇ ਅਲਰਟ: {price}",
     "conditionRisesAbove": "ਵਧਣ",
-    "conditionFallsBelow": "ਘਟਣ"
+    "conditionFallsBelow": "ਘਟਣ",
+    "atMandi": "ਵਿਖੇ"
   },
   "mandiFavorites": {
     "title": "ਮੇਰੀਆਂ ਮਨਪਸੰਦ ਮੰਡੀਆਂ",

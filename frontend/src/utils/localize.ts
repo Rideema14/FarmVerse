@@ -5326,58 +5326,97 @@ export function formatOrderStatus(status: string, t: (key: any) => string): stri
   return status
 }
 
+function lookupNonIdentityTranslation(
+  table: Record<string, string> | undefined,
+  value: string,
+): string | undefined {
+  if (!table) return undefined
+  const isUsable = (translated: string | undefined) => {
+    if (!translated) return undefined
+    return translated.trim().toLocaleLowerCase() === value.trim().toLocaleLowerCase()
+      ? undefined
+      : translated
+  }
+
+  const direct = isUsable(table[value])
+  if (direct) return direct
+
+  const lower = value.trim().toLocaleLowerCase()
+  for (const [key, translated] of Object.entries(table)) {
+    if (key.trim().toLocaleLowerCase() === lower) {
+      const usable = isUsable(translated)
+      if (usable) return usable
+    }
+  }
+
+  return undefined
+}
+
+// API/AGMARKNET names are not always formatted exactly like our translation keys.
+// Normalize harmless naming differences so variants such as `Sehore(F&V) APMC`,
+// `Sehore APMC`, `sehore`, and `Sehore ` can share the same translation.
+function normalizeLocationKey(value: string, mandi = false): string {
+  return value
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/\(f\s*&\s*v\)/gi, '')
+    .replace(/\bapmc\b/gi, '')
+    .replace(/\bmandi\b/gi, '')
+    .replace(/[\u2013\u2014-]/g, ' ')
+    .replace(/[()\[\]{},./]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function lookupLocationTranslation(
+  table: Record<string, string> | undefined,
+  value: string,
+  mandi = false,
+): string | undefined {
+  const direct = lookupNonIdentityTranslation(table, value)
+  if (direct) return direct
+  if (!table) return undefined
+
+  const wanted = normalizeLocationKey(value, mandi)
+  if (!wanted) return undefined
+
+  for (const [key, translated] of Object.entries(table)) {
+    if (normalizeLocationKey(key, mandi) !== wanted) continue
+    const usable = translated && translated.trim().toLocaleLowerCase() !== value.trim().toLocaleLowerCase()
+      ? translated
+      : undefined
+    if (usable) return usable
+  }
+
+  return undefined
+}
+
 export function formatCropName(name: string, language: string): string {
   if (!name || language === 'en') return name || ''
   const trimmed = name.trim()
-
-  // 1. Direct dictionary match in cropTranslations
   const customTable = (cropTranslations as Record<string, Record<string, string>>)[language]
-  if (customTable && customTable[trimmed]) {
-    return customTable[trimmed]
-  }
-
-  // 2. Direct dictionary match in CROP_NAME_MAP
   const mapTable = CROP_NAME_MAP[language]
-  if (mapTable && mapTable[trimmed]) {
-    return mapTable[trimmed]
-  }
+  const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
 
-  // 3. Case-insensitive match in dictionaries
-  const lowerTrimmed = trimmed.toLowerCase()
-  if (customTable) {
-    for (const [key, value] of Object.entries(customTable)) {
-      if (key.toLowerCase() === lowerTrimmed) return value
-    }
-  }
-  if (mapTable) {
-    for (const [key, value] of Object.entries(mapTable)) {
-      if (key.toLowerCase() === lowerTrimmed) return value
-    }
-  }
+  // Prefer a real translated value. Identity entries in the legacy dictionaries
+  // must never block the generated DB translation fallback.
+  const direct =
+    lookupNonIdentityTranslation(customTable, trimmed) ||
+    lookupNonIdentityTranslation(mapTable, trimmed) ||
+    lookupNonIdentityTranslation(dynTable, trimmed)
+  if (direct) return direct
 
-  // 4. Sub-segment or parenthetical extraction (e.g. "Bajra(Pearl Millet/Cumbu)" or "Paddy(Dhan)")
+  // Handle compound commodity names by translating a meaningful segment when
+  // the exact source string is not present in the dictionaries.
   const parts = trimmed.split(/[\(\)\/\-]+/).map((p) => p.trim()).filter(Boolean)
   if (parts.length > 1) {
     for (const part of parts) {
-      if (customTable && customTable[part]) return customTable[part]
-      if (mapTable && mapTable[part]) return mapTable[part]
-      if (customTable) {
-        const lower = part.toLowerCase()
-        for (const [key, value] of Object.entries(customTable)) {
-          if (key.toLowerCase() === lower) return value
-        }
-      }
-    }
-  }
-
-  // 5. Try dynamic translations fallback
-  const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
-  if (dynTable && dynTable[trimmed]) {
-    return dynTable[trimmed]
-  }
-  if (dynTable) {
-    for (const [key, value] of Object.entries(dynTable)) {
-      if (key.toLowerCase() === lowerTrimmed) return value
+      const translatedPart =
+        lookupNonIdentityTranslation(customTable, part) ||
+        lookupNonIdentityTranslation(mapTable, part) ||
+        lookupNonIdentityTranslation(dynTable, part)
+      if (translatedPart) return translatedPart
     }
   }
 
@@ -5385,25 +5424,33 @@ export function formatCropName(name: string, language: string): string {
 }
 
 export function formatMandiMarket(name: string, language: string): string {
-  if (!name) return ''
+  if (!name || language === 'en') return name || ''
   const trimmed = name.trim()
   const table = MANDI_NAMES_MAP[language]
-  if (table && table[trimmed]) {
-    return table[trimmed]
-  }
+  const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
+
+  // The generated dictionary contains the DB's full mandi/market vocabulary.
+  // Use it when the older mandi map contains an unchanged English value.
+  const direct =
+    lookupLocationTranslation(table, trimmed, true) ||
+    lookupLocationTranslation(dynTable, trimmed, true)
+  if (direct) return direct
+
   if (language === 'hi' || language === 'mr' || language === 'pa' || language === 'gu') {
     const suffix = language === 'pa' ? 'ਮੰਡੀ' : language === 'gu' ? 'મંડી' : 'मंडी'
     const cleaned = trimmed.replace(/\(F&V\)/gi, '').replace(/\bAPMC\b/gi, '').trim()
     if (cleaned) {
       const translatedLocation = formatLocationName(cleaned, language)
-      return `${translatedLocation} ${suffix}`
+      if (translatedLocation && translatedLocation !== cleaned) {
+        return `${translatedLocation} ${suffix}`
+      }
+      const translatedMandiBase =
+        lookupLocationTranslation(table, cleaned, true) ||
+        lookupLocationTranslation(dynTable, cleaned, true)
+      if (translatedMandiBase && translatedMandiBase !== cleaned) {
+        return `${translatedMandiBase} ${suffix}`
+      }
     }
-  }
-
-  // Try dynamic translations fallback
-  const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
-  if (dynTable && dynTable[trimmed]) {
-    return dynTable[trimmed]
   }
 
   return name
@@ -7519,17 +7566,15 @@ export function formatLocationName(name: string, language: string): string {
   }
 
   const table = translations[language]
-  if (table && table[trimmed]) {
-    return table[trimmed]
-  }
-
-  // Try dynamic translations fallback
   const dynTable = (dynamicTranslations as Record<string, Record<string, string>>)[language]
-  if (dynTable && dynTable[trimmed]) {
-    return dynTable[trimmed]
-  }
 
-  return name
+  // Prefer an actual localized value. A large portion of the legacy location
+  // map contains identity entries, so check the generated DB dictionary before
+  // falling back to the original English string.
+  const translated =
+    lookupLocationTranslation(table, trimmed) ||
+    lookupLocationTranslation(dynTable, trimmed)
+  return translated || name
 }
 
 const SOIL_NAMES_MAP: Record<string, Record<string, string>> = {

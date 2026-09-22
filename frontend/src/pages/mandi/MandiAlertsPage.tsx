@@ -109,7 +109,7 @@ export default function MandiAlertsPage() {
                 </span>
                 <div>
                   <p className="text-sm font-medium text-ink-900">
-                    {formatCropName(alert.crop?.name || '', language) || t('mandi.unknownCrop')} {alert.mandi ? `at ${formatMandiMarket(alert.mandi.name, language)}` : `(${t('mandiAlerts.anyMandi')})`}
+                    {formatCropName(alert.crop?.name || '', language) || t('mandi.unknownCrop')} {alert.mandi ? `${t('mandiAlerts.atMandi')} ${formatMandiMarket(alert.mandi.name, language)}` : `(${t('mandiAlerts.anyMandi')})`}
                   </p>
                   <p className="text-xs text-ink-400">
                     {t('mandiAlerts.alertSummary', {

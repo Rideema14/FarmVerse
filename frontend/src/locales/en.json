@@ -971,7 +971,8 @@
     "noAlerts": "No active alerts.",
     "alertSummary": "Alert when price {condition} {price}",
     "conditionRisesAbove": "rises above",
-    "conditionFallsBelow": "falls below"
+    "conditionFallsBelow": "falls below",
+    "atMandi": "at"
   },
   "mandiFavorites": {
     "title": "My Favorite Mandis",

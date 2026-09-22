@@ -672,7 +672,8 @@
     "noAlerts": "કોઈ સક્રિય એલર્ટ નથી.",
     "alertSummary": "ભાવ {condition} પર એલર્ટ: {price}",
     "conditionRisesAbove": "વધવા",
-    "conditionFallsBelow": "ઘટવા"
+    "conditionFallsBelow": "ઘટવા",
+    "atMandi": "પર"
   },
   "mandiFavorites": {
     "title": "મારા મનપસંદ યાર્ડ",

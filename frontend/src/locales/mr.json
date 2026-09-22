@@ -672,7 +672,8 @@
     "noAlerts": "कोणतेही सक्रिय अलर्ट नाहीत.",
     "alertSummary": "भाव {condition} वर अलर्ट: {price}",
     "conditionRisesAbove": "वाढल्यास",
-    "conditionFallsBelow": "कमी झाल्यास"
+    "conditionFallsBelow": "कमी झाल्यास",
+    "atMandi": "येथे"
   },
   "mandiFavorites": {
     "title": "माझ्या आवडत्या मंडया",

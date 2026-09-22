@@ -963,7 +963,8 @@
     "noAlerts": "कोई सक्रिय अलर्ट नहीं।",
     "alertSummary": "कीमत {condition} पर अलर्ट: {price}",
     "conditionRisesAbove": "बढ़ने",
-    "conditionFallsBelow": "गिरने"
+    "conditionFallsBelow": "गिरने",
+    "atMandi": "पर"
   },
   "mandiFavorites": {
     "title": "मेरी पसंदीदा मंडियां",
