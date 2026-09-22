@@ -15,12 +15,14 @@ import { useLand } from '@/context/LandContext'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/utils/cn'
+import { toIntlLocale } from '@/utils/format'
 import type { BackendVisitStatus } from '@/services/landService'
 
 export default function MyLandVisitsPage() {
   const { visitRequests, fetchMyVisitRequests, cancelVisitRequest, isLoading, isActionLoading } = useLand()
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
+  const localeCode = toIntlLocale(language)
 
   const statusConfig: Record<
     BackendVisitStatus,
@@ -52,7 +54,7 @@ export default function MyLandVisitsPage() {
     try {
       await cancelVisitRequest(id)
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to cancel visit')
+      setErrorMsg(err instanceof Error ? err.message : t('landErrors.cancelVisitFailed'))
     } finally {
       setCancellingId(null)
     }
@@ -145,11 +147,11 @@ export default function MyLandVisitsPage() {
                       {statusCfg.label}
                     </span>
                     <h3 className="mt-2 text-base font-bold text-ink-900">
-                      {visit.land?.title || 'Agricultural Land Plot'}
+                      {visit.land?.title || t('landVisits.fallbackTitle')}
                     </h3>
                     <p className="flex items-center gap-1 text-xs text-ink-500">
                       <MapPin className="h-3.5 w-3.5 text-soil-500" />
-                      {visit.land?.location || 'Location details in plot'}
+                      {visit.land?.location || t('landVisits.fallbackLocation')}
                     </p>
                   </div>
                   {visit.land?.slug && (
@@ -165,11 +167,11 @@ export default function MyLandVisitsPage() {
                 <div className="mt-4 grid gap-3 rounded-2xl bg-surface-sunk p-3.5 text-xs sm:grid-cols-2">
                   <div>
                     <span className="font-semibold text-ink-500">{t('landVisits.visitDateTime')}</span>
-                    <p className="font-bold text-ink-900">{new Date(visit.visitDate).toLocaleDateString()} at {visit.visitTime}</p>
+                    <p className="font-bold text-ink-900">{new Date(visit.visitDate).toLocaleDateString(localeCode)} {t('sellerLand.at')} {visit.visitTime}</p>
                   </div>
                   <div>
                     <span className="font-semibold text-ink-500">{t('landVisits.requestDate')}</span>
-                    <p className="text-ink-700">{new Date(visit.createdAt).toLocaleDateString()}</p>
+                    <p className="text-ink-700">{new Date(visit.createdAt).toLocaleDateString(localeCode)}</p>
                   </div>
                 </div>
 

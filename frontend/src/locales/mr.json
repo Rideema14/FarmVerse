@@ -445,7 +445,8 @@
     "view": "पहा",
     "sale": "विक्री",
     "lease": "भाडेतत्त्वावर",
-    "perYear": "/वर्ष"
+    "perYear": "/वर्ष",
+    "anyPlaceholder": "कोणतेही"
   },
   "machinery": {
     "directVerifiedRentals": "सत्यापित भाडे यंत्रसामग्री",
@@ -590,7 +591,8 @@
     "statusAccepted": "विक्रेत्याने मंजूर केले",
     "statusRejected": "भेट विनंती नाकारली",
     "statusCompleted": "भेट पूर्ण झाली",
-    "statusCancelled": "भेट विनंती रद्द केली"
+    "statusCancelled": "भेट विनंती रद्द केली",
+    "removeImageTitle": "प्रतिमा काढा"
   },
   "landVisit": {
     "backTo": "{title} कडे परत जा",
@@ -630,7 +632,9 @@
     "statusApproved": "मंजूर",
     "statusRejected": "नाकारले",
     "statusCompleted": "पूर्ण",
-    "statusCancelled": "रद्द"
+    "statusCancelled": "रद्द",
+    "fallbackTitle": "शेती जमीन प्लॉट",
+    "fallbackLocation": "प्लॉटमध्ये स्थानाचा तपशील"
   },
   "machineryDetails": {
     "backToMachinery": "यंत्रसामग्रीकडे परत जा",
@@ -648,13 +652,24 @@
     "bookNow": "आता बुक करा",
     "loginToBook": "बुक करण्यासाठी लॉगिन करा",
     "notAvailable": "हे यंत्र सध्या भाड्याने उपलब्ध नाही.",
-    "reviewsCount": "({count} पुनरावलोकने)"
+    "reviewsCount": "({count} पुनरावलोकने)",
+    "errorPastDate": "ती सुरुवातीची तारीख आधीच उलटून गेली आहे. कृपया आज किंवा नंतरची तारीख निवडा.",
+    "errorDateOrder": "कृपया तुमच्या तारखा तपासा — सुरुवातीची तारीख शेवटच्या तारखेपूर्वी असावी.",
+    "errorNotEnoughUnits": "त्या तारखांसाठी पुरेशी यंत्रे उपलब्ध नाहीत. वेगळ्या तारखा किंवा कमी संख्या वापरून पहा.",
+    "errorValidation": "फॉर्ममध्ये काहीतरी बरोबर दिसत नाही. कृपया तुमच्या तारखा तपासा आणि पुन्हा प्रयत्न करा.",
+    "paymentIncomplete": "बुकिंग तयार झाली आहे पण पेमेंट पूर्ण झाले नाही. तुम्ही 'माझी बुकिंग्ज' मधून पेमेंट करू शकता.",
+    "bookingFailed": "बुकिंग पूर्ण करता आली नाही. कृपया पुन्हा प्रयत्न करा."
   },
   "machineryBookings": {
     "title": "माझी भाडी",
     "emptyTitle": "तुम्ही अद्याप काहीही बुक केलेले नाही",
     "findMachines": "भाड्याने यंत्रे शोधा",
-    "machinesCount": "{count} यंत्रे"
+    "machinesCount": "{count} यंत्रे",
+    "statusPending": "प्रलंबित",
+    "statusConfirmed": "निश्चित",
+    "statusActive": "सक्रिय",
+    "statusCompleted": "पूर्ण",
+    "statusCancelled": "रद्द"
   },
   "mandiAlerts": {
     "title": "भाव अलर्ट",
@@ -904,7 +919,11 @@
     "confirm": "मंजूर करा",
     "reject": "नाकारा",
     "markActive": "सक्रिय करा",
-    "markCompleted": "पूर्ण झाले"
+    "markCompleted": "पूर्ण झाले",
+    "loadDataFailed": "तुमचा यंत्रसामग्री डेटा लोड करता आला नाही.",
+    "updateListingFailed": "ही सूची अपडेट करता आली नाही.",
+    "deleteListingFailed": "ही सूची हटवता आली नाही. जर त्यात बुकिंग्ज असतील तर ती निष्क्रिय करा.",
+    "updateBookingFailed": "ही बुकिंग अपडेट करता आली नाही."
   },
   "sellerLand": {
     "sellerHub": "विक्रेता केंद्र",
@@ -948,7 +967,11 @@
     "statusAccepted": "मंजूर",
     "statusRejected": "नाकारले",
     "statusCompleted": "पूर्ण",
-    "statusCancelled": "रद्द"
+    "statusCancelled": "रद्द",
+    "landPlotFallback": "जमीन प्लॉट",
+    "updateListingStatusFailed": "सूचीची स्थिती अपडेट करता आली नाही",
+    "deleteListingFailed": "सूची हटवता आली नाही",
+    "updateVisitRequestStatusFailed": "भेट विनंतीची स्थिती अपडेट करता आली नाही"
   },
   "addMachinery": {
     "title": "यंत्रसामग्री जोडा",
@@ -968,7 +991,14 @@
     "addPhoto": "फोटो जोडा",
     "photoAdded": "फोटो जोडला",
     "publish": "प्रकाशित करा",
-    "publishing": "प्रकाशित करत आहे..."
+    "publishing": "प्रकाशित करत आहे...",
+    "loadingCategories": "श्रेणी लोड होत आहेत…",
+    "categoriesLoadFailed": "यंत्रसामग्री श्रेणी लोड करता आल्या नाहीत.",
+    "publishFailed": "ही सूची प्रकाशित करता आली नाही. कृपया पुन्हा प्रयत्न करा.",
+    "publishSuccessMsg": "{name} आता FarmVerse वर भाड्याने उपलब्ध आहे.",
+    "viewMachineryRental": "यंत्रसामग्री भाडे पहा",
+    "uploadingMessage": "उपकरणाचा फोटो अपलोड होत आहे आणि भाड्यासाठी सूची तयार होत आहे.",
+    "machineryPreviewAlt": "यंत्रसामग्री पूर्वावलोकन"
   },
   "addLand": {
     "title": "जमीन जोडा",
@@ -990,7 +1020,16 @@
     "uploadPhotos": "फोटो अपलोड करा",
     "tapToBrowse": "फोटो निवडण्यासाठी टॅप करा",
     "publish": "जमीन प्रकाशित करा",
-    "publishing": "प्रकाशित करत आहे..."
+    "publishing": "प्रकाशित करत आहे...",
+    "requiredFieldsError": "कृपया सर्व आवश्यक फील्ड भरा.",
+    "publishFailedGeneric": "जमीन सूची प्रकाशित करता आली नाही",
+    "uploadingMessage": "प्लॉटचे फोटो अपलोड होत आहेत आणि FarmVerse मार्केटप्लेसवर प्रकाशित होत आहेत.",
+    "areaPlaceholder": "उदा. ५.५",
+    "locationPlaceholder": "उदा. बहोरीबंद, कटनी हायवे",
+    "cityPlaceholder": "उदा. कटनी",
+    "statePlaceholder": "उदा. मध्य प्रदेश",
+    "pricePlaceholder": "उदा. १८५०००० ",
+    "waterSourcePlaceholder": "उदा. बोअरवेल + कालवा"
   },
   "landing": {
     "navHome": "मुख्यपृष्ठ",
@@ -1177,5 +1216,17 @@
     "cropHealthy": "पीक निरोगी दिसत आहे",
     "issueDetected": "समस्या आढळली",
     "issueDetectedWith": "समस्या आढळली: {disease}"
+  },
+  "landErrors": {
+    "fetchListingsFailed": "जमीन सूची मिळवता आली नाही",
+    "listingNotFound": "जमीन सूची सापडली नाही",
+    "sendVisitFailed": "भेट विनंती पाठवता आली नाही",
+    "cancelVisitFailed": "भेट विनंती रद्द करता आली नाही",
+    "createFailed": "जमीन सूची तयार करता आली नाही",
+    "updateFailed": "जमीन सूची अपडेट करता आली नाही",
+    "deleteFailed": "जमीन सूची हटवता आली नाही",
+    "uploadImagesFailed": "प्रतिमा अपलोड करता आल्या नाहीत",
+    "removeImageFailed": "प्रतिमा काढता आली नाही",
+    "updateVisitStatusFailed": "भेटीची स्थिती अपडेट करता आली नाही"
   }
 }

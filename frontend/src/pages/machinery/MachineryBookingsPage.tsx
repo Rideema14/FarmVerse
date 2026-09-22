@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { CalendarClock, Loader2, Tractor } from 'lucide-react'
 import { useMachinery } from '@/context/MachineryContext'
 import { useLanguage } from '@/context/LanguageContext'
-import { formatINR } from '@/utils/format'
+import { formatINR, toIntlLocale } from '@/utils/format'
 import { cn } from '@/utils/cn'
 
 const STATUS_STYLE: Record<string, string> = {
@@ -15,7 +15,15 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function MachineryBookingsPage() {
   const { bookings, isLoading } = useMachinery()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
+  const localeCode = toIntlLocale(language)
+  const statusLabels: Record<string, string> = {
+    pending: t('machineryBookings.statusPending'),
+    confirmed: t('machineryBookings.statusConfirmed'),
+    active: t('machineryBookings.statusActive'),
+    completed: t('machineryBookings.statusCompleted'),
+    cancelled: t('machineryBookings.statusCancelled'),
+  }
 
   if (isLoading) {
     return (
@@ -53,12 +61,12 @@ export default function MachineryBookingsPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-ink-900">{booking.machineryName}</p>
               <p className="mt-0.5 text-xs text-ink-500">
-                {new Date(booking.startDate).toLocaleDateString()} – {new Date(booking.endDate).toLocaleDateString()}
+                {new Date(booking.startDate).toLocaleDateString(localeCode)} – {new Date(booking.endDate).toLocaleDateString(localeCode)}
                 {booking.quantity > 1 ? ` · ${t('machineryBookings.machinesCount', { count: booking.quantity })}` : ''}
               </p>
               <div className="mt-1.5 flex items-center justify-between text-xs">
                 <span className={cn('rounded-full px-2 py-0.5 font-semibold capitalize', STATUS_STYLE[booking.status])}>
-                  {booking.status}
+                  {statusLabels[booking.status] || booking.status}
                 </span>
                 <span className="font-semibold text-ink-800">{formatINR(booking.totalPrice)}</span>
               </div>

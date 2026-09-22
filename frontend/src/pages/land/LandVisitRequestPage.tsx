@@ -65,7 +65,7 @@ export default function LandVisitRequestPage() {
       await requestVisit(land.id, date, time, message)
       navigate(`/land/${land.slug || land.id}`)
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to send visit request')
+      setErrorMsg(err instanceof Error ? err.message : t('landErrors.sendVisitFailed'))
     }
   }
 

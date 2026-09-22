@@ -51,7 +51,7 @@ export default function AddLandListingPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!title.trim() || !areaAcres || !price || !location.trim()) {
-      setErrorMsg('Please fill in all required fields.')
+      setErrorMsg(t('addLand.requiredFieldsError'))
       return
     }
 
@@ -75,7 +75,7 @@ export default function AddLandListingPage() {
 
       navigate(`/land/${created.slug || created.id}`)
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to publish land listing')
+      setErrorMsg(err instanceof Error ? err.message : t('addLand.publishFailedGeneric'))
     }
   }
 
@@ -84,7 +84,7 @@ export default function AddLandListingPage() {
       <LoadingOverlay
         isLoading={isActionLoading}
         title={t('addLand.publishing')}
-        message="Uploading plot photos and publishing to FarmVerse marketplace."
+        message={t('addLand.uploadingMessage')}
       />
       <Link to="/seller/land" className="mb-4 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
         <ChevronLeft className="h-4 w-4" />
@@ -121,7 +121,7 @@ export default function AddLandListingPage() {
             min="0.1"
             value={areaAcres}
             onChange={(e) => setAreaAcres(e.target.value)}
-            placeholder="e.g. 5.5"
+            placeholder={t('addLand.areaPlaceholder')}
             required
           />
           <SelectField
@@ -140,7 +140,7 @@ export default function AddLandListingPage() {
           label={t('addLand.location')}
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          placeholder="e.g. Bahoriband, Katni Highway"
+          placeholder={t('addLand.locationPlaceholder')}
           required
         />
 
@@ -150,14 +150,14 @@ export default function AddLandListingPage() {
             label={t('addLand.city')}
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            placeholder="e.g. Katni"
+            placeholder={t('addLand.cityPlaceholder')}
           />
           <TextField
             id="state"
             label={t('addLand.state')}
             value={state}
             onChange={(e) => setState(e.target.value)}
-            placeholder="e.g. Madhya Pradesh"
+            placeholder={t('addLand.statePlaceholder')}
           />
         </div>
 
@@ -168,7 +168,7 @@ export default function AddLandListingPage() {
           min="1"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          placeholder="e.g. 1850000"
+          placeholder={t('addLand.pricePlaceholder')}
           required
         />
 
@@ -183,7 +183,7 @@ export default function AddLandListingPage() {
             label={t('addLand.waterSource')}
             value={waterSource}
             onChange={(e) => setWaterSource(e.target.value)}
-            placeholder="e.g. Borewell + Canal"
+            placeholder={t('addLand.waterSourcePlaceholder')}
           />
         </div>
 

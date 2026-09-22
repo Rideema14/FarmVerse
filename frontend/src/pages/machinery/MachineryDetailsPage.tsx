@@ -18,12 +18,12 @@ function addDaysToDateString(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-function friendlyBookingError(message: string): string {
+function friendlyBookingError(message: string, t: (key: any, params?: Record<string, string | number>) => string): string {
   const m = message.toLowerCase()
-  if (m.includes('past')) return "That start date has already passed. Please pick today or a later date."
-  if (m.includes('start') && m.includes('end')) return "Please check your dates — the start date should come before the end date."
-  if (m.includes('available') || m.includes('unit')) return "Not enough machines are free for those dates. Try different dates or fewer units."
-  if (m.includes('validation')) return "Something in the form doesn't look right. Please check your dates and try again."
+  if (m.includes('past')) return t('machineryDetails.errorPastDate')
+  if (m.includes('start') && m.includes('end')) return t('machineryDetails.errorDateOrder')
+  if (m.includes('available') || m.includes('unit')) return t('machineryDetails.errorNotEnoughUnits')
+  if (m.includes('validation')) return t('machineryDetails.errorValidation')
   return message
 }
 
@@ -115,14 +115,14 @@ export default function MachineryDetailsPage() {
             verifyEndpoint: '/machinery/payments/verify',
           })
         } catch (payErr) {
-          setError(getApiErrorMessage(payErr, 'Booking created but payment did not complete. You can pay from My Bookings.'))
+          setError(getApiErrorMessage(payErr, t('machineryDetails.paymentIncomplete')))
         }
       }
 
       await refreshBookings()
       setConfirmed({ bookingNumber: booking.bookingNumber, total: booking.totalPrice })
     } catch (err) {
-      setError(friendlyBookingError(getApiErrorMessage(err, 'Could not complete the booking. Please try again.')))
+      setError(friendlyBookingError(getApiErrorMessage(err, t('machineryDetails.bookingFailed')), t))
     } finally {
       setIsBooking(false)
     }

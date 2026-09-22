@@ -19,7 +19,7 @@ import {
   type MachineryListing,
 } from '@/services/machineryService'
 import { getApiErrorMessage } from '@/services/api'
-import { formatINR } from '@/utils/format'
+import { formatINR, toIntlLocale } from '@/utils/format'
 import { formatProductName } from '@/utils/localize'
 import { cn } from '@/utils/cn'
 
@@ -36,6 +36,14 @@ const STATUS_STYLE: Record<MachineryBookingStatus, string> = {
 export default function SellerMachineryPage() {
   const { user } = useAuth()
   const { t, language } = useLanguage()
+  const localeCode = toIntlLocale(language)
+  const bookingStatusLabels: Record<MachineryBookingStatus, string> = {
+    pending: t('machineryBookings.statusPending'),
+    confirmed: t('machineryBookings.statusConfirmed'),
+    active: t('machineryBookings.statusActive'),
+    completed: t('machineryBookings.statusCompleted'),
+    cancelled: t('machineryBookings.statusCancelled'),
+  }
   const [tab, setTab] = useState<Tab>('listings')
 
   const [stats, setStats] = useState<MachineryDashboardStats | null>(null)
@@ -68,7 +76,7 @@ export default function SellerMachineryPage() {
       setListings(listingsRes.items)
       setBookings(bookingsRes.items)
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not load your machinery data.'))
+      setError(getApiErrorMessage(err, t('sellerMachinery.loadDataFailed')))
     } finally {
       setIsLoading(false)
     }
@@ -86,7 +94,7 @@ export default function SellerMachineryPage() {
       await machineryService.setActive(listing.id, !listing.available)
       setListings((prev) => prev.map((l) => (l.id === listing.id ? { ...l, available: !l.available } : l)))
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not update this listing.'))
+      setError(getApiErrorMessage(err, t('sellerMachinery.updateListingFailed')))
     } finally {
       setBusyId(null)
     }
@@ -99,7 +107,7 @@ export default function SellerMachineryPage() {
       await machineryService.remove(listing.id)
       setListings((prev) => prev.filter((l) => l.id !== listing.id))
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not delete this listing. Deactivate it instead if it has bookings.'))
+      setError(getApiErrorMessage(err, t('sellerMachinery.deleteListingFailed')))
     } finally {
       setBusyId(null)
     }
@@ -112,7 +120,7 @@ export default function SellerMachineryPage() {
       const updated = await machineryService.updateBookingStatus(booking.id, status)
       setBookings((prev) => prev.map((b) => (b.id === booking.id ? updated : b)))
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not update this booking.'))
+      setError(getApiErrorMessage(err, t('sellerMachinery.updateBookingFailed')))
     } finally {
       setBusyId(null)
     }
@@ -251,12 +259,12 @@ export default function SellerMachineryPage() {
                     {booking.renterPhone ? ` · ${booking.renterPhone}` : ''}
                   </p>
                   <p className="mt-0.5 text-xs text-ink-500">
-                    {new Date(booking.startDate).toLocaleDateString()} – {new Date(booking.endDate).toLocaleDateString()}
+                    {new Date(booking.startDate).toLocaleDateString(localeCode)} – {new Date(booking.endDate).toLocaleDateString(localeCode)}
                     {booking.quantity > 1 ? ` · ${t('sellerMachinery.machinesCountPlural', { count: booking.quantity })}` : ''}
                   </p>
                 </div>
                 <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize', STATUS_STYLE[booking.status])}>
-                  {booking.status}
+                  {bookingStatusLabels[booking.status] || booking.status}
                 </span>
               </div>
 

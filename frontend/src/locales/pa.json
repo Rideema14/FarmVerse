@@ -445,7 +445,8 @@
     "view": "ਵੇਖੋ",
     "sale": "ਵਿਕਰੀ",
     "lease": "ਠੇਕਾ",
-    "perYear": "/ਸਾਲ"
+    "perYear": "/ਸਾਲ",
+    "anyPlaceholder": "ਕੋਈ ਵੀ"
   },
   "machinery": {
     "directVerifiedRentals": "ਤਸਦੀਕਸ਼ੁਦਾ ਕਿਰਾਇਆ ਮਸ਼ੀਨਰੀ",
@@ -590,7 +591,8 @@
     "statusAccepted": "ਵਿਕਰੇਤਾ ਵੱਲੋਂ ਪ੍ਰਵਾਨਿਤ",
     "statusRejected": "ਦੌਰਾ ਬੇਨਤੀ ਰੱਦ ਕੀਤੀ ਗਈ",
     "statusCompleted": "ਦੌਰਾ ਮੁਕੰਮਲ ਹੋਇਆ",
-    "statusCancelled": "ਦੌਰਾ ਬੇਨਤੀ ਰੱਦ"
+    "statusCancelled": "ਦੌਰਾ ਬੇਨਤੀ ਰੱਦ",
+    "removeImageTitle": "ਤਸਵੀਰ ਹਟਾਓ"
   },
   "landVisit": {
     "backTo": "{title} 'ਤੇ ਵਾਪਸ ਜਾਓ",
@@ -630,7 +632,9 @@
     "statusApproved": "ਪ੍ਰਵਾਨਿਤ",
     "statusRejected": "ਰੱਦ",
     "statusCompleted": "ਮੁਕੰਮਲ",
-    "statusCancelled": "ਰੱਦ ਕੀਤੀ ਗਈ"
+    "statusCancelled": "ਰੱਦ ਕੀਤੀ ਗਈ",
+    "fallbackTitle": "ਖੇਤੀਬਾੜੀ ਜ਼ਮੀਨ ਪਲਾਟ",
+    "fallbackLocation": "ਪਲਾਟ ਵਿੱਚ ਸਥਾਨ ਵੇਰਵੇ"
   },
   "machineryDetails": {
     "backToMachinery": "ਮਸ਼ੀਨਰੀ 'ਤੇ ਵਾਪਸ ਜਾਓ",
@@ -648,13 +652,24 @@
     "bookNow": "ਹੁਣੇ ਬੁੱਕ ਕਰੋ",
     "loginToBook": "ਬੁੱਕ ਕਰਨ ਲਈ ਲੌਗਇਨ ਕਰੋ",
     "notAvailable": "ਇਹ ਮਸ਼ੀਨ ਇਸ ਵੇਲੇ ਕਿਰਾਏ 'ਤੇ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
-    "reviewsCount": "({count} ਸਮੀਖਿਆਵਾਂ)"
+    "reviewsCount": "({count} ਸਮੀਖਿਆਵਾਂ)",
+    "errorPastDate": "ਉਹ ਸ਼ੁਰੂਆਤੀ ਮਿਤੀ ਪਹਿਲਾਂ ਹੀ ਲੰਘ ਚੁੱਕੀ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਅੱਜ ਜਾਂ ਬਾਅਦ ਦੀ ਮਿਤੀ ਚੁਣੋ।",
+    "errorDateOrder": "ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀਆਂ ਮਿਤੀਆਂ ਦੀ ਜਾਂਚ ਕਰੋ — ਸ਼ੁਰੂਆਤੀ ਮਿਤੀ ਅੰਤਿਮ ਮਿਤੀ ਤੋਂ ਪਹਿਲਾਂ ਹੋਣੀ ਚਾਹੀਦੀ ਹੈ।",
+    "errorNotEnoughUnits": "ਉਹਨਾਂ ਮਿਤੀਆਂ ਲਈ ਲੋੜੀਂਦੀਆਂ ਮਸ਼ੀਨਾਂ ਖਾਲੀ ਨਹੀਂ ਹਨ। ਵੱਖਰੀਆਂ ਮਿਤੀਆਂ ਜਾਂ ਘੱਟ ਗਿਣਤੀ ਅਜ਼ਮਾਓ।",
+    "errorValidation": "ਫਾਰਮ ਵਿੱਚ ਕੁਝ ਠੀਕ ਨਹੀਂ ਲੱਗ ਰਿਹਾ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀਆਂ ਮਿਤੀਆਂ ਦੀ ਜਾਂਚ ਕਰੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "paymentIncomplete": "ਬੁਕਿੰਗ ਬਣ ਗਈ ਹੈ ਪਰ ਭੁਗਤਾਨ ਪੂਰਾ ਨਹੀਂ ਹੋਇਆ। ਤੁਸੀਂ 'ਮੇਰੀ ਬੁਕਿੰਗ' ਤੋਂ ਭੁਗਤਾਨ ਕਰ ਸਕਦੇ ਹੋ।",
+    "bookingFailed": "ਬੁਕਿੰਗ ਪੂਰੀ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
   },
   "machineryBookings": {
     "title": "ਮੇਰੇ ਕਿਰਾਏ",
     "emptyTitle": "ਤੁਸੀਂ ਅਜੇ ਕੁਝ ਵੀ ਬੁੱਕ ਨਹੀਂ ਕੀਤਾ",
     "findMachines": "ਕਿਰਾਏ ਲਈ ਮਸ਼ੀਨਾਂ ਲੱਭੋ",
-    "machinesCount": "{count} ਮਸ਼ੀਨਾਂ"
+    "machinesCount": "{count} ਮਸ਼ੀਨਾਂ",
+    "statusPending": "ਬਕਾਇਆ",
+    "statusConfirmed": "ਪੁਸ਼ਟੀ ਹੋ ਗਈ",
+    "statusActive": "ਸਰਗਰਮ",
+    "statusCompleted": "ਪੂਰਾ",
+    "statusCancelled": "ਰੱਦ"
   },
   "mandiAlerts": {
     "title": "ਭਾਅ ਅਲਰਟ",
@@ -904,7 +919,11 @@
     "confirm": "ਪ੍ਰਵਾਨ ਕਰੋ",
     "reject": "ਰੱਦ ਕਰੋ",
     "markActive": "ਚਾਲੂ ਕਰੋ",
-    "markCompleted": "ਮੁਕੰਮਲ"
+    "markCompleted": "ਮੁਕੰਮਲ",
+    "loadDataFailed": "ਤੁਹਾਡਾ ਮਸ਼ੀਨਰੀ ਡਾਟਾ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
+    "updateListingFailed": "ਇਹ ਸੂਚੀ ਅੱਪਡੇਟ ਨਹੀਂ ਹੋ ਸਕੀ।",
+    "deleteListingFailed": "ਇਹ ਸੂਚੀ ਹਟਾਈ ਨਹੀਂ ਜਾ ਸਕੀ। ਜੇ ਇਸ ਵਿੱਚ ਬੁਕਿੰਗਾਂ ਹਨ ਤਾਂ ਇਸਨੂੰ ਅਕਿਰਿਆਸ਼ੀਲ ਕਰੋ।",
+    "updateBookingFailed": "ਇਹ ਬੁਕਿੰਗ ਅੱਪਡੇਟ ਨਹੀਂ ਹੋ ਸਕੀ।"
   },
   "sellerLand": {
     "sellerHub": "ਵਿਕਰੇਤਾ ਕੇਂਦਰ",
@@ -948,7 +967,11 @@
     "statusAccepted": "ਪ੍ਰਵਾਨਿਤ",
     "statusRejected": "ਰੱਦ",
     "statusCompleted": "ਮੁਕੰਮਲ",
-    "statusCancelled": "ਰੱਦ ਕੀਤੀ ਗਈ"
+    "statusCancelled": "ਰੱਦ ਕੀਤੀ ਗਈ",
+    "landPlotFallback": "ਜ਼ਮੀਨ ਪਲਾਟ",
+    "updateListingStatusFailed": "ਸੂਚੀ ਦੀ ਸਥਿਤੀ ਅੱਪਡੇਟ ਨਹੀਂ ਹੋ ਸਕੀ",
+    "deleteListingFailed": "ਸੂਚੀ ਹਟਾਈ ਨਹੀਂ ਜਾ ਸਕੀ",
+    "updateVisitRequestStatusFailed": "ਦੌਰਾ ਬੇਨਤੀ ਦੀ ਸਥਿਤੀ ਅੱਪਡੇਟ ਨਹੀਂ ਹੋ ਸਕੀ"
   },
   "addMachinery": {
     "title": "ਮਸ਼ੀਨਰੀ ਜੋੜੋ",
@@ -968,7 +991,14 @@
     "addPhoto": "ਫੋਟੋ ਜੋੜੋ",
     "photoAdded": "ਫੋਟੋ ਜੋੜੀ ਗਈ",
     "publish": "ਪ੍ਰਕਾਸ਼ਿਤ ਕਰੋ",
-    "publishing": "ਪ੍ਰਕਾਸ਼ਿਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ..."
+    "publishing": "ਪ੍ਰਕਾਸ਼ਿਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ...",
+    "loadingCategories": "ਸ਼੍ਰੇਣੀਆਂ ਲੋਡ ਹੋ ਰਹੀਆਂ ਹਨ…",
+    "categoriesLoadFailed": "ਮਸ਼ੀਨਰੀ ਸ਼੍ਰੇਣੀਆਂ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀਆਂ।",
+    "publishFailed": "ਇਹ ਸੂਚੀ ਪ੍ਰਕਾਸ਼ਿਤ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "publishSuccessMsg": "{name} ਹੁਣ FarmVerse 'ਤੇ ਕਿਰਾਏ ਲਈ ਉਪਲਬਧ ਹੈ।",
+    "viewMachineryRental": "ਮਸ਼ੀਨਰੀ ਕਿਰਾਇਆ ਵੇਖੋ",
+    "uploadingMessage": "ਉਪਕਰਣ ਦੀ ਫੋਟੋ ਅੱਪਲੋਡ ਹੋ ਰਹੀ ਹੈ ਅਤੇ ਕਿਰਾਏ ਲਈ ਸੂਚੀ ਬਣਾਈ ਜਾ ਰਹੀ ਹੈ।",
+    "machineryPreviewAlt": "ਮਸ਼ੀਨਰੀ ਝਲਕ"
   },
   "addLand": {
     "title": "ਜ਼ਮੀਨ ਜੋੜੋ",
@@ -990,7 +1020,16 @@
     "uploadPhotos": "ਫੋਟੋਆਂ ਅਪਲੋਡ ਕਰੋ",
     "tapToBrowse": "ਫੋਟੋ ਚੁਣਨ ਲਈ ਟੈਪ ਕਰੋ",
     "publish": "ਜ਼ਮੀਨ ਪ੍ਰਕਾਸ਼ਿਤ ਕਰੋ",
-    "publishing": "ਪ੍ਰਕਾਸ਼ਿਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ..."
+    "publishing": "ਪ੍ਰਕਾਸ਼ਿਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ...",
+    "requiredFieldsError": "ਕਿਰਪਾ ਕਰਕੇ ਸਾਰੇ ਲੋੜੀਂਦੇ ਖੇਤਰ ਭਰੋ।",
+    "publishFailedGeneric": "ਜ਼ਮੀਨ ਦੀ ਸੂਚੀ ਪ੍ਰਕਾਸ਼ਿਤ ਨਹੀਂ ਹੋ ਸਕੀ",
+    "uploadingMessage": "ਪਲਾਟ ਦੀਆਂ ਫੋਟੋਆਂ ਅੱਪਲੋਡ ਹੋ ਰਹੀਆਂ ਹਨ ਅਤੇ FarmVerse ਮਾਰਕਿਟਪਲੇਸ 'ਤੇ ਪ੍ਰਕਾਸ਼ਿਤ ਹੋ ਰਹੀਆਂ ਹਨ।",
+    "areaPlaceholder": "ਜਿਵੇਂ ਕਿ 5.5",
+    "locationPlaceholder": "ਜਿਵੇਂ ਕਿ ਬਹੋਰੀਬੰਦ, ਕਟਨੀ ਹਾਈਵੇ",
+    "cityPlaceholder": "ਜਿਵੇਂ ਕਿ ਕਟਨੀ",
+    "statePlaceholder": "ਜਿਵੇਂ ਕਿ ਮੱਧ ਪ੍ਰਦੇਸ਼",
+    "pricePlaceholder": "ਜਿਵੇਂ ਕਿ 1850000",
+    "waterSourcePlaceholder": "ਜਿਵੇਂ ਕਿ ਬੋਰਵੈੱਲ + ਨਹਿਰ"
   },
   "landing": {
     "navHome": "ਮੁੱਖ ਪੰਨਾ",
@@ -1177,5 +1216,17 @@
     "cropHealthy": "ਫ਼ਸਲ ਤੰਦਰੁਸਤ ਲੱਗਦੀ ਹੈ",
     "issueDetected": "ਸਮੱਸਿਆ ਪਾਈ ਗਈ",
     "issueDetectedWith": "ਸਮੱਸਿਆ ਪਾਈ ਗਈ: {disease}"
+  },
+  "landErrors": {
+    "fetchListingsFailed": "ਜ਼ਮੀਨ ਦੀ ਸੂਚੀ ਪ੍ਰਾਪਤ ਨਹੀਂ ਹੋ ਸਕੀ",
+    "listingNotFound": "ਜ਼ਮੀਨ ਦੀ ਸੂਚੀ ਨਹੀਂ ਮਿਲੀ",
+    "sendVisitFailed": "ਦੌਰਾ ਬੇਨਤੀ ਨਹੀਂ ਭੇਜੀ ਜਾ ਸਕੀ",
+    "cancelVisitFailed": "ਦੌਰਾ ਬੇਨਤੀ ਰੱਦ ਨਹੀਂ ਹੋ ਸਕੀ",
+    "createFailed": "ਜ਼ਮੀਨ ਦੀ ਸੂਚੀ ਨਹੀਂ ਬਣ ਸਕੀ",
+    "updateFailed": "ਜ਼ਮੀਨ ਦੀ ਸੂਚੀ ਅੱਪਡੇਟ ਨਹੀਂ ਹੋ ਸਕੀ",
+    "deleteFailed": "ਜ਼ਮੀਨ ਦੀ ਸੂਚੀ ਹਟਾਈ ਨਹੀਂ ਜਾ ਸਕੀ",
+    "uploadImagesFailed": "ਤਸਵੀਰਾਂ ਅੱਪਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀਆਂ",
+    "removeImageFailed": "ਤਸਵੀਰ ਹਟਾਈ ਨਹੀਂ ਜਾ ਸਕੀ",
+    "updateVisitStatusFailed": "ਦੌਰੇ ਦੀ ਸਥਿਤੀ ਅੱਪਡੇਟ ਨਹੀਂ ਹੋ ਸਕੀ"
   }
 }
