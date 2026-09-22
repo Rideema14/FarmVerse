@@ -79,6 +79,7 @@ export interface Seed {
   reviewCount: number
   stock: number
   description: string
+  translations?: Record<string, { name?: string; description?: string }> | null
   specifications: { label: string; value: string }[]
   createdAt: string
   images: string[]
