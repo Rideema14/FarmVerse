@@ -36,21 +36,10 @@ function sortToOrderBy(sortBy: ProductQuery['sortBy']): Prisma.ProductOrderByWit
   }
 }
 
-export async function listProducts(query: ProductQuery, user?: User) {
+export async function listProducts(query: ProductQuery) {
   const { page, limit, skip, take } = parsePagination(query);
 
-  const where: Prisma.ProductWhereInput = {};
-
-  if (query.isActive !== undefined) {
-    where.isActive = query.isActive;
-  } else if (
-    query.includeInactive ||
-    (query.sellerId && user && (user.id === query.sellerId || user.role === 'ADMIN'))
-  ) {
-    // Both active and inactive listings included for seller/admin or explicit includeInactive
-  } else {
-    where.isActive = true;
-  }
+  const where: Prisma.ProductWhereInput = { isActive: true };
 
   if (query.search) {
     where.OR = [
@@ -229,11 +218,7 @@ export async function updateProduct(id: string, user: User, data: ProductUpdateI
   const nextPrice = productData.price ?? Number(product.price);
   const nextDiscount = productData.discountPrice ?? (product.discountPrice ? Number(product.discountPrice) : undefined);
   if (nextDiscount && Number(nextDiscount) >= Number(nextPrice)) {
-    if (productData.discountPrice === undefined) {
-      updateData.discountPrice = null;
-    } else {
-      throw ApiError.badRequest('discountPrice must be lower than price.');
-    }
+    throw ApiError.badRequest('discountPrice must be lower than price.');
   }
 
   if (productData.name !== undefined || productData.description !== undefined) {

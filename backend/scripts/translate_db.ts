@@ -111,7 +111,37 @@ async function main() {
 
   await persistRows(productRows, (r) => ({ name: r.name, description: r.description }), (id, translations) => prisma.product.update({ where: { id }, data: { translations } }));
   await persistRows(seedRows, (r) => ({ name: r.name, description: r.description }), (id, translations) => prisma.seed.update({ where: { id }, data: { translations } }));
-  await persistRows(landRows, (r) => ({ title: r.title, description: r.description, location: r.location }), (id, translations) => prisma.land.update({ where: { id }, data: { translations } }));
+
+  // Land is intentionally rebuilt separately so an old/incorrect Hindi identity
+  // translation can never remain cached. This is important for listings that were
+  // translated before the land translation support was added.
+  for (const row of landRows) {
+    const next: Record<string, unknown> = {};
+    for (const lang of TARGET_LANGS) {
+      next[lang] = {};
+      for (const [field, value] of Object.entries({ title: row.title, description: row.description, location: row.location })) {
+        if (!value) continue;
+        const translated = existing[lang][value];
+        // If the cached value is missing OR identical to the English source,
+        // translate this land field now instead of persisting the bad identity.
+        if (translated && translated.trim().toLocaleLowerCase() !== value.trim().toLocaleLowerCase()) {
+          (next[lang] as Record<string, string>)[field] = translated;
+        } else {
+          try {
+            const fresh = await translate(value, { to: lang });
+            const text = Array.isArray(fresh) ? fresh[0]?.text : fresh?.text;
+            (next[lang] as Record<string, string>)[field] = text && text.trim() ? text : value;
+            if (text && text.trim()) existing[lang][value] = text;
+          } catch (err) {
+            console.error(`Land translation failed for ${lang}: ${field}=${value}:`, err.message);
+            (next[lang] as Record<string, string>)[field] = value;
+          }
+        }
+      }
+    }
+    await prisma.land.update({ where: { id: row.id }, data: { translations: next } });
+  }
+
   await persistRows(machineryRows, (r) => ({ name: r.name, description: r.description }), (id, translations) => prisma.machinery.update({ where: { id }, data: { translations } }));
 
   console.log(`Persisted translations for ${productRows.length} products, ${seedRows.length} seeds, ${landRows.length} land listings and ${machineryRows.length} machinery listings.`);

@@ -38,7 +38,6 @@ export const productCreateSchema = z.object({
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
   variants: z.array(variantInputSchema).optional(),
-  isActive: z.boolean().optional(),
 });
 export type ProductCreateInput = z.infer<typeof productCreateSchema>;
 
@@ -54,12 +53,6 @@ export const productQuerySchema = z.object({
   minPrice: z.coerce.number().nonnegative().optional(),
   maxPrice: z.coerce.number().positive().optional(),
   sellerId: z.string().uuid().optional(),
-  includeInactive: z.preprocess((val) => val === 'true' || val === true, z.boolean().optional()),
-  isActive: z.preprocess((val) => {
-    if (val === 'true' || val === true) return true;
-    if (val === 'false' || val === false) return false;
-    return undefined;
-  }, z.boolean().optional()),
   sortBy: z.enum(['newest', 'price_asc', 'price_desc', 'rating', 'popular']).default('newest'),
 });
 export type ProductQuery = z.infer<typeof productQuerySchema>;
